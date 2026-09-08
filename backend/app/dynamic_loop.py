@@ -7,12 +7,16 @@ from .schemas import (
 from .graph_engine import ReasoningGraphEngine
 from .plugins.base_plugin import BaseDomainPlugin
 from .plugins.infrastructure_plugin import InfrastructurePlugin
+from .plugins.astronomy_plugin import AstronomyPlugin
+from .plugins.agriculture_plugin import AgriculturePlugin
 from .vlm_service import VLMService
 
 class DynamicWorkflowOrchestrator:
     def __init__(self):
         self.plugins: Dict[str, BaseDomainPlugin] = {
-            "infrastructure": InfrastructurePlugin()
+            "infrastructure": InfrastructurePlugin(),
+            "astronomy": AstronomyPlugin(),
+            "agriculture": AgriculturePlugin()
         }
         self.vlm_service = VLMService()
 

@@ -327,9 +327,12 @@ function extractDiscoveredPairs(content, explicitRelationships = []) {
 
 export function MarkdownResponse({
   content,
+  pairedQuestion = null,
+  role = 'assistant',
   isCompact = false,
   relationships = [],
-  onNavigateToAnalytics = null
+  onNavigateToAnalytics = null,
+  onAskSaar = null
 }) {
   const [copied, setCopied] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
@@ -337,7 +340,15 @@ export function MarkdownResponse({
   if (!content) return null;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(content);
+    let textToCopy = content;
+    if (pairedQuestion && pairedQuestion.trim()) {
+      if (role === 'user') {
+        textToCopy = `### Question:\n${content.trim()}\n\n### Saar Reasoning Agent Response:\n${pairedQuestion.trim()}`;
+      } else {
+        textToCopy = `### Question:\n${pairedQuestion.trim()}\n\n### Saar Reasoning Agent Response:\n${content.trim()}`;
+      }
+    }
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -361,10 +372,24 @@ export function MarkdownResponse({
             <FileText size={11} />
             {showRaw ? 'Formatted' : 'Raw'}
           </button>
-          <button onClick={handleCopy} className="md-action-btn" title="Copy response to clipboard">
+          <button
+            onClick={handleCopy}
+            className="md-action-btn"
+            title={pairedQuestion ? "Copy question and response together to clipboard" : "Copy to clipboard"}
+          >
             {copied ? <Check size={11} color="var(--emerald)" /> : <Copy size={11} />}
-            {copied ? 'Copied' : 'Copy'}
+            {copied ? 'Copied Q&A' : (pairedQuestion ? 'Copy Q&A' : 'Copy')}
           </button>
+          {onAskSaar && (
+            <button
+              onClick={() => onAskSaar(content, pairedQuestion)}
+              className="md-action-btn md-ask-saar-btn"
+              title="Ask Saar a follow-up inquiry about this finding"
+            >
+              <Sparkles size={11} className="text-primary" />
+              <span>Ask Saar</span>
+            </button>
+          )}
         </div>
       </div>
 

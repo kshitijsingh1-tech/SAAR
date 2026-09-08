@@ -99,20 +99,7 @@ export function ToolCanvasDrawer({
           <div className="tool-body-pane">
             <KnowledgeGraphCanvas
               activeInvestigation={saarData || investigationData}
-              graphData={(saarData || investigationData)?.graph_data || {
-                nodes: [
-                  { data: { id: 'soil_ph', label: 'Soil pH (7.8)', type: 'property', confidence: 0.95 } },
-                  { data: { id: 'moisture', label: 'Moisture (48%)', type: 'property', confidence: 0.92 } },
-                  { data: { id: 'root_hypoxia', label: 'Root Hypoxia', type: 'hypothesis', confidence: 0.88 } },
-                  { data: { id: 'fe_bioavailability', label: 'Fe²⁺ Availability', type: 'property', confidence: 0.94 } },
-                  { data: { id: 'chlorosis', label: 'Interveinal Chlorosis', type: 'observation', confidence: 0.96 } }
-                ],
-                edges: [
-                  { data: { id: 'e1', source: 'moisture', target: 'root_hypoxia', relation: 'causes', strength: 0.84 } },
-                  { data: { id: 'e2', source: 'soil_ph', target: 'fe_bioavailability', relation: 'obstructs', strength: -0.92 } },
-                  { data: { id: 'e3', source: 'fe_bioavailability', target: 'chlorosis', relation: 'indicates', strength: 0.88 } }
-                ]
-              }}
+              graphData={saarData?.graph_data || investigationData?.final_graph || null}
               theme={theme}
             />
           </div>
@@ -122,7 +109,7 @@ export function ToolCanvasDrawer({
         {activeTool === 'camera' && (
           <div className="tool-body-pane">
             <ImageInspector
-              presetId="infra_damaged_road"
+              presetId={investigationData?.preset_id || 'infra_damaged_road'}
               customImageData={customImageData}
               customImageUrl={customImageUrl}
               onUploadCustom={onUploadCustomImage}
@@ -139,6 +126,7 @@ export function ToolCanvasDrawer({
           <div className="tool-body-pane">
             <div style={{ padding: '1rem' }}>
               <PlotlyGraphViewer
+                saarData={saarData || investigationData}
                 activeInvestigation={saarData || investigationData}
                 selectedRelationship={selectedRelationship}
                 chartType={selectedChartType || 'histogram'}

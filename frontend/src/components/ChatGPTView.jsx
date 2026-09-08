@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Sparkles, ArrowUp, Paperclip, Camera, FileText,
-  X, Loader2, GitFork, BarChart2, ShieldCheck, Sliders,
+  X, Loader2, GitFork, GitCompare, BarChart2, ShieldCheck, Sliders,
   BookOpen, ChevronDown, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
-  HelpCircle
+  HelpCircle, Download, Copy, Check, Globe, FileCode
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -13,6 +13,7 @@ export function ChatGPTView({
   messages,
   isProcessing,
   onSendMessage,
+  onSelectScenario,
   onAnswerInquiry,
   onAttachFiles,
   onOpenTool,
@@ -26,6 +27,7 @@ export function ChatGPTView({
   onToggleSidebar,
   isSidebarOpen,
   onOpenHelp,
+  onExportChat,
   theme = 'light'
 }) {
   const [inputText, setInputText] = useState('');
@@ -33,9 +35,28 @@ export function ChatGPTView({
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
 
+  // Floating "Ask Saar" Selection Popover State (ChatGPT style)
+  const [selectionPopover, setSelectionPopover] = useState(null);
+  const [copiedSelection, setCopiedSelection] = useState(false);
+
+  // Multi-format Export Chat Dropdown state
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
+
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const saarLogoSrc = '/saar-logo-dark.png';
   const saarWordmarkSrc = '/saar-wordmark-dark.png';
@@ -47,6 +68,79 @@ export function ChatGPTView({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isProcessing]);
+
+  // Global mouseup listener to display floating "Ask Saar" over highlighted text
+  useEffect(() => {
+    const handleMouseUp = (e) => {
+      if (e.target.closest('.floating-ask-saar-popover') || e.target.closest('.composer-input')) {
+        return;
+      }
+      setTimeout(() => {
+        const selection = window.getSelection();
+        const selectedText = selection?.toString().trim();
+        if (selectedText && selectedText.length > 2) {
+          try {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            if (rect && rect.width > 0) {
+              setSelectionPopover({
+                text: selectedText,
+                top: Math.max(10, rect.top - 46),
+                left: Math.max(12, rect.left + rect.width / 2 - 80)
+              });
+              return;
+            }
+          } catch (err) {}
+        }
+        setSelectionPopover(null);
+      }, 10);
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const handleAskSaarFromSelection = (e) => {
+    e.stopPropagation();
+    if (!selectionPopover?.text) return;
+    const quote = selectionPopover.text;
+    const prompt = `> "${quote}"\n\nExplain and verify this causal finding: `;
+    setInputText(prompt);
+    setSelectionPopover(null);
+    window.getSelection()?.removeAllRanges();
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 35, 180)}px`;
+    }
+    scrollToBottom();
+  };
+
+  const handleCopySelection = (e) => {
+    e.stopPropagation();
+    if (!selectionPopover?.text) return;
+    navigator.clipboard.writeText(selectionPopover.text);
+    setCopiedSelection(true);
+    setTimeout(() => {
+      setCopiedSelection(false);
+      setSelectionPopover(null);
+    }, 1200);
+  };
+
+  const handleAskSaarFromAction = (content, pairedQuestion) => {
+    const clean = content.replace(/^[#>*\s-]+/gm, '').trim();
+    const snippet = clean.split('\n')[0].slice(0, 140);
+    const prompt = `Can you elaborate on the causal mechanism for: "${snippet}"?`;
+    setInputText(prompt);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 35, 180)}px`;
+    }
+    scrollToBottom();
+  };
 
   const handleSend = () => {
     if (!inputText.trim() && attachedFiles.length === 0) return;
@@ -114,6 +208,128 @@ export function ChatGPTView({
         </div>
 
         <div className="header-right">
+          {messages.length > 0 && (
+            <div className="export-chat-dropdown-wrapper" ref={exportMenuRef}>
+              <button
+                type="button"
+                className="header-export-btn"
+                onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                title="Export entire chat conversation"
+                aria-haspopup="true"
+                aria-expanded={isExportMenuOpen}
+              >
+                <Download size={14} className="export-btn-icon" />
+                <span>Export Chat</span>
+                <ChevronDown size={12} className={`export-menu-arrow ${isExportMenuOpen ? 'open' : ''}`} />
+              </button>
+
+              {isExportMenuOpen && (
+                <div className="export-menu-dropdown">
+                  <div className="export-menu-section-title">DOWNLOAD FILE</div>
+
+                  <button
+                    type="button"
+                    className="export-menu-item"
+                    onClick={() => {
+                      onExportChat('html');
+                      setIsExportMenuOpen(false);
+                    }}
+                  >
+                    <div className="export-icon-box html-badge">
+                      <Globe size={16} />
+                    </div>
+                    <div className="export-item-content">
+                      <div className="export-item-header">
+                        <span className="export-item-title">Web Document (.html)</span>
+                        <span className="export-badge">Recommended</span>
+                      </div>
+                      <span className="export-item-subtitle">Opens in Edge, Chrome, or any browser</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="export-menu-item"
+                    onClick={() => {
+                      onExportChat('txt');
+                      setIsExportMenuOpen(false);
+                    }}
+                  >
+                    <div className="export-icon-box txt-badge">
+                      <FileText size={16} />
+                    </div>
+                    <div className="export-item-content">
+                      <div className="export-item-header">
+                        <span className="export-item-title">Text Document (.txt)</span>
+                      </div>
+                      <span className="export-item-subtitle">Opens in Notepad on any Windows system</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="export-menu-item"
+                    onClick={() => {
+                      onExportChat('md');
+                      setIsExportMenuOpen(false);
+                    }}
+                  >
+                    <div className="export-icon-box md-badge">
+                      <FileCode size={16} />
+                    </div>
+                    <div className="export-item-content">
+                      <div className="export-item-header">
+                        <span className="export-item-title">Markdown Document (.md)</span>
+                      </div>
+                      <span className="export-item-subtitle">For Obsidian, GitHub, or code editors</span>
+                    </div>
+                  </button>
+
+                  <div className="export-menu-divider" />
+                  <div className="export-menu-section-title">QUICK ACTIONS</div>
+
+                  <button
+                    type="button"
+                    className="export-menu-item action-item"
+                    onClick={() => {
+                      onExportChat('view');
+                      setIsExportMenuOpen(false);
+                    }}
+                  >
+                    <div className="export-icon-box view-badge">
+                      <ExternalLink size={16} />
+                    </div>
+                    <div className="export-item-content">
+                      <div className="export-item-header">
+                        <span className="export-item-title">Open in Browser Tab</span>
+                      </div>
+                      <span className="export-item-subtitle">Read, review, or print to PDF instantly</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="export-menu-item action-item"
+                    onClick={() => {
+                      onExportChat('copy');
+                      setIsExportMenuOpen(false);
+                    }}
+                  >
+                    <div className="export-icon-box copy-badge">
+                      <Copy size={16} />
+                    </div>
+                    <div className="export-item-content">
+                      <div className="export-item-header">
+                        <span className="export-item-title">Copy Entire Chat</span>
+                      </div>
+                      <span className="export-item-subtitle">Copy full conversation text to clipboard</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             className="header-guide-btn"
             onClick={onOpenHelp}
@@ -155,7 +371,7 @@ export function ChatGPTView({
               <div className="welcome-prompt-cards">
                 <button
                   className="prompt-card"
-                  onClick={() => onSendMessage('Investigate the 30-day tomato crop failure dataset and isolate the root cause of leaf chlorosis.')}
+                  onClick={() => onSelectScenario ? onSelectScenario('agriculture', 'agri_tomato_chlorosis', 'Investigate the 30-day tomato crop failure dataset and isolate the root cause of leaf chlorosis.') : onSendMessage('Investigate the 30-day tomato crop failure dataset and isolate the root cause of leaf chlorosis.')}
                 >
                   <div className="prompt-title">Tomato Crop 30-Day Failure</div>
                   <div className="prompt-desc">Isolate soil moisture, alkalinity surge, and iron uptake block.</div>
@@ -163,7 +379,7 @@ export function ChatGPTView({
 
                 <button
                   className="prompt-card"
-                  onClick={() => onSendMessage('Analyze highway pavement surface cracking and sub-surface GPR cavity void reflections.')}
+                  onClick={() => onSelectScenario ? onSelectScenario('infrastructure', 'infra_damaged_road', 'Analyze highway pavement surface cracking and sub-surface GPR cavity void reflections.') : onSendMessage('Analyze highway pavement surface cracking and sub-surface GPR cavity void reflections.')}
                 >
                   <div className="prompt-title">Highway Pavement Cavity Void</div>
                   <div className="prompt-desc">Correlate surface alligator cracks with 1.8m sub-base GPR radar void.</div>
@@ -171,7 +387,7 @@ export function ChatGPTView({
 
                 <button
                   className="prompt-card"
-                  onClick={() => onSendMessage('Evaluate exoplanet transit depth lightcurve against stellar flare noise contamination.')}
+                  onClick={() => onSelectScenario ? onSelectScenario('astronomy', 'astro_stellar_spectrum', 'Evaluate exoplanet transit depth lightcurve against stellar flare noise contamination.') : onSendMessage('Evaluate exoplanet transit depth lightcurve against stellar flare noise contamination.')}
                 >
                   <div className="prompt-title">Exoplanet Transit Spectroscopy</div>
                   <div className="prompt-desc">Separate achromatic planetary occultation from stellar flare noise.</div>
@@ -187,28 +403,52 @@ export function ChatGPTView({
               </div>
             </div>
           ) : (
-            messages.map((msg, index) => (
-              <div key={index} className={`chatgpt-message-row ${msg.role}`}>
-                <div className="message-container">
-                  <div className="message-avatar-circle">
-                    {msg.role === 'assistant' ? (
-                      <img src={saarLogoSrc} alt="Saar" className="avatar-saar-logo" />
-                    ) : (
-                      <div className="user-dot">U</div>
-                    )}
-                  </div>
+            messages.map((msg, index) => {
+              // Extract paired question/response so both are copied together
+              let pairedText = null;
+              if (msg.role === 'assistant') {
+                for (let i = index - 1; i >= 0; i--) {
+                  if (messages[i].role === 'user') {
+                    pairedText = messages[i].text;
+                    break;
+                  }
+                }
+              } else if (msg.role === 'user') {
+                for (let i = index + 1; i < messages.length; i++) {
+                  if (messages[i].role === 'assistant') {
+                    pairedText = messages[i].text;
+                    break;
+                  }
+                }
+              }
 
-                  <div className="message-text-column">
-                    <div className="message-author-row">
-                      <span className="author-name">
-                        {msg.role === 'assistant' ? 'Saar Reasoning Agent' : 'You'}
-                      </span>
-                      {msg.timestamp && <span className="message-time">{msg.timestamp}</span>}
+              return (
+                <div key={index} className={`chatgpt-message-row ${msg.role}`}>
+                  <div className="message-container">
+                    <div className="message-avatar-circle">
+                      {msg.role === 'assistant' ? (
+                        <img src={saarLogoSrc} alt="Saar" className="avatar-saar-logo" />
+                      ) : (
+                        <div className="user-dot">U</div>
+                      )}
                     </div>
 
-                    <div className="message-content-text">
-                      <MarkdownResponse content={msg.text} />
-                    </div>
+                    <div className="message-text-column">
+                      <div className="message-author-row">
+                        <span className="author-name">
+                          {msg.role === 'assistant' ? 'Saar Reasoning Agent' : 'You'}
+                        </span>
+                        {msg.timestamp && <span className="message-time">{msg.timestamp}</span>}
+                      </div>
+
+                      <div className="message-content-text">
+                        <MarkdownResponse
+                          content={msg.text}
+                          pairedQuestion={pairedText}
+                          role={msg.role}
+                          onAskSaar={handleAskSaarFromAction}
+                        />
+                      </div>
 
                     {/* Attached Files Pills */}
                     {msg.files && msg.files.length > 0 && (
@@ -337,8 +577,8 @@ export function ChatGPTView({
                   </div>
                 </div>
               </div>
-            ))
-          )}
+            );
+          }))}
 
           {isProcessing && (
             <div className="chatgpt-message-row assistant">
@@ -445,6 +685,31 @@ export function ChatGPTView({
           Saar couples visual perception with Bayesian belief updating. Verify critical scientific findings.
         </div>
       </div>
+
+      {/* Floating Ask Saar Selection Popover (ChatGPT style) */}
+      {selectionPopover && (
+        <div
+          className="floating-ask-saar-popover"
+          style={{ top: `${selectionPopover.top}px`, left: `${selectionPopover.left}px` }}
+        >
+          <button
+            className="ask-saar-pill-btn"
+            onClick={handleAskSaarFromSelection}
+            title="Ask Saar about this selection"
+          >
+            <Sparkles size={13} className="text-sky" />
+            <span>Ask Saar</span>
+          </button>
+          <button
+            className="ask-saar-copy-btn"
+            onClick={handleCopySelection}
+            title="Copy selected text"
+          >
+            {copiedSelection ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+            <span>{copiedSelection ? 'Copied' : 'Copy'}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

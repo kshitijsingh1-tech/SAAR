@@ -378,8 +378,22 @@ Respond ONLY with valid JSON conforming to this structure:
                 EdgeModel(id="e_astro_2", source="line_shift_01", target="hypo_exoplanet_companion", relation_type="supports", confidence=0.60, evidence="Periodic radial velocity shift indicates gravitational pull from unseen companion."),
                 EdgeModel(id="e_astro_3", source="transit_dip_01", target="hypo_exoplanet_companion", relation_type="supports", confidence=0.72, evidence="Photometric light curve transit matches periodic orbital shadow.")
             ]
-            summary = "Spectroscopic analysis detects periodic H-Alpha absorption line shift (Δλ = +0.187Å) paired with a 0.84% photometric transit dip."
-        
+        elif domain == "agriculture":
+            nodes = [
+                NodeModel(id="leaf_chlorosis_01", label="Interveinal Foliar Chlorosis", node_type="object", category="pathology", confidence=0.96, properties={"pattern": "bright yellowing between dark green primary veins", "canopy_layer": "apical and middle foliage"}),
+                NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, properties={"vwc_percent": 48.2, "saturation_status": "continuous waterlogging"}),
+                NodeModel(id="soil_ph_sensor_01", label="Substrate Alkalinity (pH 7.85)", node_type="property", category="measurement", confidence=0.92, properties={"ph": 7.85, "condition": "calcareous / alkaline"}),
+                NodeModel(id="irrigation_emitter_01", label="Continuous Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, properties={"regime": "unregulated pulse", "flow_liters_hr": 2.8}),
+                NodeModel(id="hypo_iron_deficiency", label="Hypothesis: Root Anoxia & Fe²⁺ Bioavailability Collapse", node_type="hypothesis", category="risk", confidence=0.48, status="hypothesis")
+            ]
+            edges = [
+                EdgeModel(id="e_agri_1", source="irrigation_emitter_01", target="soil_moisture_sensor_01", relation_type="causes", confidence=0.95, evidence="Excessive irrigation emitter frequency maintains root substrate above saturation limit."),
+                EdgeModel(id="e_agri_2", source="soil_moisture_sensor_01", target="hypo_iron_deficiency", relation_type="supports", confidence=0.60, evidence="Prolonged saturation induces root-zone oxygen depletion and impairs ATP-driven H+-ATPase pumps."),
+                EdgeModel(id="e_agri_3", source="soil_ph_sensor_01", target="hypo_iron_deficiency", relation_type="supports", confidence=0.65, evidence="Alkaline pH promotes rapid precipitation of ionic iron into insoluble hydroxide matrices."),
+                EdgeModel(id="e_agri_4", source="hypo_iron_deficiency", target="leaf_chlorosis_01", relation_type="causes", confidence=0.75, evidence="Iron unavailability halts chloroplast protein complex assembly, producing acute interveinal chlorosis.")
+            ]
+            summary = "Multimodal scene analysis identifies acute interveinal foliar chlorosis, saturated root zone substrate (48% VWC), and continuous drip line over-delivery."
+
         else: # Infrastructure domain
             nodes = [
                 NodeModel(id="visual_surface_crack", label="Pavement Surface Longitudinal Cracking", node_type="object", category="structural", confidence=0.96, properties={"length_m": 4.5, "max_aperture_mm": 18}),

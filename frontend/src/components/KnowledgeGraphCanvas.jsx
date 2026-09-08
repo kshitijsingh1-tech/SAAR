@@ -4,6 +4,7 @@ import { Network, Sparkles } from 'lucide-react';
 export const KnowledgeGraphCanvas = ({
   graphData,
   graphState,
+  activeInvestigation,
   selectedStepIndex,
   selectedRelationship
 }) => {

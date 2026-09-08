@@ -4954,6 +4954,303 @@ body {
   transform: translateY(0);
 }
 
+/* Header Export Chat Button */
+.header-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.42rem 0.95rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.header-export-btn .export-btn-icon {
+  color: var(--emerald, #10b981);
+  transition: transform 0.2s ease;
+}
+
+.header-export-btn:hover {
+  background: var(--input-bg);
+  border-color: var(--emerald, #10b981);
+  color: var(--emerald, #10b981);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.2);
+}
+
+.header-export-btn:hover .export-btn-icon {
+  transform: translateY(1px);
+}
+
+.header-export-btn:active {
+  transform: translateY(0);
+}
+
+.header-export-btn .export-menu-arrow {
+  color: var(--text-muted, #64748b);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-left: 2px;
+}
+
+.header-export-btn .export-menu-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Multi-Format Export Dropdown */
+.export-chat-dropdown-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.export-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 335px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.12), 0 6px 14px -2px rgba(0, 0, 0, 0.05);
+  padding: 8px 6px;
+  z-index: 1000;
+  animation: exportDropdownFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes exportDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.export-menu-section-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #94a3b8;
+  padding: 4px 10px 6px 10px;
+  user-select: none;
+}
+
+.export-menu-item {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.export-menu-item:hover {
+  background: #f8fafc;
+  transform: translateX(2px);
+}
+
+.export-menu-item:active {
+  background: #f1f5f9;
+  transform: translateX(0);
+}
+
+.export-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.export-menu-item:hover .export-icon-box {
+  transform: scale(1.06);
+}
+
+.export-icon-box.html-badge {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #dbeafe;
+}
+
+.export-icon-box.txt-badge {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.export-icon-box.md-badge {
+  background: #faf5ff;
+  color: #7c3aed;
+  border: 1px solid #ede9fe;
+}
+
+.export-icon-box.view-badge {
+  background: #f0f9ff;
+  color: #0284c7;
+  border: 1px solid #e0f2fe;
+}
+
+.export-icon-box.copy-badge {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #dcfce7;
+}
+
+.export-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.export-item-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.export-item-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.export-badge {
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.export-item-subtitle {
+  font-size: 0.71rem;
+  color: #64748b;
+  margin-top: 1px;
+  line-height: 1.35;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.export-menu-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 6px 8px;
+}
+
+.export-menu-item.action-item:hover {
+  background: #f8fafc;
+}
+
+.export-menu-item.action-item:hover .export-item-title {
+  color: #0f172a;
+}
+
+/* Floating "Ask Saar" Selection Popover (ChatGPT style) */
+.floating-ask-saar-popover {
+  position: fixed;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  padding: 4px 6px;
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  animation: popoverFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ask-saar-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.ask-saar-pill-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+}
+
+.ask-saar-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: #475569;
+  border: none;
+  border-radius: 9999px;
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.ask-saar-copy-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Action Bar Ask Saar Button */
+.md-ask-saar-btn {
+  color: var(--primary) !important;
+  border-color: rgba(2, 132, 199, 0.3) !important;
+  background: rgba(2, 132, 199, 0.04) !important;
+}
+
+.md-ask-saar-btn:hover {
+  background: rgba(2, 132, 199, 0.1) !important;
+  border-color: var(--primary) !important;
+  transform: translateY(-1px);
+}
+
 /* Header Engine Status Pill */
 .engine-status-pill {
   display: inline-flex;

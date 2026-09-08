@@ -55,7 +55,16 @@ export const answerSaarQuestion = async (investigationId, rawAnswer, structuredD
 };
 
 export const askSaarQuestion = async (investigationId, question) => {
+  if (!investigationId || investigationId === 'latest' || investigationId === 'general') {
+    const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, { question });
+    return res.data;
+  }
   const res = await axios.post(`${API_BASE_URL}/api/saar/investigation/${investigationId}/ask`, { question });
+  return res.data;
+};
+
+export const askSaarGeneral = async (question, domain = 'agriculture') => {
+  const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, { question, domain });
   return res.data;
 };
 
