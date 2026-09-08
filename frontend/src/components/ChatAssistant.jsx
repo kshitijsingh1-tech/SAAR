@@ -456,37 +456,35 @@ export function ChatAssistant({
                                 No, maintained below 25mm
                               </button>
                             </div>
+
+                            <div className="inquiry-custom-input-row">
+                              <input
+                                type="text"
+                                className="inquiry-input"
+                                placeholder="Or provide verified field observation..."
+                                value={answeringQuestionId === qId ? answerInputText : ''}
+                                onChange={(e) => {
+                                  setAnsweringQuestionId(qId);
+                                  setAnswerInputText(e.target.value);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && answerInputText.trim()) {
+                                    handleAnswerQuestion(qId, answerInputText);
+                                  }
+                                }}
+                              />
+                              <button
+                                className="btn-submit-answer"
+                                onClick={() => handleAnswerQuestion(qId, answerInputText)}
+                                disabled={!answerInputText.trim()}
+                              >
+                                <span>Update Belief</span>
+                                <CornerDownRight size={13} />
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
-
-                          <div className="inquiry-custom-input-row">
-                            <input
-                              type="text"
-                              className="inquiry-input"
-                              placeholder="Or provide verified field observation..."
-                              value={answeringQuestionId === (q.id || qIdx) ? answerInputText : ''}
-                              onChange={(e) => {
-                                setAnsweringQuestionId(q.id || qIdx);
-                                setAnswerInputText(e.target.value);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleAnswerQuestion(q.id || qIdx, answerInputText);
-                                }
-                              }}
-                            />
-                            <button
-                              className="btn-submit-answer"
-                              onClick={() => handleAnswerQuestion(q.id || qIdx, answerInputText)}
-                              disabled={!answerInputText.trim()}
-                            >
-                              <span>Update Belief</span>
-                              <CornerDownRight size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   )}
                 </div>
