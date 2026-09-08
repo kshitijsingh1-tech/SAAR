@@ -162,8 +162,10 @@ export default function App() {
       // 1. File Upload (CSV/XLSX or Image)
       if (currentFiles.length > 0) {
         const file = currentFiles[0];
-        const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name);
-        const isCsv = /\.(csv|tsv|txt|xlsx|xls)$/i.test(file.name) || file.type.includes('csv') || file.type.includes('spreadsheet') || file.type.includes('excel');
+        const fileName = file?.name || 'attached_file';
+        const fileType = file?.type || '';
+        const isImage = fileType.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName);
+        const isCsv = /\.(csv|tsv|txt|xlsx|xls)$/i.test(fileName) || fileType.includes('csv') || fileType.includes('spreadsheet') || fileType.includes('excel');
 
         if (isImage) {
           const reader = new FileReader();
@@ -175,11 +177,24 @@ export default function App() {
           };
           reader.readAsDataURL(file);
 
+          let imageReplyText = `**Visual Inspection Media Ingested**: \`${fileName}\`\n\nDispatched multi-modal VLM perception pipeline. Activating Visual Monitor tool to inspect crack propagation, surface anomalies, and spatial geometries.`;
+
+          if (userText && userText.trim()) {
+            try {
+              const askRes = await askSaarQuestion('latest', userText.trim());
+              if (askRes?.answer_summary) {
+                imageReplyText += `\n\n---\n\n### Visual Analysis Inquiry: *"${userText.trim()}"*\n${askRes.answer_summary}`;
+              }
+            } catch (imgErr) {
+              console.warn("Visual inquiry error:", imgErr);
+            }
+          }
+
           setMessages((prev) => [
             ...prev,
             {
               role: 'assistant',
-              text: `**Visual Inspection Media Ingested**: \`${file.name}\`\n\nDispatched multi-modal VLM perception pipeline. Activating Visual Monitor tool to inspect crack propagation, surface anomalies, and spatial geometries.`,
+              text: imageReplyText,
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
           ]);
@@ -191,7 +206,24 @@ export default function App() {
           const report = await uploadSaarCsv(file);
           setSaarData(report);
 
-          const responseText = `**Dataset Ingested & Analyzed**: \`${file.name}\`\n\n- **Telemetry Variables**: Extracted ${report.perception.features_detected} features across ${report.perception.observations_count} observations.\n- **Causal Dependencies**: Discovered ${report.relationships.length} statistical edges and formulated ${report.concepts.length} concepts.\n- **Belief Confidence**: **${((report.confidence || 0.88) * 100).toFixed(0)}%** (Topological uncertainty: ${(100 - (report.confidence || 0.88) * 100).toFixed(0)}%).\n\n### Diagnostic Essence:\n${report.summary || 'Root cause mechanism traced to rhizosphere acidification and iron transport blockage.'}`;
+          const featuresCount = report?.perception?.features_detected ?? 'several';
+          const obsCount = report?.perception?.observations_count ?? 'multiple';
+          const relCount = report?.relationships?.length ?? 0;
+          const conceptCount = report?.concepts?.length ?? 0;
+          const confPercent = Math.round((report?.confidence || 0.88) * 100);
+
+          let responseText = `**Dataset Ingested & Analyzed**: \`${fileName}\`\n\n- **Telemetry Variables**: Extracted ${featuresCount} features across ${obsCount} observations.\n- **Causal Dependencies**: Discovered ${relCount} statistical edges and formulated ${conceptCount} concepts.\n- **Belief Confidence**: **${confPercent}%** (Topological uncertainty: ${100 - confPercent}%).\n\n### Diagnostic Essence:\n${report?.summary || report?.conclusion || 'Root cause mechanism traced to rhizosphere acidification and iron transport blockage.'}`;
+
+          if (userText && userText.trim()) {
+            try {
+              const questionReply = await askSaarQuestion(report?.investigation_id || 'latest', userText.trim());
+              if (questionReply?.answer_summary) {
+                responseText += `\n\n---\n\n### Inquiry Response: *"${userText.trim()}"*\n${questionReply.answer_summary}`;
+              }
+            } catch (qErr) {
+              console.warn("Failed to answer question alongside CSV upload:", qErr);
+            }
+          }
 
           setMessages((prev) => [
             ...prev,
@@ -199,7 +231,7 @@ export default function App() {
               role: 'assistant',
               text: responseText,
               report,
-              openQuestions: report.open_questions || [],
+              openQuestions: Array.isArray(report?.open_questions) ? report.open_questions : [],
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
           ]);

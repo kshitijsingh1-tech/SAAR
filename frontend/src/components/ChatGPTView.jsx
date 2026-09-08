@@ -513,65 +513,73 @@ export function ChatGPTView({
                     )}
 
                     {/* Interactive Human-in-the-Loop Inquiry Cards */}
-                    {msg.openQuestions && msg.openQuestions.length > 0 && (
+                    {msg.openQuestions && Array.isArray(msg.openQuestions) && msg.openQuestions.length > 0 && (
                       <div className="chat-inquiry-box">
                         <div className="inquiry-box-title">
                           <AlertTriangle size={14} className="text-amber" />
                           <span>Uncertainty Reduction Inquiries</span>
                         </div>
 
-                        {msg.openQuestions.map((q, qIdx) => (
-                          <div key={q.id || qIdx} className="inquiry-item">
-                            <p className="inquiry-prompt">{q.text || q}</p>
-                            {q.impact && <div className="inquiry-impact">Impact: {q.impact}</div>}
+                        {msg.openQuestions.map((q, qIdx) => {
+                          const qId = typeof q === 'object' && q ? (q.question_id || q.id || `q_${qIdx}`) : `q_${qIdx}`;
+                          const qText = typeof q === 'string' ? q : (q?.question || q?.text || q?.reason || 'Field observation inquiry');
+                          const rawImpact = typeof q === 'object' && q ? (q.impact || q.reason || q.targets_uncertainty || '') : '';
+                          const qImpact = typeof rawImpact === 'string' ? rawImpact : '';
+                          const qPriority = typeof q === 'object' && q?.priority ? q.priority : 'high';
 
-                            <div className="inquiry-quick-answers">
-                              <button
-                                className="quick-answer-pill"
-                                onClick={() => onAnswerInquiry(q.id || qIdx, 'Yes, precipitation exceeded 40mm during Days 12-16.')}
-                              >
-                                Yes, exceeded 40mm
-                              </button>
-                              <button
-                                className="quick-answer-pill"
-                                onClick={() => onAnswerInquiry(q.id || qIdx, 'No, drainage prevented soil saturation.')}
-                              >
-                                No, held below 25mm
-                              </button>
-                            </div>
+                          return (
+                            <div key={qId} className="inquiry-item">
+                              <p className="inquiry-prompt">{qText}</p>
+                              {qImpact && <div className="inquiry-impact">Impact: {qImpact}</div>}
 
-                            <div className="inquiry-custom-input-line">
-                              <input
-                                type="text"
-                                placeholder="Or enter field observation..."
-                                value={answeringQId === (q.id || qIdx) ? customAnswerText : ''}
-                                onChange={(e) => {
-                                  setAnsweringQId(q.id || qIdx);
-                                  setCustomAnswerText(e.target.value);
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && customAnswerText.trim()) {
-                                    onAnswerInquiry(q.id || qIdx, customAnswerText.trim());
-                                    setCustomAnswerText('');
-                                  }
-                                }}
-                              />
-                              <button
-                                className="submit-inquiry-btn"
-                                onClick={() => {
-                                  if (customAnswerText.trim()) {
-                                    onAnswerInquiry(q.id || qIdx, customAnswerText.trim());
-                                    setCustomAnswerText('');
-                                  }
-                                }}
-                                disabled={!customAnswerText.trim()}
-                              >
-                                <span>Submit</span>
-                                <CornerDownRight size={12} />
-                              </button>
+                              <div className="inquiry-quick-answers">
+                                <button
+                                  className="quick-answer-pill"
+                                  onClick={() => onAnswerInquiry(qId, 'Yes, observed telemetry anomaly confirmed in field.')}
+                                >
+                                  Yes, confirmed
+                                </button>
+                                <button
+                                  className="quick-answer-pill"
+                                  onClick={() => onAnswerInquiry(qId, 'No, field conditions remained within nominal thresholds.')}
+                                >
+                                  No, within thresholds
+                                </button>
+                              </div>
+
+                              <div className="inquiry-custom-input-line">
+                                <input
+                                  type="text"
+                                  placeholder="Or enter field observation..."
+                                  value={answeringQId === qId ? customAnswerText : ''}
+                                  onChange={(e) => {
+                                    setAnsweringQId(qId);
+                                    setCustomAnswerText(e.target.value);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && customAnswerText.trim()) {
+                                      onAnswerInquiry(qId, customAnswerText.trim());
+                                      setCustomAnswerText('');
+                                    }
+                                  }}
+                                />
+                                <button
+                                  className="submit-inquiry-btn"
+                                  onClick={() => {
+                                    if (customAnswerText.trim()) {
+                                      onAnswerInquiry(qId, customAnswerText.trim());
+                                      setCustomAnswerText('');
+                                    }
+                                  }}
+                                  disabled={!customAnswerText.trim()}
+                                >
+                                  <span>Submit</span>
+                                  <CornerDownRight size={12} />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

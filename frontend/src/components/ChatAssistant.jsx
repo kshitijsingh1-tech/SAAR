@@ -431,25 +431,34 @@ export function ChatAssistant({
                         <span>High-Information-Gain Inquiries (Belief Uncertainty Reduction)</span>
                       </div>
 
-                      {msg.openQuestions.map((q, qIdx) => (
-                        <div key={q.id || qIdx} className="inquiry-card">
-                          <div className="inquiry-question-text">{q.text || q}</div>
-                          {q.impact && <div className="inquiry-impact-note">Impact: {q.impact}</div>}
+                      {msg.openQuestions.map((q, qIdx) => {
+                        const qId = typeof q === 'object' && q ? (q.question_id || q.id || `q_${qIdx}`) : `q_${qIdx}`;
+                        const qText = typeof q === 'string' ? q : (q?.question || q?.text || q?.reason || 'Field observation inquiry');
+                        const rawImpact = typeof q === 'object' && q ? (q.impact || q.reason || q.targets_uncertainty || '') : '';
+                        const qImpact = typeof rawImpact === 'string' ? rawImpact : '';
 
-                          <div className="inquiry-options-row">
-                            <button
-                              className="inquiry-quick-btn"
-                              onClick={() => handleAnswerQuestion(q.id || qIdx, 'Yes, irrigation and heavy rainfall exceeded 40mm during Days 12-16.')}
-                            >
-                              Yes, precipitation exceeded 40mm
-                            </button>
-                            <button
-                              className="inquiry-quick-btn"
-                              onClick={() => handleAnswerQuestion(q.id || qIdx, 'No, drainage culverts prevented soil saturation.')}
-                            >
-                              No, maintained below 25mm
-                            </button>
+                        return (
+                          <div key={qId} className="inquiry-card">
+                            <div className="inquiry-question-text">{qText}</div>
+                            {qImpact && <div className="inquiry-impact-note">Impact: {qImpact}</div>}
+
+                            <div className="inquiry-options-row">
+                              <button
+                                className="inquiry-quick-btn"
+                                onClick={() => handleAnswerQuestion(qId, 'Yes, irrigation and heavy rainfall exceeded 40mm during Days 12-16.')}
+                              >
+                                Yes, precipitation exceeded 40mm
+                              </button>
+                              <button
+                                className="inquiry-quick-btn"
+                                onClick={() => handleAnswerQuestion(qId, 'No, drainage culverts prevented soil saturation.')}
+                              >
+                                No, maintained below 25mm
+                              </button>
+                            </div>
                           </div>
+                        );
+                      })}
 
                           <div className="inquiry-custom-input-row">
                             <input
