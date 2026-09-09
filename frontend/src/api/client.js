@@ -77,3 +77,24 @@ export const querySaarKnowledge = async (query, domain = null) => {
   const res = await axios.post(`${API_BASE_URL}/api/saar/knowledge/query`, { query, domain });
   return res.data;
 };
+
+// ------------------------------------------------------------------
+// Scientific Dictionary & Glossary API
+// ------------------------------------------------------------------
+
+export const lookupDictionaryWord = async (word) => {
+  const res = await axios.get(`${API_BASE_URL}/api/dictionary/lookup`, {
+    params: { word }
+  });
+  return res.data;
+};
+
+export const fetchGlossary = async (texts = [], domain = null, graphNodes = []) => {
+  const res = await axios.post(`${API_BASE_URL}/api/dictionary/glossary`, {
+    texts,
+    domain,
+    graph_nodes: graphNodes
+  });
+  return res.data;
+};
+

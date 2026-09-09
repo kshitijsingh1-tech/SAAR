@@ -5942,6 +5942,679 @@ body {
   overflow-y: auto;
 }
 
+/* ==========================================================================
+   SCIENTIFIC DICTIONARY & LIVE CHAT GLOSSARY TOOL STYLES
+   ========================================================================== */
+
+.dictionary-drawer-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 520px;
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
+}
+
+/* Top Search Section */
+.dictionary-search-section {
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-card, #f8fafc);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.dictionary-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9999px;
+  padding: 0.35rem 0.65rem 0.35rem 0.95rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.dictionary-search-box:focus-within {
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2), 0 2px 10px rgba(245, 158, 11, 0.1);
+}
+
+.dict-search-icon {
+  color: #d97706;
+  flex-shrink: 0;
+}
+
+.dict-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.92rem;
+  color: #0f172a;
+  font-family: inherit;
+}
+
+.dict-clear-btn {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dict-clear-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.dict-submit-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.dict-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.45);
+}
+
+.dict-submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Live Screen Scanner Header */
+.dict-scanner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+}
+
+.scanner-status {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: #334155;
+}
+
+.last-scan-time {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.rescan-screen-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rescan-screen-btn:hover:not(:disabled) {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+.rescan-screen-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.word-audio-btn {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #b45309;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.word-audio-btn:hover {
+  background: #fde68a;
+  transform: scale(1.08);
+}
 
 
+/* Main Split View */
+.dictionary-content-split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  min-height: 0;
+  overflow: hidden;
+}
 
+@media (max-width: 900px) {
+  .dictionary-content-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    overflow-y: auto;
+  }
+}
+
+/* Left Column: Glossary List */
+.dictionary-glossary-panel {
+  border-right: 1px solid var(--border-color, #e2e8f0);
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.glossary-panel-header {
+  padding: 0.85rem 1rem 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.glossary-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.glossary-title-group h4 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.live-chat-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 9999px;
+  padding: 0.15rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse 1.8s infinite;
+}
+
+.glossary-filter-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.4rem 0.75rem;
+  overflow-x: auto;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+}
+
+.glossary-tab-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.glossary-tab-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.glossary-tab-btn.active {
+  background: #fef3c7;
+  color: #b45309;
+  font-weight: 700;
+}
+
+.glossary-cards-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.glossary-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.glossary-card:hover {
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
+}
+
+.glossary-card.selected {
+  border-color: #d97706;
+  background: #fffdfa;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25), 0 4px 12px rgba(217, 119, 6, 0.12);
+}
+
+.glossary-card.in-chat-card {
+  border-left: 3.5px solid #10b981;
+}
+
+.glossary-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.35rem;
+}
+
+.glossary-card-title {
+  display: flex;
+  flex-direction: column;
+}
+
+.glossary-card-title strong {
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.glossary-phonetic {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-family: monospace;
+}
+
+.glossary-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.chat-mention-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #065f46;
+  background: #d1fae5;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.difficulty-pill {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.glossary-card-def {
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.4;
+  margin: 0 0 0.5rem;
+}
+
+.glossary-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+}
+
+.glossary-domain-tag {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.glossary-explore-link {
+  color: #d97706;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+/* Right Column: Word Definition Inspector */
+.dictionary-detail-panel {
+  flex: 1;
+  background: #ffffff;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+}
+
+.word-detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 820px;
+}
+
+.word-detail-header {
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.75rem;
+}
+
+.word-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.word-headline {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.word-phonetic-badge {
+  font-size: 0.9rem;
+  font-family: monospace;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.word-pos-badge {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #8b5cf6;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.word-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.domain-pill-highlight {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.category-pill-highlight {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.source-pill-muted {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* Action Toolbar */
+.word-action-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.word-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 8px;
+  padding: 0.42rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-send-chat {
+  background: #0f172a;
+  color: #ffffff;
+  border: 1px solid #0f172a;
+}
+
+.btn-send-chat:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+
+.btn-ask-saar {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.btn-ask-saar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.btn-copy-def {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-copy-def:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+/* Word Section Cards */
+.word-section-card {
+  background: #fafafa;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.95rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.55rem;
+}
+
+.word-main-definition {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #1e293b;
+  margin: 0;
+}
+
+.scientific-context-card {
+  background: #fdfcff;
+  border-color: #e0e7ff;
+}
+
+.word-context-text {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #334155;
+  margin: 0 0 0.55rem;
+}
+
+.diagnostic-indicator-box {
+  background: #f8fafc;
+  border-left: 3px solid #6366f1;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.84rem;
+  color: #1e293b;
+}
+
+.formula-card {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.formula-code-box {
+  background: #0f172a;
+  color: #38bdf8;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace, Consolas, Courier;
+  font-size: 0.88rem;
+  overflow-x: auto;
+}
+
+.word-examples-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.86rem;
+  color: #475569;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.related-terms-cloud {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.related-term-chip {
+  background: #ffffff;
+  border: 1px solid #d8b4fe;
+  color: #7e22ce;
+  border-radius: 9999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.related-term-chip:hover {
+  background: #faf5ff;
+  border-color: #a855f7;
+  transform: translateY(-1px);
+}
+
+.dict-loading-pane, .dict-error-pane, .dict-placeholder-pane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: #64748b;
+  gap: 0.65rem;
+  min-height: 350px;
+}
+
+.dict-loading-pane h4, .dict-error-pane h4, .dict-placeholder-pane h4 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.1rem;
+}
+
+.dict-loading-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.dict-retry-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.spin-animate {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}

@@ -419,3 +419,42 @@ Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine
     }
     return Response(content=body_content.encode("utf-8"), media_type=media_type, headers=headers)
 
+
+# ------------------------------------------------------------------
+# Scientific Dictionary & Glossary Endpoints
+# ------------------------------------------------------------------
+from .services.dictionary_service import dictionary_service
+
+@app.get("/api/dictionary/lookup")
+@app.get("/dictionary/lookup")
+def lookup_word_get(word: str = Query(..., description="Scientific term or word to look up")):
+    """Look up a word or scientific term with definitions and diagnostic domain context."""
+    if not word or not word.strip():
+        raise HTTPException(status_code=400, detail="Word parameter is required.")
+    return dictionary_service.lookup_word(word.strip())
+
+@app.post("/api/dictionary/lookup")
+@app.post("/dictionary/lookup")
+def lookup_word_post(req: Dict[str, Any]):
+    """POST lookup for a word."""
+    word = req.get("word", "")
+    if not word or not str(word).strip():
+        raise HTTPException(status_code=400, detail="Word is required in request body.")
+    return dictionary_service.lookup_word(str(word).strip())
+
+@app.post("/api/dictionary/glossary")
+@app.post("/dictionary/glossary")
+def extract_glossary(req: Dict[str, Any]):
+    """Extract difficult scientific terms from chat messages, screen text, and graph entities."""
+    texts = req.get("texts", [])
+    domain = req.get("domain", None)
+    graph_nodes = req.get("graph_nodes", [])
+    glossary = dictionary_service.extract_glossary_from_screen(
+        screen_texts=texts,
+        domain=domain,
+        graph_nodes=graph_nodes
+    )
+    return {"glossary": glossary, "count": len(glossary)}
+
+
+

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Wrench, GitFork, BarChart2, BookOpen, Camera,
-  Layers, GitCompare, X
+  Layers, GitCompare, BookA, X
 } from 'lucide-react';
 
 export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating = false }) {
@@ -13,8 +13,9 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
   // 2. Photo Evidence Monitor (ImageInspector.jsx)
   // 3. Telemetry & Trend Analytics (PlotlyGraphViewer.jsx / AnalyticsService)
   // 4. Multi-Domain Literature RAG (DomainRAGRadar.jsx / RAGKnowledgeService)
-  // 5. Benchmark Comparison: Single-Pass VLM vs Saar (BenchmarkComparison.jsx)
-  // 6. Decoupled ReAct Architecture (ArchitectureView.jsx)
+  // 5. Scientific Dictionary & Glossary (ScientificDictionaryDrawer.jsx)
+  // 6. Benchmark Comparison: Single-Pass VLM vs Saar (BenchmarkComparison.jsx)
+  // 7. Decoupled ReAct Architecture (ArchitectureView.jsx)
   const tools = [
     {
       id: 'graph',
@@ -47,6 +48,14 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
       icon: <BookOpen size={17} />,
       gradient: 'linear-gradient(135deg, #6366f1, #4f46e5)',
       glow: 'rgba(99, 102, 241, 0.45)'
+    },
+    {
+      id: 'dictionary',
+      label: 'Dictionary',
+      tooltip: 'Scientific Glossary & Word Meaning Lookup',
+      icon: <BookA size={17} />,
+      gradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
+      glow: 'rgba(245, 158, 11, 0.45)'
     },
     {
       id: 'benchmark',
