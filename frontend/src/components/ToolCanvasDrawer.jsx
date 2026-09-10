@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   X, Maximize2, Minimize2, BarChart2, BookOpen,
-  Layers, Camera, GitFork, GitCompare
+  Layers, Camera, GitFork, GitCompare, BookA
 } from 'lucide-react';
 import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { ImageInspector } from './ImageInspector';
 import { PlotlyGraphViewer } from './PlotlyGraphViewer';
 import { DomainRAGRadar } from './DomainRAGRadar';
+import { ScientificDictionaryDrawer } from './ScientificDictionaryDrawer';
 import { BenchmarkComparison } from './BenchmarkComparison';
 import { ArchitectureView } from './ArchitectureView';
 
@@ -29,7 +30,9 @@ export function ToolCanvasDrawer({
   onUploadCustomImage,
   onPasteImageUrl,
   cameraConnected,
-  onCloseCamera
+  onCloseCamera,
+  messages = [],
+  selectedDomain = 'agriculture'
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -41,6 +44,7 @@ export function ToolCanvasDrawer({
     { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
     { id: 'analytics', label: 'Telemetry Analytics', icon: <BarChart2 size={15} /> },
     { id: 'rag', label: 'Literature RAG', icon: <BookOpen size={15} /> },
+    { id: 'dictionary', label: 'Dictionary', icon: <BookA size={15} /> },
     { id: 'benchmark', label: 'VLM Benchmark', icon: <GitCompare size={15} /> },
     { id: 'architecture', label: 'Architecture', icon: <Layers size={15} /> }
   ];
@@ -149,7 +153,22 @@ export function ToolCanvasDrawer({
           </div>
         )}
 
-        {/* Tool 5: Benchmark Comparison (BenchmarkComparison.jsx) */}
+        {/* Tool 5: Scientific Dictionary & Live Chat Glossary (ScientificDictionaryDrawer.jsx) */}
+        {activeTool === 'dictionary' && (
+          <div className="tool-body-pane">
+            <ScientificDictionaryDrawer
+              messages={messages}
+              activeInvestigation={activeInvestigation}
+              saarData={saarData}
+              investigationData={investigationData}
+              selectedDomain={selectedDomain}
+              onSendToChat={onSendToChat}
+              theme={theme}
+            />
+          </div>
+        )}
+
+        {/* Tool 6: Benchmark Comparison (BenchmarkComparison.jsx) */}
         {activeTool === 'benchmark' && (
           <div className="tool-body-pane" style={{ padding: '1.25rem' }}>
             <BenchmarkComparison

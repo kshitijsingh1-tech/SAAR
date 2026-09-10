@@ -692,6 +692,8 @@ export default function App() {
         cameraConnected={cameraConnected}
         onCloseCamera={() => setCameraConnected(false)}
         onExportDossier={handleExportDossier}
+        messages={messages}
+        selectedDomain={selectedDomain}
       />
 
       {/* 4. Help Guide Modal Drawer */}

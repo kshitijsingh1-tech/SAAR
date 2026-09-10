@@ -82,6 +82,23 @@ export const lookupScientificTerm = async (term, domain = 'general', context = '
   return res.data;
 };
 
+export const lookupDictionaryWord = async (term, domain = 'general') => {
+  return lookupScientificTerm(term, domain);
+};
+
+export const fetchGlossary = async (payload) => {
+  const domain = payload?.domain || 'agriculture';
+  try {
+    const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, {
+      question: "Extract key scientific terminology and concepts",
+      domain
+    });
+    return { glossary: res.data.terminology || [] };
+  } catch (e) {
+    return { glossary: [] };
+  }
+};
+
 export const querySaarKnowledge = async (query, domain = null) => {
   const res = await axios.post(`${API_BASE_URL}/api/saar/knowledge/query`, { query, domain });
   return res.data;
