@@ -95,6 +95,12 @@ SAAR ships with specialized analytical plugins engineered with domain equations:
   - Formatted Print/PDF output for lab and inspection field dispatches.
 - **Copy QA Stream**: Single-click combined question-and-answer clipboard synthesis with context-aware `"Ask SAAR"` drill-down.
 
+### 6. Zero-Latency Grounded Scientific Terminology (`asyncio.gather`)
+- Employs parallel asynchronous dispatch (`asyncio.gather`) pairing deep causal reasoning ($~1,500\text{ ms}$) with rapid grounded lexical extraction ($~200\text{ ms}$).
+- Effective perceived added latency is **0 ms**.
+- Replaces disconnected public web scrapers with contextual domain extraction powered by the same single `GROQ_API_KEY` (or offline RAG/morphological fallbacks).
+- Renders interactive badges directly beneath dialogue turns (`[ 📖 Pythium ultimum ]`) with one-click **"Ask SAAR to Deep-Dive"** exploratory analysis.
+
 ---
 
 ## 📂 Repository Layout
@@ -110,11 +116,12 @@ SAAR/
 │   │   ├── vlm_service.py              # Multi-provider vision perception service
 │   │   ├── rag_service.py              # Domain scientific literature retrieval (BM25)
 │   │   ├── models/
-│   │   │   └── saar_models.py          # Node, Edge, Evidence, and State abstractions
+│   │   │   └── saar_models.py          # Node, Edge, Evidence, Terminology & State models
 │   │   ├── services/
 │   │   │   ├── ingestion_service.py    # CSV/Excel parser & column profiler
 │   │   │   ├── analytics_service.py    # Correlation, trend, & anomaly calculators
-│   │   │   └── reasoning_service.py    # Iterative scientific belief orchestrator
+│   │   │   ├── reasoning_service.py    # Iterative scientific belief orchestrator
+│   │   │   └── dictionary_service.py   # Grounded scientific terminology engine
 │   │   └── plugins/
 │   │       ├── base_plugin.py          # Scientific domain plugin contract
 │   │       ├── agriculture_plugin.py   # Crop diagnostics & pathogen kinetics
