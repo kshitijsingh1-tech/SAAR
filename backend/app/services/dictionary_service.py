@@ -116,6 +116,26 @@ PRELOADED_DOMAIN_TERMS = {
             "diagnostic_indicator": "Radial velocity phase-folded sinusoidal curve.",
             "related_nodes": ["Radial Velocity", "Companion Mass", "Binary Discrimination"]
         }
+    ],
+    "causal": [
+        {
+            "term": "Bayesian Graph Updating",
+            "phonetic": "/beɪˈziː.ən ɡræf ˈʌp.deɪ.tɪŋ/",
+            "domain": "Causal Epistemology",
+            "definition": "Recursive updating of conditional probability tables across directed acyclic graph (DAG) nodes upon assimilating novel empirical observations.",
+            "investigation_context": "Drives SAAR's node belief convergence when sensor telemetry or visual evidence shifts node state priors.",
+            "diagnostic_indicator": "Posterior entropy reduction below uncertainty threshold.",
+            "related_nodes": ["Posterior Probability", "DAG Topology", "Markov Blanket"]
+        },
+        {
+            "term": "Do-Calculus Interventional Node",
+            "phonetic": "/duː ˈkæl.kjʊ.ləs ˌɪn.tərˈvɛn.ʃən/",
+            "domain": "Structural Causal Modeling",
+            "definition": "Pearl's algebraic framework evaluating causal effects by severing incoming graph edges to model active physical interventions P(Y | do(X)).",
+            "investigation_context": "Evaluates what-if counterfactual scenarios by isolating direct causal mechanisms from spurious confounding correlations.",
+            "diagnostic_indicator": "Parent edge disconnection and counterfactual state recalculation.",
+            "related_nodes": ["Backdoor Criterion", "Counterfactual Simulation", "Intervention"]
+        }
     ]
 }
 

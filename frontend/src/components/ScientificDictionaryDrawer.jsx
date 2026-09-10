@@ -84,45 +84,21 @@ export function ScientificDictionaryDrawer({
     return g?.nodes || [];
   }, [saarData, investigationData, activeInvestigation]);
 
-  // Scan live screen text and update glossary
-  const scanLiveScreen = useCallback(async () => {
-    setIsGlossaryLoading(true);
-    try {
-      const screenTexts = captureAllScreenTexts();
-      const res = await fetchGlossary(screenTexts, selectedDomain, graphNodes);
-      if (res?.glossary && res.glossary.length > 0) {
-        setGlossaryList(res.glossary);
-        // Pre-populate cache with glossary items for 0ms clicks
-        res.glossary.forEach(item => {
-          if (item.word) definitionCache.current.set(item.word.toLowerCase(), item);
-        });
-        setLastScannedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  // Handle selecting a term from anywhere (guarded against undefined/null)
+  const handleSelectTerm = useCallback((termWord) => {
+    const safeWord = typeof termWord === 'string' ? termWord : (termWord?.word || termWord?.term || '');
+    if (!safeWord) return;
+    setSearchTerm(safeWord);
+    handleLookup(safeWord);
+  }, []); // will be bound with handleLookup below
 
-        // Auto select the first detected word on screen if none selected
-        if (!selectedWordData) {
-          const inChat = res.glossary.find((g) => g.is_in_chat) || res.glossary[0];
-          if (inChat) handleSelectTerm(inChat.word);
-        }
-      }
-    } catch (err) {
-      console.warn("Dynamic screen glossary scan error:", err);
-    } finally {
-      setIsGlossaryLoading(false);
-    }
-  }, [captureAllScreenTexts, selectedDomain, graphNodes, selectedWordData]);
-
-  // Initial scan on load and when messages or domain changes
-  useEffect(() => {
-    scanLiveScreen();
-  }, [messages.length, selectedDomain, (saarData || investigationData)?.conclusion]);
-
-  // Instant local lookup from Cache & LocalStorage (only if real API response)
+  // Instant local lookup from Cache & LocalStorage
   const getCachedEntry = useCallback((wordKey) => {
-    const key = (wordKey || '').toLowerCase().trim();
+    const key = (typeof wordKey === 'string' ? wordKey : '').toLowerCase().trim();
     if (!key) return null;
     if (definitionCache.current.has(key)) {
       const memoryEntry = definitionCache.current.get(key);
-      if (!memoryEntry.source?.includes("Synthesizer") && !memoryEntry.source?.includes("Morphological")) {
+      if (!memoryEntry?.source?.includes("Synthesizer") && !memoryEntry?.source?.includes("Morphological")) {
         return memoryEntry;
       }
     }
@@ -130,7 +106,7 @@ export function ScientificDictionaryDrawer({
       const stored = localStorage.getItem(`saar_dict_${key}`);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (!parsed.source?.includes("Synthesizer") && !parsed.source?.includes("Morphological")) {
+        if (!parsed?.source?.includes("Synthesizer") && !parsed?.source?.includes("Morphological")) {
           definitionCache.current.set(key, parsed);
           return parsed;
         } else {
@@ -142,7 +118,7 @@ export function ScientificDictionaryDrawer({
   }, []);
 
   const saveCachedEntry = useCallback((wordKey, entryData) => {
-    const key = (wordKey || '').toLowerCase().trim();
+    const key = (typeof wordKey === 'string' ? wordKey : '').toLowerCase().trim();
     if (!key || !entryData) return;
     definitionCache.current.set(key, entryData);
     try {
@@ -150,17 +126,25 @@ export function ScientificDictionaryDrawer({
     } catch (e) {}
   }, []);
 
-  // Comprehensive Ultra-Fast Word Lookup (Real Live API First)
-  const handleLookup = async (wordToSearch) => {
-    const target = (wordToSearch || searchTerm || '').trim();
+  // Comprehensive Word Lookup (Robust Backend First + Live APIs)
+  const handleLookup = useCallback(async (wordToSearch) => {
+    const target = (typeof wordToSearch === 'string' ? wordToSearch : (searchTerm || '')).trim();
     if (!target) return;
     const lowerTarget = target.toLowerCase();
 
     // 1. FASTEST PATH: Instant Local Cache Check (0ms)
     const cached = getCachedEntry(lowerTarget);
     if (cached) {
-      setSelectedWordData(cached);
-      setSearchTerm(cached.word || target);
+      const normCached = {
+        ...cached,
+        word: cached.word || cached.term || target,
+        definition: cached.definition || (cached.definitions && cached.definitions[0]) || 'Scientific definition.',
+        scientific_context: cached.scientific_context || cached.investigation_context || '',
+        diagnostic_indicator: cached.diagnostic_indicator || '',
+        related_terms: cached.related_terms || cached.related_nodes || []
+      };
+      setSelectedWordData(normCached);
+      setSearchTerm(normCached.word);
       setErrorMsg(null);
       setIsLoading(false);
       return;
@@ -169,17 +153,14 @@ export function ScientificDictionaryDrawer({
     setIsLoading(true);
     setErrorMsg(null);
 
-    // 2. QUERY REAL LIVE APIS IN PARALLEL
+    // 2. QUERY BACKEND API & LIVE APIS IN PARALLEL
     try {
-      // Start local backend request (which runs threaded Datamuse, FreeDict, Wiktionary)
-      const backendPromise = lookupDictionaryWord(target);
+      const backendPromise = lookupDictionaryWord(target, selectedDomain);
 
-      // Also query Datamuse WordNet Live API directly from browser in parallel
       const datamusePromise = fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(lowerTarget)}&md=dpr&max=3`)
         .then(async (res) => (res.ok ? await res.json() : null))
         .catch(() => null);
 
-      // Also query Free Dictionary API for audio pronunciation
       const freedictPromise = fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(lowerTarget)}`)
         .then(async (res) => (res.ok ? await res.json() : null))
         .catch(() => null);
@@ -191,11 +172,19 @@ export function ScientificDictionaryDrawer({
         console.warn("Backend lookup notice:", beErr);
       }
 
-      // If backend returned a real live API definition
-      if (backendData && !backendData.error && !backendData.source?.includes("Morphological")) {
-        setSelectedWordData(backendData);
-        setSearchTerm(backendData.word || target);
-        saveCachedEntry(lowerTarget, backendData);
+      // If backend returned a valid definition
+      if (backendData && !backendData.error) {
+        const normBackend = {
+          ...backendData,
+          word: backendData.word || backendData.term || target,
+          definition: backendData.definition || (backendData.definitions && backendData.definitions[0]) || 'Scientific domain definition.',
+          scientific_context: backendData.scientific_context || backendData.investigation_context || '',
+          diagnostic_indicator: backendData.diagnostic_indicator || '',
+          related_terms: backendData.related_terms || backendData.related_nodes || []
+        };
+        setSelectedWordData(normBackend);
+        setSearchTerm(normBackend.word);
+        saveCachedEntry(lowerTarget, normBackend);
         setIsLoading(false);
 
         // Background check for audio
@@ -203,7 +192,7 @@ export function ScientificDictionaryDrawer({
           if (Array.isArray(fdJson) && fdJson.length > 0) {
             const audioUrl = fdJson[0].phonetics?.find((p) => p.audio)?.audio;
             if (audioUrl) {
-              const enriched = { ...backendData, audio_url: audioUrl };
+              const enriched = { ...normBackend, audio_url: audioUrl };
               setSelectedWordData(enriched);
               saveCachedEntry(lowerTarget, enriched);
             }
@@ -212,22 +201,28 @@ export function ScientificDictionaryDrawer({
         return;
       }
 
-      // If backend didn't have it, evaluate browser Datamuse live response
+      // Fallback: evaluate browser Datamuse live response
       const dmData = await datamusePromise;
       const fdData = await freedictPromise;
 
       if (Array.isArray(dmData) && dmData.length > 0 && dmData[0].defs && dmData[0].defs.length > 0) {
         const item = dmData[0];
         const rawDefs = item.defs || [];
-        const cleanDefs = rawDefs.map((d) => (d.includes("\t") ? d.split("\t", 1)[1].trim() : d.trim()));
-        const posTag = rawDefs[0]?.split("\t")[0] || "n";
+        const cleanDefs = rawDefs.map((d) => {
+          if (typeof d !== 'string') return '';
+          const parts = d.split("\t");
+          return (parts.length > 1 ? parts[1] : parts[0]).trim();
+        }).filter(Boolean);
+
+        const posTag = (typeof rawDefs[0] === 'string' && rawDefs[0].split("\t")[0]) || "n";
         const pos = { n: "noun", v: "verb", adj: "adjective", adv: "adverb" }[posTag] || "noun";
-        const pron = item.tags?.find((t) => t.startsWith("pron:"))?.replace("pron:", "").trim();
+        const pronTag = item.tags?.find((t) => typeof t === 'string' && t.startsWith("pron:"));
+        const pron = pronTag ? pronTag.replace("pron:", "").trim() : null;
         const phoneticStr = pron ? `/${pron}/` : `/${lowerTarget}/`;
         const audioUrl = Array.isArray(fdData) && fdData[0]?.phonetics?.find((p) => p.audio)?.audio;
 
         const liveEntry = {
-          word: item.word?.charAt(0).toUpperCase() + item.word?.slice(1) || target,
+          word: item.word ? (item.word.charAt(0).toUpperCase() + item.word.slice(1)) : target,
           phonetic: phoneticStr,
           audio_url: audioUrl,
           part_of_speech: pos,
@@ -245,7 +240,7 @@ export function ScientificDictionaryDrawer({
         };
 
         setSelectedWordData(liveEntry);
-        setSearchTerm(liveEntry.word || target);
+        setSearchTerm(liveEntry.word);
         saveCachedEntry(lowerTarget, liveEntry);
         setIsLoading(false);
         return;
@@ -262,7 +257,7 @@ export function ScientificDictionaryDrawer({
         const audioUrl = fdItem.phonetics?.find((p) => p.audio)?.audio;
 
         const liveEntry = {
-          word: fdItem.word?.charAt(0).toUpperCase() + fdItem.word?.slice(1) || target,
+          word: fdItem.word ? (fdItem.word.charAt(0).toUpperCase() + fdItem.word.slice(1)) : target,
           phonetic: phonetic,
           audio_url: audioUrl,
           part_of_speech: firstM.partOfSpeech || "noun",
@@ -279,30 +274,66 @@ export function ScientificDictionaryDrawer({
         };
 
         setSelectedWordData(liveEntry);
-        setSearchTerm(liveEntry.word || target);
+        setSearchTerm(liveEntry.word);
         saveCachedEntry(lowerTarget, liveEntry);
         setIsLoading(false);
         return;
       }
 
-      if (backendData && !backendData.error) {
-        setSelectedWordData(backendData);
-        setSearchTerm(backendData.word || target);
-        saveCachedEntry(lowerTarget, backendData);
-      }
+      setErrorMsg(`Could not fetch definition for "${target}".`);
     } catch (err) {
       console.error("Dictionary lookup error:", err);
       setErrorMsg(`Could not fetch definition for "${target}".`);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchTerm, selectedDomain, getCachedEntry, saveCachedEntry]);
 
+  // Scan live screen text and update glossary
+  const scanLiveScreen = useCallback(async () => {
+    setIsGlossaryLoading(true);
+    try {
+      const screenTexts = captureAllScreenTexts();
+      const res = await fetchGlossary(screenTexts, selectedDomain, graphNodes);
+      if (res?.glossary && res.glossary.length > 0) {
+        setGlossaryList(res.glossary);
+        // Pre-populate cache with glossary items for 0ms clicks
+        res.glossary.forEach(item => {
+          const w = item.word || item.term;
+          if (w) {
+            definitionCache.current.set(w.toLowerCase(), {
+              ...item,
+              word: w,
+              definition: item.definition || (item.definitions && item.definitions[0]) || 'Scientific definition.',
+              scientific_context: item.scientific_context || item.investigation_context || '',
+              diagnostic_indicator: item.diagnostic_indicator || '',
+              related_terms: item.related_terms || item.related_nodes || []
+            });
+          }
+        });
+        setLastScannedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
-  const handleSelectTerm = (termWord) => {
-    setSearchTerm(termWord);
-    handleLookup(termWord);
-  };
+        // Auto select the first detected word on screen if none selected
+        if (!selectedWordData) {
+          const inChat = res.glossary.find((g) => g.is_in_chat) || res.glossary[0];
+          const autoWord = inChat?.word || inChat?.term;
+          if (autoWord) {
+            setSearchTerm(autoWord);
+            handleLookup(autoWord);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Dynamic screen glossary scan error:", err);
+    } finally {
+      setIsGlossaryLoading(false);
+    }
+  }, [captureAllScreenTexts, selectedDomain, graphNodes, selectedWordData, handleLookup]);
+
+  // Initial scan on load and when messages or domain changes
+  useEffect(() => {
+    scanLiveScreen();
+  }, [messages.length, selectedDomain, (saarData || investigationData)?.conclusion]);
 
   const playAudioPhonetic = () => {
     if (selectedWordData?.audio_url) {
@@ -313,7 +344,8 @@ export function ScientificDictionaryDrawer({
 
   const handleCopyDefinition = () => {
     if (!selectedWordData) return;
-    const textToCopy = `**${selectedWordData.word}** (${selectedWordData.phonetic || ''}) [${selectedWordData.part_of_speech || 'term'}]\n*Domain*: ${selectedWordData.domain || 'Science'}\n\n**Definition**: ${selectedWordData.definition}\n\n**Scientific Context**: ${selectedWordData.scientific_context || ''}\n${selectedWordData.formula_or_metric ? `\n**Formula/Metric**: ${selectedWordData.formula_or_metric}` : ''}`;
+    const word = selectedWordData.word || selectedWordData.term || 'Term';
+    const textToCopy = `**${word}** (${selectedWordData.phonetic || ''}) [${selectedWordData.part_of_speech || 'term'}]\n*Domain*: ${selectedWordData.domain || 'Science'}\n\n**Definition**: ${selectedWordData.definition}\n\n**Scientific Context**: ${selectedWordData.scientific_context || selectedWordData.investigation_context || ''}\n${selectedWordData.formula_or_metric ? `\n**Formula/Metric**: ${selectedWordData.formula_or_metric}` : ''}`;
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -321,13 +353,15 @@ export function ScientificDictionaryDrawer({
 
   const handleSendDefinitionToChat = () => {
     if (!selectedWordData || !onSendToChat) return;
-    const chatMsg = `📖 **Scientific Dictionary Lookup: ${selectedWordData.word}** (${selectedWordData.phonetic || ''})\n\n- **Category**: \`${selectedWordData.category || selectedWordData.domain || 'Scientific Term'}\` [${selectedWordData.difficulty || 'Specialized'}]\n- **Definition**: ${selectedWordData.definition}\n\n> 🔬 **Diagnostic Context**: ${selectedWordData.scientific_context || 'Standard domain parameter in reasoning.'}\n${selectedWordData.formula_or_metric ? `\n📐 **Equation/Metric**: \`${selectedWordData.formula_or_metric}\`\n` : ''}`;
+    const word = selectedWordData.word || selectedWordData.term || 'Term';
+    const chatMsg = `📖 **Scientific Dictionary Lookup: ${word}** (${selectedWordData.phonetic || ''})\n\n- **Category**: \`${selectedWordData.category || selectedWordData.domain || 'Scientific Term'}\` [${selectedWordData.difficulty || 'Specialized'}]\n- **Definition**: ${selectedWordData.definition}\n\n> 🔬 **Diagnostic Context**: ${selectedWordData.scientific_context || selectedWordData.investigation_context || 'Standard domain parameter in reasoning.'}\n${selectedWordData.formula_or_metric ? `\n📐 **Equation/Metric**: \`${selectedWordData.formula_or_metric}\`\n` : ''}`;
     onSendToChat(chatMsg);
   };
 
   const handleAskSaarAboutTerm = () => {
     if (!selectedWordData || !onSendToChat) return;
-    const prompt = `Can you explain the detailed scientific role and diagnostic relevance of **${selectedWordData.word}** in our current ${selectedDomain} investigation?`;
+    const word = selectedWordData.word || selectedWordData.term || 'Term';
+    const prompt = `Can you explain the detailed scientific role and diagnostic relevance of **${word}** in our current ${selectedDomain} investigation?`;
     onSendToChat(prompt);
   };
 
@@ -335,10 +369,11 @@ export function ScientificDictionaryDrawer({
   const filteredGlossary = useMemo(() => {
     return glossaryList.filter(item => {
       if (activeTab === 'screen') return item.is_in_chat;
-      if (activeTab === 'agriculture') return item.domain?.toLowerCase().includes('agri') || item.domain?.toLowerCase().includes('plant');
-      if (activeTab === 'infrastructure') return item.domain?.toLowerCase().includes('infra') || item.domain?.toLowerCase().includes('civil');
-      if (activeTab === 'astrophysics') return item.domain?.toLowerCase().includes('astro') || item.domain?.toLowerCase().includes('space');
-      if (activeTab === 'causal') return item.domain?.toLowerCase().includes('causal') || item.domain?.toLowerCase().includes('bayes') || item.domain?.toLowerCase().includes('ai');
+      const d = (item.domain || item.category || '').toLowerCase();
+      if (activeTab === 'agriculture') return d.includes('agri') || d.includes('plant') || d.includes('soil');
+      if (activeTab === 'infrastructure') return d.includes('infra') || d.includes('civil') || d.includes('radar') || d.includes('ndt');
+      if (activeTab === 'astrophysics') return d.includes('astro') || d.includes('space') || d.includes('stellar');
+      if (activeTab === 'causal') return d.includes('causal') || d.includes('bayes') || d.includes('ai') || d.includes('graph');
       return true; // 'all'
     });
   }, [glossaryList, activeTab]);
@@ -363,10 +398,10 @@ export function ScientificDictionaryDrawer({
             type="text"
             className="dict-search-input"
             placeholder="Search any scientific term or word (e.g. Chlorosis, Piezometer, Transit, Permittivity)..."
-            value={searchTerm}
+            value={searchTerm || ''}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          {searchTerm && (
+          {(searchTerm || '').trim().length > 0 && (
             <button
               type="button"
               className="dict-clear-btn"
@@ -379,7 +414,7 @@ export function ScientificDictionaryDrawer({
           <button
             type="submit"
             className="dict-submit-btn"
-            disabled={isLoading || !searchTerm.trim()}
+            disabled={isLoading || !(searchTerm || '').trim()}
           >
             {isLoading ? <RefreshCw size={15} className="spin-animate" /> : 'Define'}
           </button>
@@ -480,17 +515,22 @@ export function ScientificDictionaryDrawer({
                 </button>
               </div>
             ) : (
-              filteredGlossary.map((item) => {
-                const isSelected = selectedWordData?.word?.toLowerCase() === item.word?.toLowerCase();
+              filteredGlossary.map((item, idx) => {
+                const itemWord = item.word || item.term || `term-${idx}`;
+                const currentSelectedWord = selectedWordData?.word || selectedWordData?.term || '';
+                const isSelected = currentSelectedWord.toLowerCase() === itemWord.toLowerCase();
                 return (
                   <div
-                    key={item.word}
+                    key={`${itemWord}-${idx}`}
                     className={`glossary-card ${isSelected ? 'selected' : ''} ${item.is_in_chat ? 'in-chat-card' : ''}`}
-                    onClick={() => handleSelectTerm(item.word)}
+                    onClick={() => {
+                      setSearchTerm(itemWord);
+                      handleLookup(itemWord);
+                    }}
                   >
                     <div className="glossary-card-top">
                       <div className="glossary-card-title">
-                        <strong>{item.word}</strong>
+                        <strong>{itemWord}</strong>
                         {item.phonetic && <span className="glossary-phonetic">{item.phonetic}</span>}
                       </div>
                       <div className="glossary-badges">
@@ -499,14 +539,14 @@ export function ScientificDictionaryDrawer({
                             {item.occurrences_in_chat > 1 ? `${item.occurrences_in_chat}x on screen` : 'On Screen'}
                           </span>
                         )}
-                        <span className="difficulty-pill">{item.difficulty || 'Domain Term'}</span>
+                        <span className="difficulty-pill">{item.difficulty || item.domain || 'Domain Term'}</span>
                       </div>
                     </div>
 
                     <p className="glossary-card-def">
-                      {item.definition?.length > 95
-                        ? `${item.definition.substring(0, 95)}...`
-                        : item.definition}
+                      {(item.definition || (item.definitions && item.definitions[0]) || '').length > 95
+                        ? `${(item.definition || item.definitions[0]).substring(0, 95)}...`
+                        : (item.definition || (item.definitions && item.definitions[0]) || 'Domain terminology parameter.')}
                     </p>
 
                     <div className="glossary-card-footer">
@@ -540,9 +580,8 @@ export function ScientificDictionaryDrawer({
             <div className={`word-detail-container ${isLoading ? 'opacity-75' : ''}`}>
               {/* Word Header */}
               <div className="word-detail-header">
-
                 <div className="word-title-row">
-                  <h3 className="word-headline">{selectedWordData.word}</h3>
+                  <h3 className="word-headline">{selectedWordData.word || selectedWordData.term}</h3>
                   {selectedWordData.phonetic && (
                     <span className="word-phonetic-badge">{selectedWordData.phonetic}</span>
                   )}
@@ -613,17 +652,17 @@ export function ScientificDictionaryDrawer({
                   <BookA size={15} className="text-amber-600" />
                   <span>Primary Definition & Meaning</span>
                 </div>
-                <p className="word-main-definition">{selectedWordData.definition}</p>
+                <p className="word-main-definition">{selectedWordData.definition || (selectedWordData.definitions && selectedWordData.definitions[0]) || 'Scientific definition.'}</p>
               </div>
 
               {/* Scientific Context & Diagnostic Role */}
-              {selectedWordData.scientific_context && (
+              {(selectedWordData.scientific_context || selectedWordData.investigation_context) && (
                 <div className="word-section-card scientific-context-card">
                   <div className="section-label">
                     <Sparkles size={15} className="text-indigo-600" />
                     <span>Scientific Context & Diagnostic Role</span>
                   </div>
-                  <p className="word-context-text">{selectedWordData.scientific_context}</p>
+                  <p className="word-context-text">{selectedWordData.scientific_context || selectedWordData.investigation_context}</p>
                   {selectedWordData.diagnostic_indicator && (
                     <div className="diagnostic-indicator-box">
                       <strong>Observation Indicator:</strong> {selectedWordData.diagnostic_indicator}
@@ -661,18 +700,22 @@ export function ScientificDictionaryDrawer({
               )}
 
               {/* Related Scientific Concepts */}
-              {selectedWordData.related_terms && selectedWordData.related_terms.length > 0 && (
+              {((selectedWordData.related_terms && selectedWordData.related_terms.length > 0) ||
+                (selectedWordData.related_nodes && selectedWordData.related_nodes.length > 0)) && (
                 <div className="word-section-card">
                   <div className="section-label">
                     <ExternalLink size={15} className="text-purple-600" />
                     <span>Related Concepts & Causal Links</span>
                   </div>
                   <div className="related-terms-cloud">
-                    {selectedWordData.related_terms.map((rt) => (
+                    {(selectedWordData.related_terms || selectedWordData.related_nodes || []).map((rt) => (
                       <button
                         key={rt}
                         className="related-term-chip"
-                        onClick={() => handleSelectTerm(rt)}
+                        onClick={() => {
+                          setSearchTerm(rt);
+                          handleLookup(rt);
+                        }}
                       >
                         {rt}
                       </button>
