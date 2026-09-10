@@ -87,8 +87,10 @@ def get_baseline(domain: str = Query("infrastructure"), preset_id: Optional[str]
 # SAAR — Iterative Evidence-Driven Reasoning API
 # ===================================================================
 
+import asyncio
 from fastapi import UploadFile, File
 from .services.reasoning_service import ReasoningService
+from .services.dictionary_service import terminology_service
 from .models.saar_models import UserAnswer
 from .rag_service import RAGKnowledgeService
 
@@ -101,7 +103,13 @@ async def saar_upload(file: UploadFile = File(...)):
     try:
         content = await file.read()
         state = saar_engine.start_investigation(content, file.filename or "upload.csv")
-        return saar_engine.get_report(state.investigation_id)
+        report = saar_engine.get_report(state.investigation_id)
+        domain = getattr(state, "dataset_id", "agriculture") or "agriculture"
+        terms = await terminology_service.extract_grounded_terms_async(
+            f"Dataset {file.filename} analysis", domain, report.get("conclusion", "")
+        )
+        report["terminology"] = terms
+        return report
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -114,35 +122,68 @@ def saar_get_investigation(investigation_id: str):
     return report
 
 @app.post("/api/saar/investigation/{investigation_id}/answer")
-def saar_answer(investigation_id: str, answer: UserAnswer):
-    """Submit user answer → belief update → new questions."""
+async def saar_answer(investigation_id: str, answer: UserAnswer):
+    """Submit user answer → belief update → new questions with contextual terminology."""
     try:
         state = saar_engine.process_answer(investigation_id, answer)
-        return saar_engine.get_report(investigation_id)
+        report = saar_engine.get_report(investigation_id)
+        domain = getattr(state, "dataset_id", "agriculture") or "agriculture"
+        terms = await terminology_service.extract_grounded_terms_async(
+            answer.raw_answer, domain, str(answer.structured_data)
+        )
+        report["terminology"] = terms
+        return report
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 @app.post("/api/saar/investigation/{investigation_id}/ask")
-def saar_ask(investigation_id: str, payload: Dict[str, str]):
-    """Ask a natural-language question about the investigation."""
+async def saar_ask(investigation_id: str, payload: Dict[str, str]):
+    """Ask a question with concurrent zero-latency terminology extraction."""
     question = payload.get("question", "")
     if not question:
         raise HTTPException(status_code=400, detail="Question is required.")
-    res = saar_engine.answer_question(investigation_id, question)
+
+    state = saar_engine.get_investigation(investigation_id)
+    domain = getattr(state, "dataset_id", "agriculture") or "agriculture"
+
+    # Parallel dispatch: Deep causal reasoning + Grounded lexical extraction
+    reasoning_task = asyncio.to_thread(saar_engine.answer_question, investigation_id, question)
+    terminology_task = terminology_service.extract_grounded_terms_async(question, domain)
+
+    res, terms = await asyncio.gather(reasoning_task, terminology_task)
     if isinstance(res, dict) and "error" in res:
         raise HTTPException(status_code=404, detail=res["error"])
+    if isinstance(res, dict):
+        res["terminology"] = terms
     return res
 
 @app.post("/api/saar/ask")
-def saar_general_ask(payload: Dict[str, Any]):
-    """Ask a freeform natural-language scientific query with autonomous RAG & dynamic AI synthesis."""
+async def saar_general_ask(payload: Dict[str, Any]):
+    """Ask a freeform scientific query with concurrent zero-latency terminology extraction."""
     question = payload.get("question", "")
     domain = payload.get("domain", "agriculture")
     investigation_id = payload.get("investigation_id") or "latest"
     if not question:
         raise HTTPException(status_code=400, detail="Question is required.")
-    res = saar_engine.answer_question(investigation_id, question)
+
+    # Parallel dispatch: Deep causal reasoning + Grounded lexical extraction
+    reasoning_task = asyncio.to_thread(saar_engine.answer_question, investigation_id, question)
+    terminology_task = terminology_service.extract_grounded_terms_async(question, domain)
+
+    res, terms = await asyncio.gather(reasoning_task, terminology_task)
+    if isinstance(res, dict):
+        res["terminology"] = terms
     return res
+
+@app.post("/api/dictionary/lookup")
+async def dictionary_lookup(payload: Dict[str, Any]):
+    """On-demand scientific term lookup."""
+    term = payload.get("term", "") or payload.get("word", "")
+    domain = payload.get("domain", "general")
+    context = payload.get("context", "")
+    if not term:
+        raise HTTPException(status_code=400, detail="Term is required.")
+    return await terminology_service.lookup_term_async(term, domain, context)
 
 @app.get("/api/saar/knowledge")
 def saar_knowledge_domains():

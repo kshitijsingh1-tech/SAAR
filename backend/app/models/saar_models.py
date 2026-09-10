@@ -237,6 +237,21 @@ class UserAnswer(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Scientific Terminology & Grounded Lexical Intelligence Models
+# ---------------------------------------------------------------------------
+
+class TerminologyItem(BaseModel):
+    """Grounded scientific terminology item tied to causal investigation."""
+    term: str
+    phonetic: Optional[str] = None
+    domain: str = "General Science"
+    definition: str
+    investigation_context: str
+    diagnostic_indicator: Optional[str] = None
+    related_nodes: List[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
 # Investigation State Model
 # ---------------------------------------------------------------------------
 
@@ -254,6 +269,7 @@ class InvestigationState(BaseModel):
     trends: List[TrendResult] = Field(default_factory=list)
     questions: List[GeneratedQuestion] = Field(default_factory=list)
     answers: List[UserAnswer] = Field(default_factory=list)
+    terminology: List[TerminologyItem] = Field(default_factory=list)
     iteration: int = 0
     overall_confidence: float = 0.0
     status: str = "active"  # active, concluded, insufficient_data

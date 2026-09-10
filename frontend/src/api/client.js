@@ -73,6 +73,15 @@ export const fetchSaarKnowledge = async () => {
   return res.data;
 };
 
+export const lookupScientificTerm = async (term, domain = 'general', context = '') => {
+  const res = await axios.post(`${API_BASE_URL}/api/dictionary/lookup`, {
+    term,
+    domain,
+    context
+  });
+  return res.data;
+};
+
 export const querySaarKnowledge = async (query, domain = null) => {
   const res = await axios.post(`${API_BASE_URL}/api/saar/knowledge/query`, { query, domain });
   return res.data;
