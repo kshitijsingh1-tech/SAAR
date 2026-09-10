@@ -8,12 +8,12 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef(null);
 
-  // Tools strictly specified in architecture_explained.md:
+  // Tools specified in architecture:
   // 1. Knowledge Graph (KnowledgeGraphCanvas.jsx)
   // 2. Photo Evidence Monitor (ImageInspector.jsx)
   // 3. Telemetry & Trend Analytics (PlotlyGraphViewer.jsx / AnalyticsService)
   // 4. Multi-Domain Literature RAG (DomainRAGRadar.jsx / RAGKnowledgeService)
-  // 5. Scientific Dictionary & Glossary (ScientificDictionaryDrawer.jsx)
+  // 5. Scientific Dictionary & Grounded Lexical Explorer (ScientificDictionaryDrawer.jsx)
   // 6. Benchmark Comparison: Single-Pass VLM vs Saar (BenchmarkComparison.jsx)
   // 7. Decoupled ReAct Architecture (ArchitectureView.jsx)
   const tools = [
@@ -28,7 +28,7 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     {
       id: 'camera',
       label: 'Evidence Monitor',
-      tooltip: '16:9 Visual Photo Evidence Monitor',
+      tooltip: 'High-Res Photo & Visual Inspection Monitor',
       icon: <Camera size={17} />,
       gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)',
       glow: 'rgba(244, 63, 94, 0.45)'
@@ -52,7 +52,7 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     {
       id: 'dictionary',
       label: 'Dictionary',
-      tooltip: 'Scientific Glossary & Word Meaning Lookup',
+      tooltip: 'Scientific Dictionary & Grounded Lexical Explorer',
       icon: <BookA size={17} />,
       gradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
       glow: 'rgba(245, 158, 11, 0.45)'
