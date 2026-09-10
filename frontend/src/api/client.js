@@ -86,16 +86,30 @@ export const lookupDictionaryWord = async (term, domain = 'general') => {
   return lookupScientificTerm(term, domain);
 };
 
-export const fetchGlossary = async (payload) => {
-  const domain = payload?.domain || 'agriculture';
+export const fetchGlossary = async (screenTexts = [], domain = 'agriculture', graphNodes = []) => {
   try {
-    const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, {
-      question: "Extract key scientific terminology and concepts",
-      domain
-    });
-    return { glossary: res.data.terminology || [] };
+    let payload;
+    if (Array.isArray(screenTexts)) {
+      payload = { screen_texts: screenTexts, domain: typeof domain === 'string' ? domain : 'agriculture', graph_nodes: graphNodes };
+    } else if (typeof screenTexts === 'object' && screenTexts !== null) {
+      payload = screenTexts;
+    } else {
+      payload = { screen_texts: [String(screenTexts || '')], domain: 'agriculture' };
+    }
+    const res = await axios.post(`${API_BASE_URL}/api/dictionary/glossary`, payload);
+    return res.data;
   } catch (e) {
-    return { glossary: [] };
+    try {
+      const targetDomain = (typeof domain === 'string' ? domain : screenTexts?.domain) || 'agriculture';
+      const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, {
+        question: "Extract key scientific terminology and concepts",
+        domain: targetDomain
+      });
+      const terms = res.data?.terminology || [];
+      return { glossary: terms.map(t => ({ ...t, word: t.term || t.word, is_in_chat: true })) };
+    } catch (err) {
+      return { glossary: [] };
+    }
   }
 };
 

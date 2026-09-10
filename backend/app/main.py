@@ -90,7 +90,7 @@ def get_baseline(domain: str = Query("infrastructure"), preset_id: Optional[str]
 import asyncio
 from fastapi import UploadFile, File
 from .services.reasoning_service import ReasoningService
-from .services.dictionary_service import terminology_service
+from .services.dictionary_service import terminology_service, PRELOADED_DOMAIN_TERMS
 from .models.saar_models import UserAnswer
 from .rag_service import RAGKnowledgeService
 
@@ -184,6 +184,55 @@ async def dictionary_lookup(payload: Dict[str, Any]):
     if not term:
         raise HTTPException(status_code=400, detail="Term is required.")
     return await terminology_service.lookup_term_async(term, domain, context)
+
+@app.post("/api/dictionary/glossary")
+async def dictionary_glossary_endpoint(payload: Dict[str, Any]):
+    """Extract grounded terms from screen text with instantaneous domain glossary return."""
+    screen_texts = payload.get("screen_texts", [])
+    domain = payload.get("domain", "agriculture")
+    if not isinstance(domain, str):
+        domain = "agriculture"
+    clean_domain = domain.lower()
+    
+    combined_text = " ".join([str(t) for t in screen_texts if t]) if isinstance(screen_texts, list) else str(screen_texts or "")
+    
+    # 1. Fast extraction of terms present in screen
+    terms = await terminology_service.extract_grounded_terms_async(combined_text, clean_domain)
+    
+    # 2. Gather full domain pool
+    domain_key = "agriculture"
+    for k in PRELOADED_DOMAIN_TERMS.keys():
+        if k in clean_domain or clean_domain in k:
+            domain_key = k
+            break
+    all_domain_terms = PRELOADED_DOMAIN_TERMS.get(domain_key, PRELOADED_DOMAIN_TERMS["agriculture"])
+    
+    results = []
+    seen = set()
+    combined_lower = combined_text.lower()
+    
+    for t in terms:
+        word = t.get("term") or t.get("word", "")
+        if word and word.lower() not in seen:
+            item = dict(t)
+            item["word"] = word
+            item["is_in_chat"] = True
+            item["occurrences_in_chat"] = combined_lower.count(word.lower()) or 1
+            results.append(item)
+            seen.add(word.lower())
+            
+    for t in all_domain_terms:
+        word = t.get("term") or t.get("word", "")
+        if word and word.lower() not in seen:
+            item = dict(t)
+            item["word"] = word
+            in_screen = word.lower() in combined_lower
+            item["is_in_chat"] = in_screen
+            item["occurrences_in_chat"] = combined_lower.count(word.lower()) if in_screen else 0
+            results.append(item)
+            seen.add(word.lower())
+            
+    return {"glossary": results}
 
 @app.get("/api/saar/knowledge")
 def saar_knowledge_domains():
