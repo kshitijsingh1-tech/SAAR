@@ -3,7 +3,7 @@ import {
   Sparkles, Send, Paperclip, FileText, Image as ImageIcon,
   X, Loader2, Camera, ShieldCheck, Activity, HelpCircle,
   BarChart2, FileUp, Zap, Trash2, Plus, ArrowRight,
-  CheckCircle2, AlertTriangle, Layers, Sliders, CornerDownRight
+  CheckCircle2, AlertTriangle, Layers, Sliders, CornerDownRight, BookOpen
 } from 'lucide-react';
 import {
   uploadSaarCsv,
@@ -28,6 +28,7 @@ export function ChatAssistant({
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [activeTermModal, setActiveTermModal] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState(null);
   const [historyItems, setHistoryItems] = useState([
@@ -487,6 +488,31 @@ export function ChatAssistant({
                       })}
                     </div>
                   )}
+
+                  {/* Scientific Terminology & Grounded Concepts */}
+                  {msg.role === 'assistant' && msg.terminology && Array.isArray(msg.terminology) && msg.terminology.length > 0 && (
+                    <div className="chat-terminology-container">
+                      <div className="terminology-header">
+                        <BookOpen size={13} className="text-purple" />
+                        <span>Scientific Concepts &amp; Terminology</span>
+                      </div>
+                      <div className="terminology-chips-row">
+                        {msg.terminology.map((t, tIdx) => (
+                          <button
+                            key={tIdx}
+                            type="button"
+                            className="terminology-chip"
+                            onClick={() => setActiveTermModal(t)}
+                            title={`Inspect scientific definition for ${t.term}`}
+                          >
+                            <span className="term-badge-icon">📖</span>
+                            <span className="term-name">{t.term}</span>
+                            {t.domain && <span className="term-domain-pill">{t.domain.split(' ')[0]}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -580,6 +606,78 @@ export function ChatAssistant({
           </div>
         </div>
       </main>
+
+      {/* Interactive Scientific Terminology Popover Modal */}
+      {activeTermModal && (
+        <div className="term-modal-backdrop" onClick={() => setActiveTermModal(null)}>
+          <div className="term-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="term-modal-header">
+              <div className="term-modal-title-group">
+                <span className="term-modal-domain-tag">{activeTermModal.domain || 'Scientific Concept'}</span>
+                <h3 className="term-modal-title">{activeTermModal.term}</h3>
+                {activeTermModal.phonetic && (
+                  <span className="term-modal-phonetic">{activeTermModal.phonetic}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="term-modal-close-btn"
+                onClick={() => setActiveTermModal(null)}
+                title="Close definition modal"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="term-modal-body">
+              <div className="term-modal-section">
+                <div className="term-section-label">Academic Lexical Definition</div>
+                <p className="term-modal-def">{activeTermModal.definition}</p>
+              </div>
+
+              {activeTermModal.investigation_context && (
+                <div className="term-modal-section">
+                  <div className="term-section-label">Context in Active Investigation</div>
+                  <p className="term-modal-context">{activeTermModal.investigation_context}</p>
+                </div>
+              )}
+
+              {activeTermModal.diagnostic_indicator && (
+                <div className="term-modal-section">
+                  <div className="term-section-label">Diagnostic Telemetry Indicator</div>
+                  <p className="term-modal-indicator">{activeTermModal.diagnostic_indicator}</p>
+                </div>
+              )}
+
+              {activeTermModal.related_nodes && activeTermModal.related_nodes.length > 0 && (
+                <div className="term-modal-section">
+                  <div className="term-section-label">Related Causal Nodes</div>
+                  <div className="term-related-pills">
+                    {activeTermModal.related_nodes.map((n, nIdx) => (
+                      <span key={nIdx} className="related-node-pill">{n}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="term-modal-footer">
+              <button
+                type="button"
+                className="btn-deep-dive-saar"
+                onClick={() => {
+                  const q = `Explain the causal mechanism, underlying scientific equations, and literature consensus for "${activeTermModal.term}" in ${activeTermModal.domain || 'science'}:`;
+                  setText(q);
+                  setActiveTermModal(null);
+                }}
+              >
+                <Sparkles size={14} className="text-purple" />
+                <span>Ask SAAR to Deep-Dive on {activeTermModal.term}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

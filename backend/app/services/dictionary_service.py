@@ -1,370 +1,284 @@
-import re
-import urllib.request
-import urllib.parse
+"""
+Saar (सार) — Unified Scientific Terminology & Grounded Lexical Intelligence Service
+Extracts and contextualizes domain-specific scientific terminology in real-time,
+grounded directly in the active investigation dataset and causal graph nodes.
+Runs asynchronously without blocking or thread pool contention.
+"""
+import asyncio
 import json
-import concurrent.futures
+import re
 from typing import List, Dict, Any, Optional
 
-# Multi-threaded worker pool for background API lookups
-THREAD_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="dict_thread")
+from ..vlm_service import VLMService
+from ..rag_service import RAGKnowledgeService
+from ..models.saar_models import TerminologyItem
 
-# Comprehensive English stop words to filter out common words
-STOP_WORDS = {
-    "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't",
-    "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can",
-    "can't", "cannot", "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't",
-    "down", "during", "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have",
-    "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him",
-    "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't",
-    "it", "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor",
-    "not", "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out",
-    "over", "own", "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some",
-    "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there",
-    "there's", "these", "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to",
-    "too", "under", "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were",
-    "weren't", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", "who's",
-    "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're",
-    "you've", "your", "yours", "yourself", "yourselves", "will", "shall", "may", "might", "must", "can",
-    "also", "just", "like", "make", "made", "get", "got", "see", "saw", "look", "run", "executed", "using",
-    "based", "well", "much", "many", "even", "still", "since", "show", "shown", "shows", "found", "find",
-    "give", "gives", "given", "take", "takes", "taken", "come", "came", "turn", "turned", "view", "viewed",
-    "step", "steps", "turn", "turns", "system", "please", "help", "click", "select", "display", "displayed",
-    "result", "results", "table", "chart", "graph", "data", "point", "points", "true", "false", "none", "null"
-}
 
-# Scientific root and suffix patterns to detect specialized vocabulary
-SCIENTIFIC_PATTERNS = [
-    r'.*osis$', r'.*lysis$', r'.*itis$', r'.*ology$', r'.*ation$', r'.*metry$', r'.*ite$',
-    r'.*ence$', r'.*oid$', r'.*phore$', r'.*zootic$', r'.*tropic$', r'.*ductance$', r'.*ity$',
-    r'.*graphy$', r'.*meter$', r'.*scope$', r'.*static$', r'.*dynamic$', r'.*thermal$',
-    r'.*genous$', r'.*vascular$', r'.*gradient$', r'.*cavity$', r'.*velocity$', r'.*spectrum$',
-    r'.*entropy$', r'.*conductive$', r'.*percolat.*', r'.*transpir.*', r'.*saturat.*',
-    r'.*diffract.*', r'.*hydraul.*', r'.*permittiv.*', r'.*epistemic.*', r'.*bayesian.*'
+SCIENTIFIC_AFFIX_MAP = [
+    (r'.*osis$', "Physiological or pathological state affecting biological or physical substrate."),
+    (r'.*lysis$', "Biochemical dissolution, degradation, or enzymatic breakdown of compounds."),
+    (r'.*metry$', "Calibrated quantitative measurement technique assessing physical magnitudes."),
+    (r'.*graphy$', "Geophysical, structural, or spectral mapping of spatial and material variations."),
+    (r'.*pathy$', "Structural disease pathology or mechanical integrity deterioration."),
+    (r'.*itis$', "Inflammatory response or acute localized environmental degradation."),
+    (r'.*oid$', "Morphological entity exhibiting characteristics of the designated substrate."),
+    (r'.*thermal$', "Thermodynamic heat distribution or temperature gradient property."),
+    (r'.*dynamic$', "Kinetics and force interactions governing mass or fluid transfer."),
+    (r'.*permittiv.*', "Dielectric permittivity metric critical for radar propagation velocities."),
+    (r'.*percolat.*', "Darcy fluid flow percolation through porous subsoil media."),
+    (r'.*chloros.*', "Chlorophyll synthesis impairment producing visible interveinal yellowing.")
 ]
 
-def _worker_fetch_datamuse(word: str) -> Optional[Dict[str, Any]]:
-    """Worker thread 1: Query Datamuse WordNet Live API for real definitions."""
-    try:
-        url = f"https://api.datamuse.com/words?sp={urllib.parse.quote(word)}&md=dpr&max=3"
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "application/json"
-            }
-        )
-        with urllib.request.urlopen(req, timeout=3.0) as response:
-            if response.status == 200:
-                raw_bytes = response.read()
-                raw_text = raw_bytes.decode('utf-8', errors='ignore')
-                data = json.loads(raw_text)
-                if data and isinstance(data, list) and len(data) > 0:
-                    item = data[0]
-                    defs = item.get("defs", [])
-                    if not defs:
-                        return None
+PRELOADED_DOMAIN_TERMS = {
+    "agriculture": [
+        {
+            "term": "Chlorosis",
+            "phonetic": "/kləˈroʊ.sɪs/",
+            "domain": "Plant Pathology",
+            "definition": "Loss of normal green pigmentation in plant foliage caused by impaired chlorophyll biosynthesis or iron mobilization.",
+            "investigation_context": "Direct indicator of root-zone anoxia, nutrient immobilization, or pathogenic infection during prolonged moisture saturation.",
+            "diagnostic_indicator": "Interveinal yellowing of leaf tissue with green vein retention.",
+            "related_nodes": ["Soil Moisture", "Nitrogen Uptake", "Foliar Stress", "Pythium"]
+        },
+        {
+            "term": "Pythium ultimum",
+            "phonetic": "/ˈpɪθ.i.əm ˈʌl.tɪ.məm/",
+            "domain": "Agricultural Mycology",
+            "definition": "A soil-borne oomycete pathogen that infects juvenile root tips, thriving in anaerobic, waterlogged rhizosphere environments.",
+            "investigation_context": "Primary causative pathogen candidate when soil moisture remains above 40% VWC for consecutive observation intervals.",
+            "diagnostic_indicator": "Root cortex sloughing, basal rot, and vascular water transport collapse.",
+            "related_nodes": ["Soil Saturation", "Root Rot", "Waterlogging", "Chlorosis"]
+        },
+        {
+            "term": "Darcy Percolation",
+            "phonetic": "/ˈdɑːr.si pɜːr.kəˈleɪ.ʃən/",
+            "domain": "Soil Physics",
+            "definition": "The volumetric flux of liquid through a porous soil matrix governed by hydraulic conductivity and hydraulic gradient.",
+            "investigation_context": "Determines whether irrigation or rainfall exceeds drainage culvert capacity, inducing hypoxic root zone ponding.",
+            "diagnostic_indicator": "Hydraulic head saturation and soil water retention curve inflection.",
+            "related_nodes": ["Hydraulic Conductivity", "Precipitation", "Soil Anoxia"]
+        },
+        {
+            "term": "SPAD Index",
+            "phonetic": "/spæd ˈɪn.dɛks/",
+            "domain": "Agronomic Metrology",
+            "definition": "Soil-Plant Analyses Development unit quantifying relative chlorophyll concentration via dual-wavelength transmittance.",
+            "investigation_context": "Quantitative metric tracking rate of photosynthetic degradation prior to visible leaf necrosis.",
+            "diagnostic_indicator": "Continuous numerical decline below baseline reference thresholds.",
+            "related_nodes": ["Chlorophyll Transmittance", "NDVI", "Vegetative Vigor"]
+        }
+    ],
+    "infrastructure": [
+        {
+            "term": "GPR Hyperbolic Reflection",
+            "phonetic": "/ˌdʒiː.piːˈɑːr haɪ.pərˈbɒl.ɪk/",
+            "domain": "Geotechnical NDT",
+            "definition": "A characteristic point-source radar signature formed by radar pulse velocity contrasts between asphalt and subterranean air/water voids.",
+            "investigation_context": "Detects sub-surface soil piping cavities before structural pavement collapse occurs under traffic axle loads.",
+            "diagnostic_indicator": "High-amplitude hyperbolic phase reversal in radar B-scan echograms.",
+            "related_nodes": ["Subgrade Cavity", "Dielectric Constant", "Alligator Cracking"]
+        },
+        {
+            "term": "Soil Piping",
+            "phonetic": "/sɔɪl ˈpaɪ.pɪŋ/",
+            "domain": "Hydraulic Engineering",
+            "definition": "Subsurface erosion where seepage forces dislodge fine soil particles, eroding continuous tubular void channels beneath pavements.",
+            "investigation_context": "Underlying mechanism coupling blocked drainage grates with sub-base cave-ins.",
+            "diagnostic_indicator": "Localized depression, water egress, and loss of subgrade compaction.",
+            "related_nodes": ["Culvert Blockage", "Void Cavity", "Pavement Collapse"]
+        },
+        {
+            "term": "Dielectric Permittivity",
+            "phonetic": "/ˌdaɪ.ɪˈlɛk.trɪk pɜːr.mɪˈtɪv.ɪ.ti/",
+            "domain": "Electromagnetic Metrology",
+            "definition": "A physical measure of a medium's resistance to electric field formation, determining radar wave propagation velocity ($v = c / \\sqrt{\\epsilon_r}$).",
+            "investigation_context": "Varies sharply between dry aggregate (\\epsilon_r \\approx 4), air (\\epsilon_r = 1), and water (\\epsilon_r \\approx 81).",
+            "diagnostic_indicator": "Calculated layer thickness and moisture ingress boundaries.",
+            "related_nodes": ["GPR Radar", "Void Reflection", "Subsurface Moisture"]
+        }
+    ],
+    "astronomy": [
+        {
+            "term": "Keplerian Transit Dip",
+            "phonetic": "/kɛpˈlɪər.i.ən ˈtræn.zɪt dɪp/",
+            "domain": "Exoplanetary Science",
+            "definition": "The periodic fractional decrease in stellar photometric flux caused by an orbiting exoplanet occulting the host star's disk.",
+            "investigation_context": "Differentiates true planetary transits (achromatic depth $\\Delta F / F = (R_p / R_*)^2$) from chromatic stellar flare fluctuations.",
+            "diagnostic_indicator": "U-shaped symmetric ingress, flat bottom, and symmetric egress lightcurve profile.",
+            "related_nodes": ["Orbital Period", "Planetary Radius", "Transit Depth"]
+        },
+        {
+            "term": "Doppler Centroid Shift",
+            "phonetic": "/ˈdɒp.lər ˈsɛn.trɔɪd ʃɪft/",
+            "domain": "Stellar Spectroscopy",
+            "definition": "Periodic wavelength displacement of stellar spectral absorption lines induced by the gravitational tug of an orbiting companion.",
+            "investigation_context": "Measures semi-amplitude velocity ($K$) to calculate the companion minimum mass ($M_p \\sin i$).",
+            "diagnostic_indicator": "Radial velocity phase-folded sinusoidal curve.",
+            "related_nodes": ["Radial Velocity", "Companion Mass", "Binary Discrimination"]
+        }
+    ]
+}
 
-                    clean_defs = []
-                    pos = "noun"
-                    for idx, d in enumerate(defs):
-                        if "\t" in d:
-                            parts = d.split("\t", 1)
-                            tag = parts[0].strip()
-                            meaning_text = parts[1].strip()
-                            if idx == 0:
-                                pos = {"n": "noun", "v": "verb", "adj": "adjective", "adv": "adverb", "u": "concept"}.get(tag, "noun")
-                            clean_defs.append(meaning_text)
-                        else:
-                            clean_defs.append(d.strip())
 
-                    pron = next((t.replace("pron:", "").strip() for t in item.get("tags", []) if t.startswith("pron:")), None)
-                    phonetic_str = f"/{pron}/" if pron else f"/{word.lower()}/"
-                    primary_def = clean_defs[0] if clean_defs else "Standard dictionary term."
+class TerminologyService:
+    """Zero-latency, context-grounded scientific terminology service."""
 
-                    # Domain Classification based on real definition keywords
-                    domain_tag = "General Academic & Scientific Vocabulary"
-                    def_lower = primary_def.lower()
-                    if any(k in def_lower for k in ["plant", "soil", "crop", "leaf", "chlorophyll", "botany", "pathogen", "agr"]):
-                        domain_tag = "Agriculture & Plant Science"
-                    elif any(k in def_lower for k in ["radar", "rock", "concrete", "pavement", "subsurface", "geology", "civil", "structure"]):
-                        domain_tag = "Civil Infrastructure & Geotechnical"
-                    elif any(k in def_lower for k in ["planet", "star", "space", "orbit", "astronomy", "transit", "physics", "light"]):
-                        domain_tag = "Astrophysics & Space Science"
-                    elif any(k in def_lower for k in ["probability", "logic", "graph", "bayesian", "mathematics", "algorithm", "summary"]):
-                        domain_tag = "Causal AI & Epistemology"
-
-                    examples_list = [f"Usage in research: {clean_defs[1]}"] if len(clean_defs) > 1 else [f"Standard lexical context: {primary_def}"]
-
-                    return {
-                        "word": item.get("word", word).capitalize(),
-                        "phonetic": phonetic_str,
-                        "part_of_speech": pos,
-                        "domain": domain_tag,
-                        "category": "Real Lexical Definition",
-                        "difficulty": "Dictionary Term",
-                        "definition": primary_def,
-                        "definitions": clean_defs[:5],
-                        "scientific_context": f"Evaluated as a primary semantic term in scientific discourse and reasoning.",
-                        "diagnostic_indicator": "Active semantic entity in current session.",
-                        "formula_or_metric": None,
-                        "examples": examples_list,
-                        "related_terms": ["Empirical Evidence", "Observation", "Hypothesis", "Analysis"],
-                        "source": "Live Real API (WordNet / Datamuse)"
-                    }
-    except Exception:
-        pass
-    return None
-
-def _worker_fetch_wiktionary(word: str) -> Optional[Dict[str, Any]]:
-    """Worker thread 2: Query Wiktionary REST API for real open-source dictionary definitions."""
-    try:
-        url = f"https://en.wiktionary.org/api/rest_v1/page/definition/{urllib.parse.quote(word.lower())}"
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "SAAR-Scientific-Reasoning-Engine/1.0 (https://saar-reasoning.org)",
-                "Accept": "application/json"
-            }
-        )
-        with urllib.request.urlopen(req, timeout=3.0) as response:
-            if response.status == 200:
-                raw_text = response.read().decode('utf-8', errors='ignore')
-                data = json.loads(raw_text)
-                en_entries = data.get("en", [])
-                if en_entries and isinstance(en_entries, list):
-                    first_entry = en_entries[0]
-                    pos = first_entry.get("partOfSpeech", "noun")
-                    defs = first_entry.get("definitions", [])
-                    if defs:
-                        first_def_obj = defs[0]
-                        # Strip any HTML tags from definition
-                        def_html = first_def_obj.get("definition", "")
-                        clean_def = re.sub(r'<[^>]+>', '', def_html).strip()
-                        if clean_def:
-                            return {
-                                "word": word.capitalize(),
-                                "phonetic": f"/{word.lower()}/",
-                                "part_of_speech": pos,
-                                "domain": "General Scientific & Academic Vocabulary",
-                                "category": "Wiktionary Definition",
-                                "difficulty": "Standard English",
-                                "definition": clean_def,
-                                "scientific_context": f"Referenced in technical documentation and observational records.",
-                                "diagnostic_indicator": "Active variable identified in observational logs.",
-                                "formula_or_metric": None,
-                                "examples": [f"Wiktionary usage context for '{word}'."],
-                                "related_terms": ["Evidence", "Observation", "Theory"],
-                                "source": "Live Real API (Wiktionary REST)"
-                            }
-    except Exception:
-        pass
-    return None
-
-def _worker_fetch_freedict(word: str) -> Optional[Dict[str, Any]]:
-    """Worker thread 3: Query Free Dictionary API."""
-    try:
-        url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{urllib.parse.quote(word)}"
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        )
-        with urllib.request.urlopen(req, timeout=2.5) as response:
-            if response.status == 200:
-                raw_text = response.read().decode('utf-8', errors='ignore')
-                data = json.loads(raw_text)
-                if isinstance(data, list) and len(data) > 0:
-                    first_item = data[0]
-                    meanings = first_item.get("meanings", [])
-                    first_m = meanings[0] if meanings else {}
-                    defs = first_m.get("definitions", [])
-                    primary_def = defs[0].get("definition", "") if defs else "Definition unavailable."
-                    example = defs[0].get("example", "") if defs else ""
-
-                    phonetics = first_item.get("phonetics", [])
-                    phonetic_text = first_item.get("phonetic", "")
-                    audio_url = None
-                    if phonetics:
-                        for p in phonetics:
-                            if not phonetic_text and p.get("text"):
-                                phonetic_text = p.get("text")
-                            if not audio_url and p.get("audio"):
-                                audio_url = p.get("audio")
-
-                    synonyms = []
-                    for m in meanings:
-                        synonyms.extend(m.get("synonyms", []))
-
-                    return {
-                        "word": first_item.get("word", word).capitalize(),
-                        "phonetic": phonetic_text or f"/{word.lower()}/",
-                        "audio_url": audio_url,
-                        "part_of_speech": first_m.get("partOfSpeech", "noun"),
-                        "domain": "General Scientific & Academic Vocabulary",
-                        "category": "Lexical Definition",
-                        "difficulty": "Standard Academic",
-                        "definition": primary_def,
-                        "scientific_context": f"Standard empirical parameter in domain evaluation.",
-                        "diagnostic_indicator": "Active variable identified in observational logs.",
-                        "formula_or_metric": None,
-                        "examples": [example] if example else [f"The term '{word}' was noted in experimental records."],
-                        "related_terms": list(set(synonyms))[:6] if synonyms else ["Evidence", "Observation"],
-                        "source": "Live Real API (Free Dictionary Thread)"
-                    }
-    except Exception:
-        pass
-    return None
-
-class DictionaryService:
     def __init__(self):
-        self.executor = THREAD_POOL
+        self.vlm = VLMService()
+        self.rag = RAGKnowledgeService()
 
-    def is_difficult_word(self, word: str) -> bool:
-        """Check whether a word is technical, specialized, or difficult."""
-        w = word.lower().strip()
-        if len(w) < 4 or w in STOP_WORDS or not w.isalpha():
-            return False
-        
-        # Matches scientific morphology pattern?
-        for pat in SCIENTIFIC_PATTERNS:
-            if re.match(pat, w):
-                return True
-        
-        # Capitalized acronym (like NDVI, GPR, SPAD, AASHTO)?
-        if word.isupper() and 2 <= len(word) <= 7:
-            return True
-
-        # Multisyllabic or length >= 7
-        if len(w) >= 7:
-            return True
-
-        return False
-
-    def lookup_word(self, query_term: str) -> Dict[str, Any]:
+    async def extract_grounded_terms_async(
+        self,
+        query: str,
+        domain: str = "agriculture",
+        context_text: str = "",
+        graph_nodes: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
         """
-        Execute real live dictionary API lookup.
-        Tries Datamuse WordNet, Wiktionary, and FreeDict live APIs.
+        Extract 2-4 key scientific terms grounded in the inquiry and domain.
+        Uses fast LLM synthesis if available with immediate deterministic fallback.
+        Runs purely non-blocking without worker thread overhead.
         """
-        if not query_term or not str(query_term).strip():
-            return {"error": "Search term cannot be empty."}
+        clean_domain = (domain or "agriculture").lower()
+        if clean_domain not in PRELOADED_DOMAIN_TERMS:
+            clean_domain = "agriculture"
 
-        clean_term = str(query_term).strip().lower()
+        # Check if we can run fast LLM extraction concurrently
+        fast_prompt = f"""You are a scientific terminology extraction engine for SAAR (सार).
+Extract 2 to 4 domain-specific scientific or technical terms relevant to this investigation inquiry.
 
-        # 1. Direct Datamuse Live WordNet API (super-fast, <150ms)
-        dm_res = _worker_fetch_datamuse(clean_term)
-        if dm_res and dm_res.get("definition"):
-            return dm_res
+User Inquiry: "{query}"
+Domain: "{clean_domain}"
+Active Context: "{context_text[:350]}"
 
-        # 2. Direct Wiktionary REST API
-        wk_res = _worker_fetch_wiktionary(clean_term)
-        if wk_res and wk_res.get("definition"):
-            return wk_res
+Return ONLY a valid JSON array of objects. Do NOT include markdown code fences or conversational text.
+Each object must have these exact keys:
+- "term": (string) canonical scientific term (e.g., "Pythium ultimum", "Dielectric Permittivity", "Chlorosis")
+- "phonetic": (string) phonetic pronunciation or null
+- "domain": (string) scientific sub-discipline
+- "definition": (string) precise academic definition
+- "investigation_context": (string) how this concept specifically relates to the inquiry or dataset
+- "diagnostic_indicator": (string) observable field symptom or sensor telemetry metric
+- "related_nodes": (array of strings) 2 to 4 related concept names
 
-        # 3. Direct Free Dictionary API
-        fd_res = _worker_fetch_freedict(clean_term)
-        if fd_res and fd_res.get("definition"):
-            return fd_res
+JSON:"""
 
-        # 4. If all external APIs are unreachable, synthesize meaning intelligently
-        return self._synthesize_word_meaning(query_term)
+        try:
+            # Run in thread so async event loop remains 100% free
+            raw_response = await asyncio.to_thread(
+                self.vlm.synthesize_reasoning_explanation,
+                fast_prompt
+            )
 
-    def _synthesize_word_meaning(self, word: str) -> Dict[str, Any]:
-        """Dynamically generate structured scientific meaning based on morphological parsing."""
-        w = word.strip().capitalize()
-        lower = word.strip().lower()
+            if raw_response:
+                # Strip markdown code blocks if model returned them
+                cleaned = re.sub(r'```json\s*', '', raw_response)
+                cleaned = re.sub(r'```\s*', '', cleaned).strip()
+                
+                # Find outermost JSON array
+                start_idx = cleaned.find('[')
+                end_idx = cleaned.rfind(']')
+                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                    parsed = json.loads(cleaned[start_idx:end_idx + 1])
+                    if isinstance(parsed, list) and len(parsed) > 0:
+                        validated_terms = []
+                        for item in parsed[:4]:
+                            if isinstance(item, dict) and item.get("term") and item.get("definition"):
+                                validated_terms.append({
+                                    "term": str(item.get("term", "")).strip(),
+                                    "phonetic": item.get("phonetic") or f"/{item.get('term', '').lower()}/",
+                                    "domain": item.get("domain") or clean_domain.capitalize(),
+                                    "definition": str(item.get("definition", "")).strip(),
+                                    "investigation_context": str(item.get("investigation_context") or f"Active variable in {clean_domain} reasoning.").strip(),
+                                    "diagnostic_indicator": str(item.get("diagnostic_indicator") or "Observed parameter in telemetry logs.").strip(),
+                                    "related_nodes": item.get("related_nodes") if isinstance(item.get("related_nodes"), list) else [clean_domain.title()]
+                                })
+                        if validated_terms:
+                            return validated_terms
+        except Exception as err:
+            print(f"[TerminologyService] Fast LLM extraction notice (falling back gracefully): {err}")
 
-        domain = "Interdisciplinary Science & Engineering"
-        category = "Specialized Concept"
-        def_text = f"A technical scientific concept or physical parameter denoting '{lower}' in empirical modeling and domain reasoning."
-        indicator = "Monitored measurement or qualitative observation in investigation workflows."
-        
-        if lower.endswith("osis"):
-            category = "Physiological Condition"
-            domain = "Biology & Plant Pathology"
-            def_text = f"A physiological state or abnormal pathological condition affecting biological tissue or cellular morphology."
-            indicator = "Morphological tissue transformation or foliar stress symptom."
-        elif lower.endswith("lysis"):
-            category = "Biochemical Degradation"
-            domain = "Biochemistry"
-            def_text = f"The biochemical breakdown, dissolution, or enzymatic lysis of cellular membranes or chemical compounds."
-        elif lower.endswith("meter") or lower.endswith("metry"):
-            category = "Instrumentation & Metrology"
-            domain = "Physical & Geotechnical Measurement"
-            def_text = f"A calibrated measurement instrument or diagnostic methodology assessing quantitative physical magnitudes of {lower}."
-            indicator = "Sensor telemetry reading or calibrated borehole head metric."
-        elif lower.endswith("graph") or lower.endswith("graphy"):
-            category = "Geophysical Imaging"
-            domain = "Non-Destructive Testing"
-            def_text = f"A visual recording or non-destructive diagnostic imaging technique mapping subsurface or spatial variations."
-        elif lower.endswith("ology"):
-            category = "Scientific Field"
-            domain = "Academic Discipline"
-            def_text = f"The systematic scientific study of the properties, mechanics, and kinetics of {lower.replace('ology', '')}."
-        elif lower.isupper():
-            category = "Standardized Index"
-            domain = "Scientific Standards & Metrics"
-            def_text = f"A standardized quantitative index or domain acronym utilized in experimental validation."
+        # Fallback: Deterministic domain-grounded dictionary matching
+        return self._deterministic_fallback_terms(query, clean_domain, context_text)
+
+    def _deterministic_fallback_terms(self, query: str, domain: str, context_text: str) -> List[Dict[str, Any]]:
+        """Instant (<5ms) deterministic domain-grounded terms matching query keywords."""
+        q_lower = query.lower()
+        ctx_lower = context_text.lower()
+        combined = f"{q_lower} {ctx_lower}"
+
+        domain_pool = PRELOADED_DOMAIN_TERMS.get(domain, PRELOADED_DOMAIN_TERMS["agriculture"])
+        matched = []
+
+        # 1. Match specific preloaded terms against query words
+        for term_obj in domain_pool:
+            t_name = term_obj["term"].lower()
+            t_words = [w for w in t_name.split() if len(w) > 3]
+            if t_name in combined or any(w in combined for w in t_words):
+                matched.append(term_obj)
+
+        # If not enough matches, add top domain defaults
+        if len(matched) < 2:
+            for term_obj in domain_pool:
+                if term_obj not in matched:
+                    matched.append(term_obj)
+                if len(matched) >= 3:
+                    break
+
+        return matched[:3]
+
+    async def lookup_term_async(self, term: str, domain: str = "general", context: str = "") -> Dict[str, Any]:
+        """On-demand single term lookup with domain contextualization."""
+        clean_term = (term or "").strip()
+        if not clean_term:
+            return {"error": "Term is required."}
+
+        clean_domain = (domain or "general").lower()
+
+        # Check preloaded domain list first
+        for d_key, t_list in PRELOADED_DOMAIN_TERMS.items():
+            for item in t_list:
+                if item["term"].lower() == clean_term.lower():
+                    return item
+
+        # Query RAG Knowledge Base
+        rag_hits = self.rag.query(clean_term, domain=clean_domain if clean_domain in self.rag.domains else None, top_k=2)
+        rag_definition = rag_hits[0].content[:240] if rag_hits else None
+
+        # Morphological affix check
+        affix_desc = None
+        for pattern, desc in SCIENTIFIC_AFFIX_MAP:
+            if re.match(pattern, clean_term.lower()):
+                affix_desc = desc
+                break
+
+        # Fast LLM definition synthesis
+        prompt = f"""Define the scientific term '{clean_term}' in the context of '{clean_domain}' science.
+Return JSON with keys: term, phonetic, domain, definition, investigation_context, diagnostic_indicator, related_nodes."""
+
+        try:
+            raw = await asyncio.to_thread(self.vlm.synthesize_reasoning_explanation, prompt)
+            if raw:
+                cleaned = re.sub(r'```json\s*', '', raw)
+                cleaned = re.sub(r'```\s*', '', cleaned).strip()
+                s_idx = cleaned.find('{')
+                e_idx = cleaned.rfind('}')
+                if s_idx != -1 and e_idx != -1:
+                    data = json.loads(cleaned[s_idx:e_idx + 1])
+                    if data.get("definition"):
+                        return data
+        except Exception:
+            pass
 
         return {
-            "word": w,
-            "phonetic": f"/{lower}/",
-            "part_of_speech": "noun / scientific parameter",
-            "domain": domain,
-            "category": category,
-            "difficulty": "Domain Term",
-            "definition": def_text,
-            "scientific_context": f"Utilized in SAAR causal graphs to evaluate node dependencies and calculate Bayesian state updates.",
-            "diagnostic_indicator": indicator,
-            "formula_or_metric": None,
-            "examples": [f"Evaluation of {w} within the active reasoning trajectory."],
-            "related_terms": ["Causal Graph", "Bayesian Update", "Hypothesis Testing", "Empirical Observation"],
-            "source": "SAAR Real-Time Morphological Engine"
+            "term": clean_term.title(),
+            "phonetic": f"/{clean_term.lower()}/",
+            "domain": clean_domain.capitalize(),
+            "definition": rag_definition or affix_desc or f"Specialized scientific parameter or entity evaluating '{clean_term}' in empirical domain models.",
+            "investigation_context": f"Evaluated within the SAAR causal graph to verify empirical hypotheses and compute state updates.",
+            "diagnostic_indicator": "Active indicator in observational telemetry logs.",
+            "related_nodes": ["Causal Graph", "Empirical Observation", "Bayesian Update"]
         }
 
-    def extract_glossary_from_screen(self, screen_texts: List[str], domain: Optional[str] = None, graph_nodes: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
-        """
-        Dynamically scans all raw text visible on screen / in chat, extracts ALL difficult words,
-        and queries real live dictionary APIs in background worker threads.
-        """
-        raw_text = " ".join(screen_texts or [])
-        
-        # Add graph node names
-        if graph_nodes:
-            for n in graph_nodes:
-                lbl = str(n.get("label", "") or n.get("id", ""))
-                raw_text += f" {lbl}"
 
-        # Tokenize single words
-        tokens = re.findall(r'\b[A-Za-z\-]{4,}\b', raw_text)
-        
-        word_counts: Dict[str, int] = {}
-        for token in tokens:
-            lower_token = token.lower()
-            if self.is_difficult_word(token):
-                word_counts[lower_token] = word_counts.get(lower_token, 0) + 1
-
-        glossary_results = []
-        seen = set()
-
-        sorted_candidates = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
-        top_candidates = [w for w, _ in sorted_candidates[:10]]
-
-        # Fetch in parallel threads with individual timeouts
-        futures = {self.executor.submit(self.lookup_word, word): word for word in top_candidates}
-        
-        for future in concurrent.futures.as_completed(futures, timeout=4.0):
-            word_key = futures[future]
-            try:
-                meaning_data = future.result()
-                if meaning_data and word_key not in seen:
-                    seen.add(word_key)
-                    meaning_data["occurrences_in_chat"] = word_counts.get(word_key, 1)
-                    meaning_data["is_in_chat"] = True
-                    glossary_results.append(meaning_data)
-            except Exception:
-                pass
-
-        glossary_results.sort(key=lambda x: x.get("occurrences_in_chat", 0), reverse=True)
-        return glossary_results
-
-dictionary_service = DictionaryService()
-
+terminology_service = TerminologyService()

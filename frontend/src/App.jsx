@@ -232,6 +232,7 @@ export default function App() {
               text: responseText,
               report,
               openQuestions: Array.isArray(report?.open_questions) ? report.open_questions : [],
+              terminology: report?.terminology || [],
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
           ]);
@@ -264,6 +265,7 @@ export default function App() {
           role: 'assistant',
           text: reply,
           report: saarData || investigationData,
+          terminology: askRes.terminology || [],
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
