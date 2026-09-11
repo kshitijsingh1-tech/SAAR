@@ -1192,42 +1192,55 @@ export const KnowledgeGraphCanvas = ({
         /* 4. Bottom Legend & Navigation Guide (When no node is selected) */
         <div style={{
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0.45rem 1rem',
+          gap: '0.4rem 0.8rem',
+          padding: '0.4rem 0.85rem',
           borderTop: '1px solid #e2e8f0',
           background: '#ffffff',
-          fontSize: '0.7rem',
-          color: '#475569'
+          fontSize: '0.68rem',
+          color: '#475569',
+          boxSizing: 'border-box',
+          width: '100%',
+          overflow: 'hidden'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontWeight: '700', color: '#0f172a' }}>Legend:</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          {/* Left: Node Type Legend */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap' }}>Legend:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#4ade80' }} />
               <span>Object</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#60a5fa' }} />
               <span>Sensor</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#22d3ee' }} />
               <span>Symptom</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#f59e0b' }} />
               <span>Hypothesis</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#c084fc' }} />
               <span>Evidence</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.68rem', color: '#64748b' }}>
-            <span>💡 <strong>Tip:</strong> Drag to pan · Scroll to zoom · Click node to inspect causal chain</span>
-            <span style={{ color: '#b45309' }}>▲ Amber = Upstream Cause</span>
-            <span style={{ color: '#047857' }}>▼ Green = Downstream Impact</span>
+          {/* Right: Quick Interaction Guide & Causal Direction Markers */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.66rem' }}>
+            <span style={{ whiteSpace: 'nowrap', color: '#64748b' }}>
+              💡 Drag to pan · Scroll to zoom
+            </span>
+            <span style={{ whiteSpace: 'nowrap', color: '#b45309', fontWeight: '600', background: '#fef3c7', padding: '0.1rem 0.35rem', borderRadius: '4px', border: '1px solid #fde68a' }}>
+              ▲ Cause
+            </span>
+            <span style={{ whiteSpace: 'nowrap', color: '#047857', fontWeight: '600', background: '#d1fae5', padding: '0.1rem 0.35rem', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
+              ▼ Impact
+            </span>
           </div>
         </div>
       )}
