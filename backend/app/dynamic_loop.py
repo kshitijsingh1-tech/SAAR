@@ -10,6 +10,7 @@ from .plugins.infrastructure_plugin import InfrastructurePlugin
 from .plugins.astronomy_plugin import AstronomyPlugin
 from .plugins.agriculture_plugin import AgriculturePlugin
 from .plugins.pediatrics_plugin import PediatricsPlugin
+from .plugins.gait_plugin import GaitPlugin
 from .vlm_service import VLMService
 
 class DynamicWorkflowOrchestrator:
@@ -18,7 +19,8 @@ class DynamicWorkflowOrchestrator:
             "infrastructure": InfrastructurePlugin(),
             "astronomy": AstronomyPlugin(),
             "agriculture": AgriculturePlugin(),
-            "pediatrics": PediatricsPlugin()
+            "pediatrics": PediatricsPlugin(),
+            "gait": GaitPlugin()
         }
         self.vlm_service = VLMService()
 

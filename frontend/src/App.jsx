@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
-  uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline
+  uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline,
+  analyzeGaitVideo
 } from './api/client';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ChatGPTView } from './components/ChatGPTView';
@@ -481,14 +482,39 @@ export default function App() {
 
   // Send Message / Execute Investigation
   const handleSendMessage = async (userText, attachedFiles = []) => {
+    // If a gait result object is passed directly (e.g. from GaitDashboard registration)
+    if (userText && typeof userText === 'object' && userText.assessment_id) {
+      const gaitResult = userText;
+      let responseText = `### ToddleAI Gait Screening Executed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
+      responseText += `- **Video Processed**: \`${gaitResult.video?.filename || 'Sample Video'}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
+      responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
+      responseText += `- **Cadence**: **${gaitResult.metrics?.cadence} steps/min** (Typical: ${gaitResult.cadence_range?.low}–${gaitResult.cadence_range?.high} steps/min)\n`;
+      responseText += `- **Left-Right Step Asymmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct}%** (Typical benchmark ≤ 10%)\n`;
+      responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov}% CoV** (Developing toddler benchmark ≤ 15%)\n\n`;
+      responseText += `#### Developmental Context:\n${gaitResult.milestone_context || ''}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: responseText,
+          report: gaitResult,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+      setSaarData(gaitResult);
+      return;
+    }
+
     const currentFiles = [...attachedFiles];
-    const msgText = userText || (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : '');
+    const textStr = typeof userText === 'string' ? userText : (userText ? String(userText) : '');
+    const msgText = textStr || (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : '');
 
     // Update active session query if new session
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId && (s.query === 'New Scientific Investigation' || !s.query)
-          ? { ...s, query: (msgText || 'Scientific Query').slice(0, 52) }
+          ? { ...s, query: (String(msgText || 'Scientific Query')).slice(0, 52) }
           : s
       )
     );
@@ -500,9 +526,60 @@ export default function App() {
       if (currentFiles.length > 0) {
         const file = currentFiles[0];
         const fileName = file?.name || 'attached_file';
-        const fileType = file?.type || '';
+        const fileType = (file?.type || '').toLowerCase();
+        const isVideo = fileType.startsWith('video/') || /\.(mp4|mov|avi|webm|mkv)$/i.test(fileName);
         const isImage = fileType.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName);
         const isCsv = /\.(csv|tsv|txt|xlsx|xls)$/i.test(fileName) || fileType.includes('csv') || fileType.includes('spreadsheet') || fileType.includes('excel');
+
+        if (isVideo) {
+          try {
+            const gaitResult = await analyzeGaitVideo(file, 24);
+            setSaarData(gaitResult);
+            let responseText = `### ToddleAI Gait Screening Executed (${gaitResult.status?.toUpperCase()})\n\n`;
+            responseText += `- **Video Processed**: \`${fileName}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
+            responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
+            responseText += `- **Cadence**: **${gaitResult.metrics?.cadence} steps/min** (Typical: ${gaitResult.cadence_range?.low}–${gaitResult.cadence_range?.high} steps/min)\n`;
+            responseText += `- **Left-Right Step Asymmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct}%** (Typical benchmark ≤ 10%)\n`;
+            responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov}% CoV** (Developing toddler benchmark ≤ 15%)\n\n`;
+            responseText += `#### Developmental Context:\n${gaitResult.milestone_context}`;
+
+            if (userText && userText.trim()) {
+              try {
+                const questionReply = await askSaarQuestion(gaitResult.assessment_id || 'latest', userText.trim());
+                if (questionReply?.answer_summary) {
+                  responseText += `\n\n---\n\n### Inquiry Response: *"${userText.trim()}"*\n${questionReply.answer_summary}`;
+                }
+              } catch (qErr) {
+                console.warn("Failed to answer question alongside video upload:", qErr);
+              }
+            }
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                text: responseText,
+                report: gaitResult,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            setActiveTool('gait');
+            setIsToolDrawerOpen(true);
+            setIsProcessing(false);
+            return;
+          } catch (vErr) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                text: `**Gait Video Analysis Notice**: ${vErr.response?.data?.detail || vErr.message || 'Failed to process video.'}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            setIsProcessing(false);
+            return;
+          }
+        }
 
         if (isImage) {
           await executeImageInvestigation(file, fileName, userText);
