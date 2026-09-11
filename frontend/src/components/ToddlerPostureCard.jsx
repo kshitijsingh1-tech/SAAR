@@ -34,7 +34,7 @@ export const ToddlerPostureCard = ({
     subjectAgeMonths: '18–24 Months',
     screeningClassification: 'Typical Physiologic Toddler Alignment',
     riskLevel: 'Low (Within Normal Developmental Bounds)',
-    statusColor: '#10b981', // Emerald
+    statusColor: '#38bdf8', // Primary Blue
     plumbLineDeviation: '5.8 mm anterior shift (Compensated)',
     metrics: [
       {
@@ -244,7 +244,7 @@ export const ToddlerPostureCard = ({
             padding: '0.35rem 0.65rem',
             background: 'transparent',
             border: 'none',
-            borderBottom: activeTab === 'milestones' ? '2px solid var(--emerald)' : '2px solid transparent',
+            borderBottom: activeTab === 'milestones' ? '2px solid #38bdf8' : '2px solid transparent',
             color: activeTab === 'milestones' ? '#ffffff' : 'var(--text-muted)',
             fontWeight: activeTab === 'milestones' ? 700 : 500,
             fontSize: '0.74rem',
@@ -254,7 +254,7 @@ export const ToddlerPostureCard = ({
             gap: '5px'
           }}
         >
-          <UserCheck size={13} color={activeTab === 'milestones' ? 'var(--emerald)' : 'currentColor'} />
+          <UserCheck size={13} color={activeTab === 'milestones' ? '#38bdf8' : 'currentColor'} />
           <span>WHO Milestones & Gait</span>
         </button>
 
@@ -265,7 +265,7 @@ export const ToddlerPostureCard = ({
             padding: '0.35rem 0.65rem',
             background: 'transparent',
             border: 'none',
-            borderBottom: activeTab === 'guidance' ? '2px solid #fbbf24' : '2px solid transparent',
+            borderBottom: activeTab === 'guidance' ? '2px solid #38bdf8' : '2px solid transparent',
             color: activeTab === 'guidance' ? '#ffffff' : 'var(--text-muted)',
             fontWeight: activeTab === 'guidance' ? 700 : 500,
             fontSize: '0.74rem',
@@ -275,7 +275,7 @@ export const ToddlerPostureCard = ({
             gap: '5px'
           }}
         >
-          <Info size={13} color={activeTab === 'guidance' ? '#fbbf24' : 'currentColor'} />
+          <Info size={13} color={activeTab === 'guidance' ? '#38bdf8' : 'currentColor'} />
           <span>Surveillance & Red Flags</span>
         </button>
       </div>
@@ -301,8 +301,8 @@ export const ToddlerPostureCard = ({
                     fontFamily: 'var(--font-mono)',
                     padding: '0.1rem 0.35rem',
                     borderRadius: '4px',
-                    background: 'rgba(52, 211, 153, 0.15)',
-                    color: 'var(--emerald)',
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    color: 'var(--primary)',
                     fontWeight: 600,
                     whiteSpace: 'nowrap'
                   }}
@@ -326,8 +326,8 @@ export const ToddlerPostureCard = ({
 
       {activeTab === 'milestones' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', fontSize: '0.74rem' }}>
-          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.2)' }}>
-            <div style={{ fontWeight: 700, color: 'var(--emerald)', marginBottom: '2px' }}>
+          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+            <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: '2px' }}>
               {data.whoMilestones?.expectedMilestone}
             </div>
             <div style={{ color: '#e2e8f0', fontSize: '0.72rem' }}>
@@ -364,8 +364,8 @@ export const ToddlerPostureCard = ({
                   <span style={{
                     padding: '0.08rem 0.4rem',
                     borderRadius: '4px',
-                    background: flag.present ? 'rgba(239, 68, 68, 0.2)' : 'rgba(52, 211, 153, 0.15)',
-                    color: flag.present ? '#f87171' : 'var(--emerald)',
+                    background: flag.present ? 'rgba(239, 68, 68, 0.2)' : 'rgba(56, 189, 248, 0.12)',
+                    color: flag.present ? '#f87171' : 'var(--primary)',
                     fontFamily: 'var(--font-mono)',
                     fontWeight: 600,
                     fontSize: '0.64rem'

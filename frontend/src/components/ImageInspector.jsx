@@ -9,14 +9,14 @@ import { VideoTimelineScrubber } from './VideoTimelineScrubber';
 import { PlantCareCard } from './PlantCareCard';
 import { ToddlerPostureCard } from './ToddlerPostureCard';
 
-// Domain-aware color palette for visual anchors & bounding boxes
+// Clean black, white & signature blue palette for visual anchors & bounding boxes
 const ANCHOR_COLORS = [
-  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' }, // Cyan / Sky
-  { stroke: '#34d399', fill: 'rgba(52, 211, 153, 0.18)', glow: 'rgba(52, 211, 153, 0.35)', text: '#34d399', bg: 'rgba(52, 211, 153, 0.1)', border: 'rgba(52, 211, 153, 0.4)' }, // Emerald
-  { stroke: '#fbbf24', fill: 'rgba(251, 191, 36, 0.18)', glow: 'rgba(251, 191, 36, 0.35)', text: '#fbbf24', bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.4)' }, // Amber
-  { stroke: '#a78bfa', fill: 'rgba(167, 139, 250, 0.18)', glow: 'rgba(167, 139, 250, 0.35)', text: '#a78bfa', bg: 'rgba(167, 139, 250, 0.1)', border: 'rgba(167, 139, 250, 0.4)' }, // Violet
-  { stroke: '#f472b6', fill: 'rgba(244, 114, 182, 0.18)', glow: 'rgba(244, 114, 182, 0.35)', text: '#f472b6', bg: 'rgba(244, 114, 182, 0.1)', border: 'rgba(244, 114, 182, 0.4)' }, // Pink
-  { stroke: '#60a5fa', fill: 'rgba(96, 165, 250, 0.18)', glow: 'rgba(96, 165, 250, 0.35)', text: '#60a5fa', bg: 'rgba(96, 165, 250, 0.1)', border: 'rgba(96, 165, 250, 0.4)' }  // Blue
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' }
 ];
 
 // Domain-aware mapping of visual entities to analytical tools & queries
@@ -547,7 +547,7 @@ export const ImageInspector = ({
             width: '28px',
             height: '28px',
             borderRadius: '6px',
-            background: mediaMode === 'video' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(52, 211, 153, 0.15)',
+            background: 'rgba(56, 189, 248, 0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
@@ -555,7 +555,7 @@ export const ImageInspector = ({
             {mediaMode === 'video' ? (
               <Film size={15} color="var(--primary)" />
             ) : (
-              <Camera size={15} color="var(--emerald)" />
+              <Camera size={15} color="var(--primary)" />
             )}
           </div>
           <div>
@@ -763,7 +763,7 @@ export const ImageInspector = ({
                   border: '1px solid rgba(56, 189, 248, 0.3)'
                 }}
               >
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isVideoPlaying ? '#10b981' : '#f59e0b', boxShadow: isVideoPlaying ? '0 0 6px #10b981' : 'none' }} />
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isVideoPlaying ? '#38bdf8' : 'var(--text-muted)', boxShadow: isVideoPlaying ? '0 0 6px #38bdf8' : 'none' }} />
                 <span>{isVideoPlaying ? 'PLAYING' : 'PAUSED'}</span>
                 <span>•</span>
                 <span>{videoCurrentTime.toFixed(1)}s / {videoDuration.toFixed(1)}s</span>
@@ -926,7 +926,7 @@ export const ImageInspector = ({
           <span style={{ fontWeight: 500, opacity: 0.9 }}>
             {mediaMode === 'video' ? `Keyframe @ ${videoCurrentTime.toFixed(1)}s: ${activeKeyframe?.label || 'Continuous Track'}` : preset?.title || "Visual Evidence"}
           </span>
-          <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--emerald)' : 'var(--text-muted)' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>
             {visibleBoxIds.size} of {groundedNodes.length} Rectangles Active
           </span>
         </div>
@@ -984,7 +984,7 @@ export const ImageInspector = ({
                     {activeHudNode.category || 'entity'}
                   </span>
                   <span>•</span>
-                  <span style={{ color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
                     {Math.round((activeHudNode.confidence || 0.9) * 100)}% Confidence
                   </span>
                 </div>
@@ -1089,7 +1089,7 @@ export const ImageInspector = ({
                 gap: '4px'
               }}
             >
-              <Layers size={12} color="var(--emerald)" />
+              <Layers size={12} color="var(--primary)" />
               <span>Glossary</span>
             </button>
           </div>
@@ -1136,9 +1136,9 @@ export const ImageInspector = ({
               gap: '5px',
               padding: '0.35rem 0.7rem',
               borderRadius: '6px',
-              background: activeSpecialistTab === 'plantCare' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
-              border: activeSpecialistTab === 'plantCare' ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid transparent',
-              color: activeSpecialistTab === 'plantCare' ? 'var(--emerald)' : 'var(--text-muted)',
+              background: activeSpecialistTab === 'plantCare' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+              border: activeSpecialistTab === 'plantCare' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+              color: activeSpecialistTab === 'plantCare' ? 'var(--primary)' : 'var(--text-muted)',
               fontSize: '0.74rem',
               fontWeight: activeSpecialistTab === 'plantCare' ? 700 : 500,
               cursor: 'pointer'
@@ -1209,10 +1209,10 @@ export const ImageInspector = ({
                 fontFamily: 'var(--font-mono)',
                 padding: '0.12rem 0.45rem',
                 borderRadius: '10px',
-                background: visibleBoxIds.size > 0 ? 'rgba(52, 211, 153, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-                color: visibleBoxIds.size > 0 ? 'var(--emerald)' : 'var(--text-muted)',
+                background: visibleBoxIds.size > 0 ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)',
                 fontWeight: 600,
-                border: visibleBoxIds.size > 0 ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid var(--border-color)'
+                border: visibleBoxIds.size > 0 ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid var(--border-color)'
               }}>
                 {visibleBoxIds.size} of {groundedNodes.length} visible
               </span>
@@ -1251,9 +1251,9 @@ export const ImageInspector = ({
                   gap: '4px',
                   padding: '0.22rem 0.55rem',
                   borderRadius: '6px',
-                  background: visibleBoxIds.size === 0 ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-dark)',
+                  background: visibleBoxIds.size === 0 ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-dark)',
                   border: '1px solid var(--border-color)',
-                  color: visibleBoxIds.size === 0 ? '#ef4444' : 'var(--text-muted)',
+                  color: visibleBoxIds.size === 0 ? 'var(--text-main)' : 'var(--text-muted)',
                   fontSize: '0.7rem',
                   fontWeight: 500,
                   cursor: 'pointer'
@@ -1397,7 +1397,7 @@ export const ImageInspector = ({
                         {node.category || 'feature'}
                       </span>
                       <span style={{
-                        color: 'var(--emerald)',
+                        color: 'var(--primary)',
                         fontFamily: 'var(--font-mono)',
                         fontWeight: 600
                       }}>
@@ -1512,7 +1512,7 @@ export const ImageInspector = ({
                       }}
                       title="Open Glossary Definition"
                     >
-                      <Layers size={11} color="var(--emerald)" />
+                      <Layers size={11} color="var(--primary)" />
                     </button>
                   </div>
                 </div>

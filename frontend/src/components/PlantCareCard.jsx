@@ -37,7 +37,7 @@ export const PlantCareCard = ({
         family: 'Araceae (Aroid)',
         healthScore: 94,
         healthStatus: 'Optimal Vigorous Vegetative State',
-        statusColor: '#10b981', // Emerald
+        statusColor: '#38bdf8', // Primary Blue
         pathologyDetected: 'None (Natural PCD Fenestration)',
         keyObservations: [
           'Morphological fenestrations are symmetrical Programmed Cell Death (PCD), not defoliation.',
@@ -174,7 +174,7 @@ export const PlantCareCard = ({
       className="plant-care-card animate-fade-in"
       style={{
         background: 'rgba(15, 23, 42, 0.92)',
-        border: '1px solid rgba(52, 211, 153, 0.35)',
+        border: '1px solid rgba(56, 189, 248, 0.35)',
         borderRadius: '12px',
         padding: '1rem',
         marginTop: '0.85rem',
@@ -191,12 +191,12 @@ export const PlantCareCard = ({
               width: '36px',
               height: '36px',
               borderRadius: '8px',
-              background: 'rgba(52, 211, 153, 0.15)',
-              border: '1px solid rgba(52, 211, 153, 0.3)',
+              background: 'rgba(56, 189, 248, 0.15)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--emerald)'
+              color: 'var(--primary)'
             }}
           >
             <Sprout size={20} />
@@ -212,8 +212,8 @@ export const PlantCareCard = ({
                   fontFamily: 'var(--font-mono)',
                   padding: '0.12rem 0.45rem',
                   borderRadius: '12px',
-                  background: 'rgba(52, 211, 153, 0.15)',
-                  color: 'var(--emerald)',
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  color: 'var(--primary)',
                   fontWeight: 600
                 }}
               >
@@ -269,19 +269,19 @@ export const PlantCareCard = ({
         </div>
         <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>PSII Yield (Fv/Fm)</div>
-          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
             {data.metrics?.psiiYield}
           </div>
         </div>
         <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Foliar Turgor</div>
-          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fbbf24', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ffffff', fontFamily: 'var(--font-mono)' }}>
             {data.metrics?.canopyTurgor}
           </div>
         </div>
         <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Root Zone Oxygen</div>
-          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#a78bfa', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#60a5fa', fontFamily: 'var(--font-mono)' }}>
             {data.metrics?.rootZoneOxygen}
           </div>
         </div>
@@ -320,7 +320,7 @@ export const PlantCareCard = ({
             padding: '0.35rem 0.65rem',
             background: 'transparent',
             border: 'none',
-            borderBottom: activeTab === 'treatment' ? '2px solid var(--emerald)' : '2px solid transparent',
+            borderBottom: activeTab === 'treatment' ? '2px solid #38bdf8' : '2px solid transparent',
             color: activeTab === 'treatment' ? '#ffffff' : 'var(--text-muted)',
             fontWeight: activeTab === 'treatment' ? 700 : 500,
             fontSize: '0.74rem',
@@ -330,7 +330,7 @@ export const PlantCareCard = ({
             gap: '5px'
           }}
         >
-          <Sparkles size={13} color={activeTab === 'treatment' ? 'var(--emerald)' : 'currentColor'} />
+          <Sparkles size={13} color={activeTab === 'treatment' ? '#38bdf8' : 'currentColor'} />
           <span>Treatment Action Plan</span>
         </button>
 
@@ -362,7 +362,7 @@ export const PlantCareCard = ({
             padding: '0.35rem 0.65rem',
             background: 'transparent',
             border: 'none',
-            borderBottom: activeTab === 'nutrition' ? '2px solid #a78bfa' : '2px solid transparent',
+            borderBottom: activeTab === 'nutrition' ? '2px solid #38bdf8' : '2px solid transparent',
             color: activeTab === 'nutrition' ? '#ffffff' : 'var(--text-muted)',
             fontWeight: activeTab === 'nutrition' ? 700 : 500,
             fontSize: '0.74rem',
@@ -372,8 +372,8 @@ export const PlantCareCard = ({
             gap: '5px'
           }}
         >
-          <Zap size={13} color={activeTab === 'nutrition' ? '#a78bfa' : 'currentColor'} />
-          <span>Soil & Nutrition</span>
+          <Zap size={13} color={activeTab === 'nutrition' ? '#38bdf8' : 'currentColor'} />
+          <span>Nutrition & Soil</span>
         </button>
 
         <button
@@ -383,7 +383,7 @@ export const PlantCareCard = ({
             padding: '0.35rem 0.65rem',
             background: 'transparent',
             border: 'none',
-            borderBottom: activeTab === 'environment' ? '2px solid #fbbf24' : '2px solid transparent',
+            borderBottom: activeTab === 'environment' ? '2px solid #38bdf8' : '2px solid transparent',
             color: activeTab === 'environment' ? '#ffffff' : 'var(--text-muted)',
             fontWeight: activeTab === 'environment' ? 700 : 500,
             fontSize: '0.74rem',
@@ -393,7 +393,7 @@ export const PlantCareCard = ({
             gap: '5px'
           }}
         >
-          <Sun size={13} color={activeTab === 'environment' ? '#fbbf24' : 'currentColor'} />
+          <Sun size={13} color={activeTab === 'environment' ? '#38bdf8' : 'currentColor'} />
           <span>Light & Solar</span>
         </button>
       </div>
@@ -411,15 +411,15 @@ export const PlantCareCard = ({
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '8px',
-                  background: isDone ? 'rgba(16, 185, 129, 0.08)' : 'rgba(0, 0, 0, 0.25)',
-                  border: isDone ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
+                  background: isDone ? 'rgba(56, 189, 248, 0.08)' : 'rgba(0, 0, 0, 0.25)',
+                  border: isDone ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
                   borderRadius: '8px',
                   padding: '0.55rem 0.7rem',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
               >
-                <div style={{ marginTop: '2px', color: isDone ? 'var(--emerald)' : 'var(--text-muted)' }}>
+                <div style={{ marginTop: '2px', color: isDone ? '#38bdf8' : 'var(--text-muted)' }}>
                   <CheckCircle2 size={16} />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -482,8 +482,8 @@ export const PlantCareCard = ({
 
       {activeTab === 'nutrition' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.74rem' }}>
-          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
-            <div style={{ fontWeight: 700, color: '#a78bfa', marginBottom: '2px' }}>Target N-P-K Ratio:</div>
+          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+            <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: '2px' }}>Target N-P-K Ratio:</div>
             <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '0.84rem', fontFamily: 'var(--font-mono)' }}>
               {data.prescription?.nutrition?.npkRatio}
             </div>
@@ -501,8 +501,8 @@ export const PlantCareCard = ({
 
       {activeTab === 'environment' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.74rem' }}>
-          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
-            <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: '2px' }}>Solar Exposure:</div>
+          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+            <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: '2px' }}>Solar Exposure:</div>
             <div style={{ color: '#ffffff', fontWeight: 600 }}>{data.prescription?.sunlight?.exposure}</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -512,7 +512,7 @@ export const PlantCareCard = ({
             </div>
             <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.5rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Daily Light Integral (DLI):</div>
-              <div style={{ color: 'var(--emerald)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{data.prescription?.sunlight?.dli}</div>
+              <div style={{ color: '#38bdf8', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{data.prescription?.sunlight?.dli}</div>
             </div>
           </div>
           <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', fontSize: '0.68rem' }}>
@@ -558,7 +558,7 @@ export const PlantCareCard = ({
             gap: '5px'
           }}
         >
-          <CheckCircle2 size={13} color="var(--emerald)" />
+          <CheckCircle2 size={13} color="#38bdf8" />
           <span>Save Care Plan</span>
         </button>
       </div>

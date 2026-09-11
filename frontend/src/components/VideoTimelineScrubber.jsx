@@ -94,8 +94,8 @@ export const VideoTimelineScrubber = ({
               gap: '3px',
               padding: '0.15rem 0.4rem',
               borderRadius: '4px',
-              background: 'rgba(16, 185, 129, 0.12)',
-              color: 'var(--emerald)',
+              background: 'rgba(56, 189, 248, 0.12)',
+              color: 'var(--primary)',
               fontSize: '0.65rem',
               fontFamily: 'var(--font-mono)'
             }}
