@@ -705,10 +705,10 @@ Structure:
                 summary = "Multimodal scene analysis identifies potted Monstera adansonii (Swiss cheese plant) exhibiting characteristic elliptical leaf fenestrations, active apical shoot unfurling, and dark green healthy foliage."
             else:  # is_preset_tomato or default
                 nodes = [
-                    NodeModel(id="leaf_chlorosis_01", label="Interveinal Foliar Chlorosis", node_type="object", category="pathology", confidence=0.96, bbox=[180, 240, 680, 760], visual_anchor=True, properties={"pattern": "bright yellowing between dark green primary veins", "canopy_layer": "apical and middle foliage"}),
-                    NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, bbox=[720, 520, 910, 830], visual_anchor=True, properties={"vwc_percent": 48.2, "saturation_status": "continuous waterlogging"}),
+                    NodeModel(id="leaf_chlorosis_01", label="Interveinal Foliar Chlorosis", node_type="object", category="pathology", confidence=0.96, bbox=[150, 60, 850, 560], visual_anchor=True, properties={"pattern": "bright yellowing between dark green primary veins", "canopy_layer": "apical and middle foliage"}),
+                    NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, bbox=[390, 640, 950, 990], visual_anchor=True, properties={"vwc_percent": 48.2, "saturation_status": "continuous waterlogging"}),
                     NodeModel(id="soil_ph_sensor_01", label="Substrate Alkalinity (pH 7.85)", node_type="property", category="measurement", confidence=0.92, bbox=None, visual_anchor=False, properties={"ph": 7.85, "condition": "calcareous / alkaline"}),
-                    NodeModel(id="irrigation_emitter_01", label="Continuous Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, bbox=[670, 70, 870, 420], visual_anchor=True, properties={"regime": "unregulated pulse", "flow_liters_hr": 2.8}),
+                    NodeModel(id="irrigation_emitter_01", label="Continuous Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, bbox=[670, 40, 920, 540], visual_anchor=True, properties={"regime": "unregulated pulse", "flow_liters_hr": 2.8}),
                     NodeModel(id="hypo_iron_deficiency", label="Hypothesis: Root Anoxia & Fe²⁺ Bioavailability Collapse", node_type="hypothesis", category="risk", confidence=0.48, bbox=None, visual_anchor=False, status="hypothesis")
                 ]
                 edges = [

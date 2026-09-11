@@ -19,97 +19,63 @@ const ANCHOR_COLORS = [
   { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' }
 ];
 
-// Domain-aware mapping of visual entities to analytical tools & queries
-const ENTITY_TOOL_MAPPINGS = {
-  // Agriculture & Indoor Aroid Entities
-  leaf_fenestrations_01: {
-    toolId: 'telemetry',
-    toolName: 'Foliar Margin Morphology & Fenestration Phenotyper',
-    actionLabel: 'Analyze Leaf Fenestration vs Pest Damage',
-    suggestedQuery: 'Evaluate whether these elliptical leaf perforations are natural evolutionary fenestrations (PCD) or pest defoliation.'
-  },
-  unfurling_apex_leaf_01: {
-    toolId: 'telemetry',
-    toolName: 'Photosystem II (PSII) Quantum Yield Fluorometer',
-    actionLabel: 'Evaluate Apical Shoot Vigor & PSII Yield',
-    suggestedQuery: 'Assess the photosynthetic health, metabolic turgor, and growth rate of this emergent apical leaf.'
-  },
-  pot_substrate_01: {
-    toolId: 'telemetry',
-    toolName: 'Container Substrate Drainage & Aeration Profiler',
-    actionLabel: 'Analyze Container Drainage & Root Rot Risk',
-    suggestedQuery: 'Examine the potting substrate drainage and evaluate vulnerability to Pythium root rot.'
-  },
-  fruit_01: {
-    toolId: 'telemetry',
-    toolName: 'Fruit Ripeness & Physiological Diagnostic',
-    actionLabel: 'Analyze Ripeness & Translocation in Chat',
-    suggestedQuery: 'Analyze the fruit ripening physiology, Brix sugar accumulation, and blossom-end rot risk for this cluster.'
-  },
-  leaf_chlorosis_01: {
-    toolId: 'telemetry',
-    toolName: 'Multispectral Foliar SPAD Diagnostic',
-    actionLabel: 'Run SPAD Chlorophyll & NDRE Diagnostic',
-    suggestedQuery: 'Explain the interveinal leaf chlorosis pattern and whether it indicates iron deficiency or nitrogen burn.'
-  },
-  soil_moisture_sensor_01: {
-    toolId: 'telemetry',
-    toolName: 'Root-Zone Oxygenation & ATP Pump Simulator',
-    actionLabel: 'Simulate Root Zone Hypoxia & ATP Depletion',
-    suggestedQuery: 'How does prolonged 48% VWC soil saturation impair root nutrient uptake?'
-  },
-  irrigation_emitter_01: {
-    toolId: 'telemetry',
-    toolName: 'Irrigation Drainage & Darcy Flow Simulator',
-    actionLabel: 'Simulate Irrigation Drainage & Percolation',
-    suggestedQuery: 'What is the optimal drip emitter pulse regime to prevent root waterlogging?'
-  },
+// Generic semantic mapping of visual entities to analytical tools & queries
+const getDynamicToolMapping = (node) => {
+  if (!node) return null;
+  const category = String(node.category || '').toLowerCase();
+  const label = String(node.label || node.id || '').toLowerCase();
 
-  // Civil Infrastructure Entities
-  road_01: {
-    toolId: 'telemetry',
-    toolName: 'Ground Penetrating Radar (GPR) Void Analyzer',
-    actionLabel: 'Scan for Subterranean Void Cavity',
-    suggestedQuery: 'Assess the structural collapse risk and subterranean void cavity probability beneath this road crack.'
-  },
-  drain_01: {
-    toolId: 'telemetry',
-    toolName: 'Hydrological Drainage Flow Simulator',
-    actionLabel: 'Simulate Storm Drain Inflow & Blockage',
-    suggestedQuery: 'What is the hydraulic inflow reduction caused by debris clogging this storm drain grate?'
-  },
-  water_01: {
-    toolId: 'telemetry',
-    toolName: 'Pavement Sub-Base Erosion & Load Risk Calculator',
-    actionLabel: 'Calculate Sub-Base Erosion & Load Risk',
-    suggestedQuery: 'How does standing water saturation accelerate asphalt fatigue and subgrade failure?'
-  },
-
-  // Pediatrics / Toddler Entities
-  node_lumbar_lordosis: {
-    toolId: 'telemetry',
-    toolName: 'LLM Biomechanical Postural & Spinal Alignment Analyzer',
-    actionLabel: 'Analyze Plumb Line Gravitational Axis',
-    suggestedQuery: 'Is this toddler lumbar lordosis (~38.5°) compensatory to abdominal wall compliance or pathological hyperlordosis?'
-  },
-  node_knee_bowing: {
-    toolId: 'telemetry',
-    toolName: 'LLM Pediatric Orthopedic Differential Diagnostician',
-    actionLabel: 'Run Symmetrical Genu Varum vs Blount’s Differential',
-    suggestedQuery: 'Differentiate this symmetrical toddler knee bowing (2.2cm gap) from early rickets or Blount’s disease.'
-  },
-  node_protuberant_abdomen: {
-    toolId: 'telemetry',
-    toolName: 'LLM Biomechanical Postural & Spinal Alignment Analyzer',
-    actionLabel: 'Evaluate Abdominal Wall Compliance',
-    suggestedQuery: 'How does developing rectus abdominis muscle tone contribute to toddler anterior pelvic tilt?'
-  },
-  node_wide_base_support: {
-    toolId: 'telemetry',
-    toolName: 'LLM WHO Milestone & Anthropometric Ratio Evaluator',
-    actionLabel: 'Check WHO Motor Milestone Concordance',
-    suggestedQuery: 'Does this wide-base stance and flexible flatfoot align with WHO percentiles for independent walking?'
+  if (category.includes('patholog') || label.includes('chloros') || label.includes('lesion') || label.includes('burn') || label.includes('stain')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Diagnostic Spectral & Pathology Analyzer',
+      actionLabel: 'Analyze Foliar/Tissue Pathology',
+      suggestedQuery: `Analyze the pathology, discoloration patterns, and diagnostic indicators associated with ${node.label || node.id}.`
+    };
   }
+
+  if (category.includes('morpholog') || label.includes('fenestrat') || label.includes('apex') || label.includes('shoot') || label.includes('leaf') || label.includes('margin')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Morphological & Phenotyping Profiler',
+      actionLabel: 'Analyze Structural Morphology',
+      suggestedQuery: `Examine the anatomical structure and developmental vigor of ${node.label || node.id}.`
+    };
+  }
+
+  if (category.includes('infrastruct') || category.includes('structur') || category.includes('obstacle') || label.includes('road') || label.includes('crack') || label.includes('pipe') || label.includes('drain') || label.includes('emitter')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Structural Integrity & Fluid Dynamics Analyzer',
+      actionLabel: 'Inspect Structural Entity',
+      suggestedQuery: `Assess the failure risk, load fatigue, and environmental exposure affecting ${node.label || node.id}.`
+    };
+  }
+
+  if (category.includes('biomechan') || category.includes('orthoped') || category.includes('postur') || category.includes('motor') || label.includes('lordosis') || label.includes('gait') || label.includes('stance') || label.includes('bowing')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Biomechanical & Kinematic Alignment Evaluator',
+      actionLabel: 'Evaluate Postural Alignment',
+      suggestedQuery: `Evaluate the biomechanical angles, weight distribution, and developmental alignment of ${node.label || node.id}.`
+    };
+  }
+
+  if (category.includes('measure') || category.includes('telemetry') || label.includes('sensor') || label.includes('probe') || label.includes('meter')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Telemetry & Environmental Sensor Profiler',
+      actionLabel: 'Analyze Sensor Telemetry',
+      suggestedQuery: `Evaluate the sensor telemetry, threshold exceedances, and environmental trends for ${node.label || node.id}.`
+    };
+  }
+
+  return {
+    toolId: 'telemetry',
+    toolName: 'Diagnostic Simulation Tool',
+    actionLabel: 'Inspect Regional Evidence',
+    suggestedQuery: `Analyze the scientific implications and causal factors associated with ${node.label || node.id}.`
+  };
 };
 
 export const ImageInspector = ({
@@ -315,15 +281,7 @@ export const ImageInspector = ({
     customImageData ||
     customImageUrl ||
     preset?.image ||
-    (presetId === 'agri_monstera_fenestration' || presetId === 'session-3' || preset?.id === 'agri_monstera_fenestration'
-      ? '/monstera_sample.png'
-      : presetId === 'infra_damaged_road'
-      ? 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=1200&q=80'
-      : presetId === 'astro_stellar_spectrum'
-      ? 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1200&q=80'
-      : presetId?.startsWith('toddler')
-      ? 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&w=1200&q=80'
-      : '/monstera_sample.png');
+    null;
 
   // Unified upload dispatcher (supports both photos and video clips)
   const handleUpload = (fileDataOrFile, url) => {
@@ -361,28 +319,15 @@ export const ImageInspector = ({
     }
   };
 
-  // Helper to retrieve or synthesize tool mapping for any node ID
+  // Dynamic tool mapping for any grounded node
   const getToolMapping = (nodeId) => {
-    if (ENTITY_TOOL_MAPPINGS[nodeId]) {
-      return ENTITY_TOOL_MAPPINGS[nodeId];
-    }
-    const cleanId = String(nodeId || '').toLowerCase();
-    for (const [key, mapping] of Object.entries(ENTITY_TOOL_MAPPINGS)) {
-      if (cleanId.includes(key) || key.includes(cleanId)) {
-        return mapping;
-      }
-    }
-    return {
-      toolId: 'telemetry',
-      toolName: 'Diagnostic Simulation Tool',
-      actionLabel: 'Inspect Regional Evidence',
-      suggestedQuery: `Analyze the scientific implications and causal factors associated with ${nodeId}.`
-    };
+    const nodeObj = (groundedNodes || []).find((n) => n.id === nodeId) || { id: nodeId, label: nodeId };
+    return getDynamicToolMapping(nodeObj);
   };
 
-  // Extract or synthesize grounded nodes with normalized bounding boxes [ymin, xmin, ymax, xmax] (0 to 1000)
+  // Extract and normalize grounded nodes strictly from the active dataset payload
   const groundedNodes = useMemo(() => {
-    // If in video mode, dynamically ground nodes to the active temporal keyframe!
+    // If in video mode, dynamically ground nodes to the active temporal keyframe
     if (mediaMode === 'video' && activeKeyframe && activeKeyframe.nodes) {
       return activeKeyframe.nodes.map((n) => ({
         ...n,
@@ -391,8 +336,8 @@ export const ImageInspector = ({
     }
 
     const rawList = Array.isArray(nodes) ? nodes : [];
-    const valid = rawList
-      .filter((n) => n.bbox && Array.isArray(n.bbox) && n.bbox.length === 4)
+    return rawList
+      .filter((n) => n && n.bbox && Array.isArray(n.bbox) && n.bbox.length === 4)
       .map((n) => {
         let [ymin, xmin, ymax, xmax] = n.bbox.map(Number);
         if (isNaN(ymin) || isNaN(xmin) || isNaN(ymax) || isNaN(xmax)) return null;
@@ -418,11 +363,11 @@ export const ImageInspector = ({
         if (ymax < ymin) ymax = ymin + ymax;
         if (xmax < xmin) xmax = xmin + xmax;
 
-        // Ensure reasonable minimum dimensions and bounds (at least 60px size in 1000px coordinate space)
-        ymin = Math.max(0, Math.min(940, ymin));
-        xmin = Math.max(0, Math.min(940, xmin));
-        ymax = Math.max(ymin + 60, Math.min(1000, ymax));
-        xmax = Math.max(xmin + 60, Math.min(1000, xmax));
+        // Ensure reasonable bounds within 1000x1000 coordinate space
+        ymin = Math.max(0, Math.min(960, ymin));
+        xmin = Math.max(0, Math.min(960, xmin));
+        ymax = Math.max(ymin + 40, Math.min(1000, ymax));
+        xmax = Math.max(xmin + 40, Math.min(1000, xmax));
 
         return {
           ...n,
@@ -430,55 +375,7 @@ export const ImageInspector = ({
         };
       })
       .filter(Boolean);
-
-    if (valid.length > 0) {
-      return valid;
-    }
-
-    // High-fidelity fallback grounding coordinates based on active preset / domain
-    if (presetId === 'infra_damaged_road' || preset?.id === 'infra_damaged_road') {
-      return [
-        { id: 'road_01', label: 'Longitudinal Surface Crack', bbox: [310, 190, 780, 520], confidence: 0.96, category: 'structural', properties: { orientation: 'longitudinal', severity: 'wide open' } },
-        { id: 'water_01', label: 'Accumulated Ponding Water', bbox: [440, 470, 880, 860], confidence: 0.93, category: 'environment', properties: { coverage: 'large area', color: 'turbid' } },
-        { id: 'drain_01', label: 'Storm Water Drain Grate', bbox: [120, 670, 410, 940], confidence: 0.98, category: 'infrastructure', properties: { condition: 'partially blocked', flow: 'restricted' } },
-        { id: 'debris_01', label: 'Organic & Solid Debris', bbox: [150, 640, 370, 890], confidence: 0.91, category: 'obstacle', properties: { type: 'silt & leaves' } }
-      ];
-    }
-
-    if (presetId === 'astro_stellar_spectrum' || preset?.id === 'astro_stellar_spectrum') {
-      return [
-        { id: 'spectrum_01', label: 'Stellar Absorption Spectrum', bbox: [140, 80, 460, 920], confidence: 0.99, category: 'spectroscopy', properties: { type: 'absorption lines', bands: 'visible' } },
-        { id: 'shift_01', label: 'Doppler Line Shift (Δλ)', bbox: [250, 460, 390, 570], confidence: 0.92, category: 'measurement', properties: { direction: 'redshift', prominence: 'visible' } },
-        { id: 'time_series_01', label: 'Photometric Light Curve Dip', bbox: [560, 110, 890, 890], confidence: 0.88, category: 'photometry', properties: { pattern: 'periodic dip', depth: 'shallow' } }
-      ];
-    }
-
-    if (presetId?.startsWith('toddler') || preset?.domain === 'pediatrics') {
-      return [
-        { id: 'node_lumbar_lordosis', label: 'Accentuated Lumbar Curvature (~38°)', bbox: [340, 280, 620, 520], confidence: 0.94, category: 'biomechanics', properties: { lordosis_deg: 38.5, balance: 'compensated' } },
-        { id: 'node_protuberant_abdomen', label: 'Protuberant Abdominal Contour', bbox: [380, 480, 590, 720], confidence: 0.96, category: 'anatomy', properties: { wall_tone: 'developing', visceral_shift: 'anterior' } },
-        { id: 'node_knee_bowing', label: 'Symmetrical Genu Varum (2.2cm gap)', bbox: [640, 310, 890, 680], confidence: 0.92, category: 'orthopedic', properties: { symmetry: 'high', gap_cm: 2.2 } },
-        { id: 'node_wide_base_support', label: 'Wide-Base Stance & Medial Fat Pad', bbox: [820, 260, 970, 740], confidence: 0.91, category: 'motor', properties: { stance: 'broad', arch: 'physiologic fat pad' } }
-      ];
-    }
-
-    if (presetId === 'agri_monstera_fenestration' || presetId === 'session-3' || preset?.id === 'agri_monstera_fenestration') {
-      return [
-        { id: 'leaf_fenestrations_01', label: 'Elliptical Leaf Fenestrations (PCD)', bbox: [90, 300, 430, 590], confidence: 0.96, category: 'morphology', properties: { mechanism: 'Programmed Cell Death (PCD)', pest_damage: 'None' } },
-        { id: 'unfurling_apex_leaf_01', label: 'Emergent Juvenile Apical Shoot', bbox: [310, 520, 750, 610], confidence: 0.95, category: 'vegetative_vigor', properties: { turgor: 'high', meristem: 'active expansion' } },
-        { id: 'foliar_canopy_01', label: 'Dense Fenestrated Foliage Canopy', bbox: [30, 540, 480, 890], confidence: 0.93, category: 'anatomy', properties: { chlorophyll: 'optimal', fv_fm: '0.81' } },
-        { id: 'root_substrate_01', label: 'Coarse Aerated Pot Substrate', bbox: [480, 450, 980, 720], confidence: 0.92, category: 'substrate', properties: { aeration: 'high', pythium_risk: 'low' } }
-      ];
-    }
-
-    // Default agriculture foliar chlorosis grounding with tomato fruit
-    return [
-      { id: 'leaf_chlorosis_01', label: 'Interveinal Foliar Chlorosis', bbox: [180, 240, 680, 760], confidence: 0.96, category: 'pathology', properties: { pattern: 'interveinal yellowing', severity: 'acute' } },
-      { id: 'fruit_01', label: 'Tomato Fruit Truss (Apical Cluster)', bbox: [440, 110, 640, 340], confidence: 0.95, category: 'developmental', properties: { color: 'green/unripe', cluster: 'apical position' } },
-      { id: 'irrigation_emitter_01', label: 'Continuous Drip Irrigation Line', bbox: [670, 70, 870, 420], confidence: 0.98, category: 'infrastructure', properties: { type: 'drip line', regime: 'continuous' } },
-      { id: 'soil_moisture_sensor_01', label: 'Root Zone (Visibly Saturated)', bbox: [720, 520, 910, 830], confidence: 0.94, category: 'observation', properties: { surface: 'wet/dark', drainage: 'poor' } }
-    ];
-  }, [nodes, presetId, preset, mediaMode, activeKeyframe]);
+  }, [nodes, mediaMode, activeKeyframe]);
 
   // Synchronize visibleBoxIds when groundedNodes change (default: reveal all grounded anchors)
   useEffect(() => {
@@ -1277,13 +1174,31 @@ export const ImageInspector = ({
             gap: '0.6rem',
             paddingBottom: '2.5rem'
           }}>
-            {groundedNodes.map((node, idx) => {
-              const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
-              const isVisible = visibleBoxIds.has(node.id);
-              const isHovered = hoveredBoxId === node.id;
-              const mapping = getToolMapping(node.id);
+            {groundedNodes.length === 0 ? (
+              <div style={{
+                gridColumn: '1 / -1',
+                padding: '1.5rem',
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                background: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '8px',
+                border: '1px dashed var(--border-color)',
+                fontSize: '0.78rem'
+              }}>
+                <Crosshair size={24} style={{ opacity: 0.4, margin: '0 auto 0.5rem auto' }} />
+                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>No visual bounding boxes detected</div>
+                <div style={{ fontSize: '0.72rem', opacity: 0.7 }}>
+                  Visual anchors appear when an image is analyzed by the perception layer.
+                </div>
+              </div>
+            ) : (
+              groundedNodes.map((node, idx) => {
+                const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
+                const isVisible = visibleBoxIds.has(node.id);
+                const isHovered = hoveredBoxId === node.id;
+                const mapping = getToolMapping(node.id);
 
-              return (
+                return (
                 <div
                   key={node.id}
                   onClick={() => {
@@ -1517,7 +1432,7 @@ export const ImageInspector = ({
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       )}

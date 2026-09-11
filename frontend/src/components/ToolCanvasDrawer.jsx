@@ -14,6 +14,7 @@ export function ToolCanvasDrawer({
   onClose,
   activeTool,
   onSelectTool,
+  activeSessionId,
   activeInvestigation,
   investigationData,
   saarData,
@@ -32,13 +33,18 @@ export function ToolCanvasDrawer({
   messages = [],
   selectedDomain = 'agriculture',
   selectedNodeId,
-  onSelectNode
+  onSelectNode,
+  hasSensorData = true,
+  onUploadSensorData = null,
+  onLoadSampleDataset = null
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(() => {
     return Math.min(Math.round(window.innerWidth * 0.88), 1300);
   });
   const [isResizing, setIsResizing] = useState(false);
+
+  const activePresetId = investigationData?.preset_id || activeInvestigation?.preset_id || null;
 
   // IDE-style split pane ratio (% width for left pane)
   const [splitRatio, setSplitRatio] = useState(48);
@@ -115,7 +121,7 @@ export function ToolCanvasDrawer({
     { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} /> },
     { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} /> },
     { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
-    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} /> },
+    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
     { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
     { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
   ];
@@ -161,6 +167,19 @@ export function ToolCanvasDrawer({
               >
                 {t.icon}
                 <span>{t.label}</span>
+                {t.badge && (
+                  <span style={{
+                    fontSize: '0.62rem',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    background: activeTool === t.id ? '#ffffff35' : '#e0f2fe',
+                    color: activeTool === t.id ? '#ffffff' : '#0369a1',
+                    fontWeight: '700',
+                    marginLeft: '3px'
+                  }}>
+                    {t.badge}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -230,7 +249,7 @@ export function ToolCanvasDrawer({
             >
               <ImageInspector
                 preset={investigationData?.preset}
-                presetId={investigationData?.preset_id || 'infra_damaged_road'}
+                presetId={activePresetId}
                 customImageData={customImageData}
                 customImageUrl={customImageUrl}
                 onUploadCustom={onUploadCustomImage}
@@ -361,7 +380,7 @@ export function ToolCanvasDrawer({
           <div className="tool-body-pane custom-pane-scrollbar" style={{ height: '100%', maxHeight: '100%', minHeight: 0, overflowY: 'auto', padding: '0.65rem', display: 'block', boxSizing: 'border-box' }}>
             <ImageInspector
               preset={investigationData?.preset}
-              presetId={investigationData?.preset_id || 'infra_damaged_road'}
+              presetId={activePresetId}
               customImageData={customImageData}
               customImageUrl={customImageUrl}
               onUploadCustom={onUploadCustomImage}
@@ -394,6 +413,9 @@ export function ToolCanvasDrawer({
                 height={520}
                 onSelectTool={onSelectTool}
                 onSendToChat={onSendToChat}
+                hasSensorData={hasSensorData}
+                onUploadSensorData={onUploadSensorData}
+                onLoadSampleDataset={onLoadSampleDataset}
               />
             </div>
           </div>

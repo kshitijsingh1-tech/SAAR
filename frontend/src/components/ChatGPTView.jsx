@@ -89,7 +89,8 @@ export function ChatGPTView({
   isSidebarOpen,
   onOpenHelp,
   onExportChat,
-  theme = 'light'
+  theme = 'light',
+  hasSensorData = true
 }) {
   const [inputText, setInputText] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
@@ -581,7 +582,7 @@ export function ChatGPTView({
                           onClick={() => onOpenTool('analytics')}
                         >
                           <BarChart2 size={14} className="text-primary" />
-                          <span>Sensor Analytics</span>
+                          <span>Sensor Analytics {!hasSensorData ? '· Ingest' : ''}</span>
                           <ArrowRight size={12} className="badge-arrow" />
                         </button>
 

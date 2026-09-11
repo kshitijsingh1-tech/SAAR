@@ -18,13 +18,13 @@ class AgriculturePlugin(BaseDomainPlugin):
                 "id": "agri_monstera_fenestration",
                 "title": "Indoor Aroid Phenotyping & Foliar Fenestration Analysis",
                 "description": "Potted Monstera adansonii exhibiting natural elliptical leaf fenestrations, emergent apical shoot, and aerated substrate.",
-                "image": "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?auto=format&fit=crop&w=1200&q=80"
+                "image": "/monstera_sample.png"
             },
             {
                 "id": "agri_tomato_chlorosis",
                 "title": "30-Day Tomato Crop Failure & Leaf Chlorosis",
                 "description": "Greenhouse tomato crop exhibiting severe interveinal leaf yellowing, high substrate moisture, and root stagnation.",
-                "image": "https://images.unsplash.com/photo-1592417817098-8f3d69102553?auto=format&fit=crop&w=1200&q=80"
+                "image": "/tomato_chlorosis_sample.jpg"
             }
         ]
 
@@ -34,11 +34,11 @@ class AgriculturePlugin(BaseDomainPlugin):
             return nodes, edges
 
         nodes = [
-            NodeModel(id="leaf_chlorosis_01", label="Interveinal Leaf Chlorosis", node_type="observation", category="pathology", confidence=0.96, bbox=[180, 240, 680, 760], visual_anchor=True, properties={"pattern": "yellowing between green primary veins", "affected_area": "upper foliage"}),
-            NodeModel(id="fruit_01", label="Tomato Fruit Truss (Distal Cluster)", node_type="object", category="developmental", confidence=0.95, bbox=[440, 110, 640, 340], visual_anchor=True, properties={"ripeness": "turning/breaker", "distal_necrosis_risk": "moderate"}),
-            NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, bbox=[720, 520, 910, 830], visual_anchor=True, properties={"vwc_percent": 48.2, "saturation_threshold": 35.0}),
+            NodeModel(id="leaf_chlorosis_01", label="Interveinal Leaf Chlorosis", node_type="observation", category="pathology", confidence=0.96, bbox=[150, 60, 850, 560], visual_anchor=True, properties={"pattern": "yellowing between green primary veins", "affected_area": "upper foliage"}),
+            NodeModel(id="fruit_01", label="Tomato Fruit Truss (Distal Cluster)", node_type="object", category="developmental", confidence=0.95, bbox=[60, 460, 300, 600], visual_anchor=True, properties={"ripeness": "turning/breaker", "distal_necrosis_risk": "moderate"}),
+            NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, bbox=[390, 640, 950, 990], visual_anchor=True, properties={"vwc_percent": 48.2, "saturation_threshold": 35.0}),
             NodeModel(id="soil_ph_sensor_01", label="Substrate pH Sensor (pH 7.85)", node_type="property", category="measurement", confidence=0.92, bbox=None, visual_anchor=False, properties={"ph": 7.85, "condition": "calcareous / alkaline"}),
-            NodeModel(id="irrigation_emitter_01", label="Automated Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, bbox=[670, 70, 870, 420], visual_anchor=True, properties={"regime": "continuous pulse", "flow_liters_hr": 2.8}),
+            NodeModel(id="irrigation_emitter_01", label="Automated Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, bbox=[670, 40, 920, 540], visual_anchor=True, properties={"regime": "continuous pulse", "flow_liters_hr": 2.8}),
             
             # Hypotheses
             NodeModel(id="hypo_iron_deficiency", label="Hypothesis: Bicarbonate-Induced Fe²⁺ Bioavailability Deficit", node_type="hypothesis", category="nutritional_disorder", confidence=0.45, bbox=None, visual_anchor=False, status="hypothesis"),
