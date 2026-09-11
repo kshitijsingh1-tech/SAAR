@@ -71,7 +71,7 @@ class InvestigationRequest(BaseModel):
 class InvestigationResponse(BaseModel):
     investigation_id: str
     domain: str
-    preset_id: str
+    preset_id: Optional[str] = "custom_investigation"
     vlm_provider_used: str = "Saar Vision Engine"
     is_live_vlm: bool = False
     steps: List[WorkflowStepModel]

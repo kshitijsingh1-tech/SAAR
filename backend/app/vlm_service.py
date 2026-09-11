@@ -15,14 +15,12 @@ class VLMService:
     """
 
     SYSTEM_PROMPT = """You are the Perception Layer of Saar, a Visual Scientific Reasoning Engine.
-Your task is to analyze the provided image for a scientific/engineering domain ({domain}) and extract an image-grounded structured visual scene graph.
+Your task is to analyze the provided image for domain '{domain}' and extract a concise, structured visual scene graph (3 to 5 key nodes, 1 to 2 hypotheses).
 
-For every physically visible object or observation in the image, provide its normalized 2D bounding box as [ymin, xmin, ymax, xmax] scaled from 0 to 1000 (e.g., [120, 45, 380, 210]).
-For abstract hypotheses, measurements, or latent mechanisms that are NOT physically visible in raw surface pixels, set "bbox": null and "visual_anchor": false.
-
-Respond ONLY with valid JSON conforming to this structure:
+Output valid JSON ONLY. Start directly with the JSON object without extensive chain-of-thought.
+Structure:
 {{
-  "scene_summary": "Brief 1-2 sentence high-level visual assessment",
+  "scene_summary": "Concise 1-2 sentence assessment",
   "nodes": [
     {{
       "id": "node_id_1",
@@ -118,31 +116,31 @@ Respond ONLY with valid JSON conforming to this structure:
         # 1. Try Groq API (Ultra-High Speed Qwen & LLaMA 3.2 Vision)
         if (vlm_provider in ("groq", "qwen", "auto")) and groq_key:
             res = self._call_groq_vlm(primary_image, domain, groq_key)
-            if res:
+            if res and len(res[0]) > 0:
                 return res[0], res[1], res[2], "Groq Qwen & LLaMA Engine (Ultra-High Speed)"
 
         # 2. Try Gemini VLM API (Google AI Studio - Multi-Image Multimodal VLM)
         if (vlm_provider in ("gemini", "auto")) and gemini_key:
             res = self._call_gemini_vlm(all_images, domain, gemini_key)
-            if res:
+            if res and len(res[0]) > 0:
                 return res[0], res[1], res[2], f"Google AI Studio (Gemini 1.5 Flash - {len(all_images)} frames)"
 
         # 3. Try Local Ollama Engine (Qwen2.5-VL / LLaVA)
         if vlm_provider in ("ollama", "qwen", "auto"):
             res = self._call_ollama_vlm(primary_image, domain)
-            if res:
+            if res and len(res[0]) > 0:
                 return res[0], res[1], res[2], "Ollama Local Engine (Qwen2.5-VL / LLaVA)"
 
         # 4. Try OpenRouter Multi-Model Router (Resilience & Free Models)
         if (vlm_provider in ("openrouter", "auto")) and openrouter_key:
             res = self._call_openrouter_vlm(primary_image, domain, openrouter_key)
-            if res:
+            if res and len(res[0]) > 0:
                 return res[0], res[1], res[2], "OpenRouter Multi-Model Fallback Engine"
 
         # 5. Try OpenAI GPT-4o Vision if key available or requested
         if (vlm_provider == "openai" or (vlm_provider == "auto" and openai_key)) and openai_key:
             res = self._call_openai_vlm(all_images, domain, openai_key)
-            if res:
+            if res and len(res[0]) > 0:
                 return res[0], res[1], res[2], f"OpenAI GPT-4o Vision (Live VLM - {len(all_images)} frames)"
 
         # 6. Fallback to Saar Intelligent Vision Synthesizer (Zero-latency offline engine)
@@ -238,49 +236,71 @@ Respond ONLY with valid JSON conforming to this structure:
             return None
 
     def _call_groq_vlm(self, image_input: Optional[str], domain: str, api_key: str) -> Optional[Tuple[List[NodeModel], List[EdgeModel], str]]:
-        """Ultra-fast Groq Qwen & LLaMA Vision/Reasoning API."""
+        """Groq Vision API using Llama 4 Scout / Maverick and Llama 3.2 Vision models."""
         url = "https://api.groq.com/openai/v1/chat/completions"
         prompt = self.SYSTEM_PROMPT.format(domain=domain)
-        
+
         img_bytes, mime_type = self._prepare_image_data(image_input) if image_input else (None, "image/jpeg")
         b64_img = base64.b64encode(img_bytes).decode("utf-8") if img_bytes else None
 
-        # Official Active Groq Qwen & Reasoning Models
-        models_to_try = [
-            "qwen/qwen3.8-27b",
+        # Groq vision-capable models, in preference order
+        # qwen/qwen3.6-27b confirmed working and responsive (0.6-2.5s) on this account
+        vision_models = [
             "qwen/qwen3.6-27b",
-            "groq/compound",
-            "groq/compound-mini"
+            "qwen/qwen3.8-27b",
         ]
 
-        for model in models_to_try:
-            messages = [{"role": "user", "content": prompt}]
+        for model in vision_models:
+            # Attach image in content array when available (vision API format)
+            if b64_img:
+                content = [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64_img}"}}
+                ]
+            else:
+                content = prompt
+
             payload = {
                 "model": model,
-                "messages": messages,
+                "messages": [{"role": "user", "content": content}],
                 "temperature": 0.2,
-                "max_tokens": 2048
+                "max_tokens": 750
             }
             try:
                 req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {api_key}",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 })
-                with urllib.request.urlopen(req, timeout=10) as response:
+                with urllib.request.urlopen(req, timeout=20) as response:
                     result = json.loads(response.read().decode("utf-8"))
                     text = result["choices"][0]["message"]["content"]
+                    # Strip chain-of-thought thinking tags if present
+                    text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE).strip()
+                    text = re.sub(r"<think>[\s\S]*", "", text, flags=re.IGNORECASE).strip()
                     parsed = self._parse_vlm_json_response(text)
                     if parsed:
-                        print(f"[VLMService] Successfully invoked Groq model '{model}'")
+                        print(f"[VLMService] Successfully invoked Groq vision model '{model}'")
                         return parsed
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8", errors="ignore")
+                print(f"[VLMService] Groq vision model '{model}' failed (HTTP {e.code}): {err_body[:300]}")
+                continue
             except Exception as e:
-                print(f"[VLMService] Groq API call with model '{model}' failed: {e}")
+                print(f"[VLMService] Groq vision model '{model}' failed: {e}")
                 continue
         return None
 
     def _call_ollama_vlm(self, image_input: Optional[str], domain: str) -> Optional[Tuple[List[NodeModel], List[EdgeModel], str]]:
         """Local Ollama Qwen2.5-VL / LLaVA Vision Engine."""
+        # Fast probe to see if local Ollama daemon is actively running
+        try:
+            probe_req = urllib.request.Request("http://localhost:11434/api/tags", headers={"User-Agent": "Saar/1.0"})
+            with urllib.request.urlopen(probe_req, timeout=0.6) as resp:
+                pass
+        except Exception:
+            return None
+
         url = "http://localhost:11434/api/chat"
         prompt = self.SYSTEM_PROMPT.format(domain=domain)
         
@@ -302,7 +322,7 @@ Respond ONLY with valid JSON conforming to this structure:
             }
             try:
                 req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
-                with urllib.request.urlopen(req, timeout=8) as response:
+                with urllib.request.urlopen(req, timeout=4) as response:
                     result = json.loads(response.read().decode("utf-8"))
                     text = result.get("message", {}).get("content", "")
                     parsed = self._parse_vlm_json_response(text)
@@ -340,10 +360,36 @@ Respond ONLY with valid JSON conforming to this structure:
 
     def _parse_vlm_json_response(self, raw_json_str: str) -> Optional[Tuple[List[NodeModel], List[EdgeModel], str]]:
         try:
-            # Clean markdown JSON formatting if present
-            cleaned = re.sub(r"^```json\s*", "", raw_json_str.strip())
-            cleaned = re.sub(r"\s*```$", "", cleaned)
-            data = json.loads(cleaned)
+            # Strip think tags if any remain
+            raw = re.sub(r"<think>[\s\S]*?</think>", "", raw_json_str, flags=re.IGNORECASE).strip()
+            raw = re.sub(r"<think>[\s\S]*", "", raw, flags=re.IGNORECASE).strip()
+
+            # If stripping think removed everything, check if JSON was inside think block
+            if not raw or "{" not in raw:
+                raw = raw_json_str
+
+            # Robust JSON extraction: first check code fence ```json ... ```, then find outermost { ... }
+            fence_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", raw, flags=re.IGNORECASE)
+            if fence_match:
+                cleaned = fence_match.group(1).strip()
+            else:
+                json_match = re.search(r"\{[\s\S]*\}", raw)
+                cleaned = json_match.group(0).strip() if json_match else raw.strip()
+
+            # Attempt standard parse first, with auto-repair fallback for truncated payloads
+            try:
+                data = json.loads(cleaned)
+            except Exception:
+                repaired = cleaned
+                if repaired.count('"') % 2 != 0:
+                    repaired += '"'
+                open_braces = repaired.count('{') - repaired.count('}')
+                open_brackets = repaired.count('[') - repaired.count(']')
+                repaired = re.sub(r",\s*$", "", repaired)
+                repaired = re.sub(r",\s*(\]|\})", r"\1", repaired)
+                repaired += "]" * max(0, open_brackets)
+                repaired += "}" * max(0, open_braces)
+                data = json.loads(repaired)
 
             nodes: List[NodeModel] = []
             edges: List[EdgeModel] = []
@@ -392,8 +438,10 @@ Respond ONLY with valid JSON conforming to this structure:
                     evidence=e.get("evidence", "Visual VLM perception link")
                 ))
 
-            summary = data.get("scene_summary", "Extracted multimodal scene elements and initial topological links.")
-            return nodes, edges, summary
+            if not nodes:
+                return None
+            scene_summary = data.get("scene_summary", "Visual scene analysis completed by SAAR perception engine.")
+            return nodes, edges, scene_summary
 
         except Exception as err:
             print(f"[VLMService] Failed to parse VLM response JSON: {err}")
@@ -419,20 +467,225 @@ Respond ONLY with valid JSON conforming to this structure:
                 EdgeModel(id="e_astro_3", source="transit_dip_01", target="hypo_exoplanet_companion", relation_type="supports", confidence=0.72, evidence="Photometric light curve transit matches periodic orbital shadow.")
             ]
         elif domain == "agriculture":
-            nodes = [
-                NodeModel(id="leaf_chlorosis_01", label="Interveinal Foliar Chlorosis", node_type="object", category="pathology", confidence=0.96, bbox=[180, 240, 680, 760], visual_anchor=True, properties={"pattern": "bright yellowing between dark green primary veins", "canopy_layer": "apical and middle foliage"}),
-                NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, bbox=[720, 520, 910, 830], visual_anchor=True, properties={"vwc_percent": 48.2, "saturation_status": "continuous waterlogging"}),
-                NodeModel(id="soil_ph_sensor_01", label="Substrate Alkalinity (pH 7.85)", node_type="property", category="measurement", confidence=0.92, bbox=None, visual_anchor=False, properties={"ph": 7.85, "condition": "calcareous / alkaline"}),
-                NodeModel(id="irrigation_emitter_01", label="Continuous Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, bbox=[670, 70, 870, 420], visual_anchor=True, properties={"regime": "unregulated pulse", "flow_liters_hr": 2.8}),
-                NodeModel(id="hypo_iron_deficiency", label="Hypothesis: Root Anoxia & Fe²⁺ Bioavailability Collapse", node_type="hypothesis", category="risk", confidence=0.48, bbox=None, visual_anchor=False, status="hypothesis")
-            ]
-            edges = [
-                EdgeModel(id="e_agri_1", source="irrigation_emitter_01", target="soil_moisture_sensor_01", relation_type="causes", confidence=0.95, evidence="Excessive irrigation emitter frequency maintains root substrate above saturation limit."),
-                EdgeModel(id="e_agri_2", source="soil_moisture_sensor_01", target="hypo_iron_deficiency", relation_type="supports", confidence=0.60, evidence="Prolonged saturation induces root-zone oxygen depletion and impairs ATP-driven H+-ATPase pumps."),
-                EdgeModel(id="e_agri_3", source="soil_ph_sensor_01", target="hypo_iron_deficiency", relation_type="supports", confidence=0.65, evidence="Alkaline pH promotes rapid precipitation of ionic iron into insoluble hydroxide matrices."),
-                EdgeModel(id="e_agri_4", source="hypo_iron_deficiency", target="leaf_chlorosis_01", relation_type="causes", confidence=0.75, evidence="Iron unavailability halts chloroplast protein complex assembly, producing acute interveinal chlorosis.")
-            ]
-            summary = "Multimodal scene analysis identifies acute interveinal foliar chlorosis, saturated root zone substrate (48% VWC), and continuous drip line over-delivery."
+            is_preset_monstera = preset_id == "agri_monstera_fenestration"
+            is_preset_tomato = preset_id == "agri_tomato_chlorosis"
+            is_custom_image = image_input and not is_preset_monstera and not is_preset_tomato
+
+            if is_custom_image:
+                # Generic scene for any user-uploaded plant image (VLM unavailable)
+                nodes = [
+                    NodeModel(
+                        id="plant_specimen_01",
+                        label="Botanical Foliar Specimen",
+                        node_type="object",
+                        category="morphology",
+                        confidence=0.88,
+                        bbox=[50, 50, 950, 950],
+                        visual_anchor=True,
+                        properties={"specimen_type": "foliar_canopy", "morphology": "vegetative_tissue"}
+                    ),
+                    NodeModel(
+                        id="foliar_surface_01",
+                        label="Foliar Surface Structure Detected",
+                        node_type="observation",
+                        category="morphology",
+                        confidence=0.70,
+                        bbox=[100, 100, 800, 800],
+                        visual_anchor=True,
+                        properties={"morphology": "lamina_detected"}
+                    ),
+                    NodeModel(
+                        id="hypo_nutrient_stress",
+                        label="Hypothesis: Macro/Micronutrient Deficiency or Imbalance",
+                        node_type="hypothesis",
+                        category="pathology",
+                        confidence=0.42,
+                        bbox=None,
+                        visual_anchor=False,
+                        status="hypothesis"
+                    ),
+                    NodeModel(
+                        id="hypo_pathogen_pest",
+                        label="Hypothesis: Pathogen Infection or Pest Infestation",
+                        node_type="hypothesis",
+                        category="pathology",
+                        confidence=0.38,
+                        bbox=None,
+                        visual_anchor=False,
+                        status="hypothesis"
+                    ),
+                    NodeModel(
+                        id="hypo_environmental_stress",
+                        label="Hypothesis: Abiotic Environmental Stress (Water / Light / Temperature)",
+                        node_type="hypothesis",
+                        category="physiological",
+                        confidence=0.45,
+                        bbox=None,
+                        visual_anchor=False,
+                        status="hypothesis"
+                    )
+                ]
+                edges = [
+                    EdgeModel(
+                        id="e_generic_1",
+                        source="foliar_surface_01",
+                        target="hypo_nutrient_stress",
+                        relation_type="indicates",
+                        confidence=0.45,
+                        evidence="Foliar surface detected; nutrient stress requires spectral confirmation."
+                    ),
+                    EdgeModel(
+                        id="e_generic_2",
+                        source="foliar_surface_01",
+                        target="hypo_pathogen_pest",
+                        relation_type="indicates",
+                        confidence=0.40,
+                        evidence="Morphological surface scan required to rule out lesions, pustules, or frass."
+                    ),
+                    EdgeModel(
+                        id="e_generic_3",
+                        source="plant_specimen_01",
+                        target="hypo_environmental_stress",
+                        relation_type="affects",
+                        confidence=0.42,
+                        evidence="Abiotic stress diagnosis requires soil moisture, light, and temperature cross-referencing."
+                    )
+                ]
+                summary = "Plant specimen detected. Live VLM image analysis was unavailable; generic diagnostic hypotheses loaded. Run diagnostic tools for targeted analysis."
+            elif is_preset_monstera:
+                nodes = [
+                    NodeModel(
+                        id="leaf_fenestrations_01",
+                        label="Elliptical Leaf Fenestrations (Lamina Perforations)",
+                        node_type="object",
+                        category="morphology",
+                        confidence=0.96,
+                        bbox=[90, 300, 430, 590],
+                        visual_anchor=True,
+                        properties={"species": "Monstera adansonii", "margin_type": "entire/suberized", "halo_necrosis": False, "fenestration_count": 8}
+                    ),
+                    NodeModel(
+                        id="unfurling_apex_leaf_01",
+                        label="Emergent Juvenile Apical Shoot (Unfurling Leaf)",
+                        node_type="observation",
+                        category="vegetative_vigor",
+                        confidence=0.95,
+                        bbox=[310, 520, 750, 610],
+                        visual_anchor=True,
+                        properties={"turgor": "high", "pigmentation": "light_green_juvenile", "meristem_activity": "active"}
+                    ),
+                    NodeModel(
+                        id="foliar_canopy_01",
+                        label="Dense Fenestrated Foliage Canopy",
+                        node_type="object",
+                        category="anatomy",
+                        confidence=0.93,
+                        bbox=[30, 540, 580, 980],
+                        visual_anchor=True,
+                        properties={"chlorophyll_density": "high", "leaf_blade_integrity": "healthy"}
+                    ),
+                    NodeModel(
+                        id="pot_substrate_01",
+                        label="Potted Planter & Aerated Peat-Perlite Substrate",
+                        node_type="object",
+                        category="environment",
+                        confidence=0.91,
+                        bbox=[480, 450, 980, 720],
+                        visual_anchor=True,
+                        properties={"container_type": "indoor_nursery_pot", "substrate_texture": "coarse_peat_perlite"}
+                    ),
+                    NodeModel(
+                        id="cascading_leaves_01",
+                        label="Pendulous Lateral Foliage & Calyx Stalks",
+                        node_type="observation",
+                        category="morphology",
+                        confidence=0.89,
+                        bbox=[590, 610, 990, 870],
+                        visual_anchor=True,
+                        properties={"orientation": "geotropic_pendulous", "turgor": "optimal"}
+                    ),
+                    # Competing Hypotheses
+                    NodeModel(
+                        id="hypo_physiological_fenestration",
+                        label="Hypothesis: Natural Evolutionary Leaf Fenestration (Programmed Cell Death in Araceae)",
+                        node_type="hypothesis",
+                        category="developmental",
+                        confidence=0.58,
+                        bbox=None,
+                        visual_anchor=False,
+                        status="hypothesis"
+                    ),
+                    NodeModel(
+                        id="hypo_foliar_pest_chewing",
+                        label="Hypothesis: Pest Defoliation / Insect Chewing or Fungal Shot-Hole Lesions",
+                        node_type="hypothesis",
+                        category="pathology",
+                        confidence=0.36,
+                        bbox=None,
+                        visual_anchor=False,
+                        status="hypothesis"
+                    ),
+                    NodeModel(
+                        id="hypo_vigor_vegetative",
+                        label="Hypothesis: High Photosynthetic Competence & Active Apical Expansion",
+                        node_type="hypothesis",
+                        category="physiological",
+                        confidence=0.62,
+                        bbox=None,
+                        visual_anchor=False,
+                        status="hypothesis"
+                    )
+                ]
+                edges = [
+                    EdgeModel(
+                        id="e_monstera_1",
+                        source="leaf_fenestrations_01",
+                        target="hypo_physiological_fenestration",
+                        relation_type="supports",
+                        confidence=0.72,
+                        evidence="Smooth elliptical hole perimeters without necrotic margins or jagged borders match programmed cell death."
+                    ),
+                    EdgeModel(
+                        id="e_monstera_2",
+                        source="leaf_fenestrations_01",
+                        target="hypo_foliar_pest_chewing",
+                        relation_type="affects",
+                        confidence=0.40,
+                        evidence="Perforations require diagnostic verification against caterpillar or beetle foliar mastication."
+                    ),
+                    EdgeModel(
+                        id="e_monstera_3",
+                        source="unfurling_apex_leaf_01",
+                        target="hypo_vigor_vegetative",
+                        relation_type="supports",
+                        confidence=0.88,
+                        evidence="Emergent rolled juvenile shoot at apical meristem confirms uninhibited cell division and vascular flow."
+                    ),
+                    EdgeModel(
+                        id="e_monstera_4",
+                        source="pot_substrate_01",
+                        target="hypo_vigor_vegetative",
+                        relation_type="supports",
+                        confidence=0.68,
+                        evidence="Adequate container volume and aerated medium support root-zone respiration."
+                    )
+                ]
+                summary = "Multimodal scene analysis identifies potted Monstera adansonii (Swiss cheese plant) exhibiting characteristic elliptical leaf fenestrations, active apical shoot unfurling, and dark green healthy foliage."
+            else:  # is_preset_tomato or default
+                nodes = [
+                    NodeModel(id="leaf_chlorosis_01", label="Interveinal Foliar Chlorosis", node_type="object", category="pathology", confidence=0.96, bbox=[180, 240, 680, 760], visual_anchor=True, properties={"pattern": "bright yellowing between dark green primary veins", "canopy_layer": "apical and middle foliage"}),
+                    NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, bbox=[720, 520, 910, 830], visual_anchor=True, properties={"vwc_percent": 48.2, "saturation_status": "continuous waterlogging"}),
+                    NodeModel(id="soil_ph_sensor_01", label="Substrate Alkalinity (pH 7.85)", node_type="property", category="measurement", confidence=0.92, bbox=None, visual_anchor=False, properties={"ph": 7.85, "condition": "calcareous / alkaline"}),
+                    NodeModel(id="irrigation_emitter_01", label="Continuous Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, bbox=[670, 70, 870, 420], visual_anchor=True, properties={"regime": "unregulated pulse", "flow_liters_hr": 2.8}),
+                    NodeModel(id="hypo_iron_deficiency", label="Hypothesis: Root Anoxia & Fe²⁺ Bioavailability Collapse", node_type="hypothesis", category="risk", confidence=0.48, bbox=None, visual_anchor=False, status="hypothesis")
+                ]
+                edges = [
+                    EdgeModel(id="e_agri_1", source="irrigation_emitter_01", target="soil_moisture_sensor_01", relation_type="causes", confidence=0.95, evidence="Excessive irrigation emitter frequency maintains root substrate above saturation limit."),
+                    EdgeModel(id="e_agri_2", source="soil_moisture_sensor_01", target="hypo_iron_deficiency", relation_type="supports", confidence=0.60, evidence="Prolonged saturation induces root-zone oxygen depletion and impairs ATP-driven H+-ATPase pumps."),
+                    EdgeModel(id="e_agri_3", source="soil_ph_sensor_01", target="hypo_iron_deficiency", relation_type="supports", confidence=0.65, evidence="Alkaline pH promotes rapid precipitation of ionic iron into insoluble hydroxide matrices."),
+                    EdgeModel(id="e_agri_4", source="hypo_iron_deficiency", target="leaf_chlorosis_01", relation_type="causes", confidence=0.75, evidence="Iron unavailability halts chloroplast protein complex assembly, producing acute interveinal chlorosis.")
+                ]
+                summary = "Multimodal scene analysis identifies acute interveinal foliar chlorosis, saturated root zone substrate (48% VWC), and continuous drip line over-delivery."
 
         elif domain == "pediatrics":
             nodes = [
@@ -473,26 +726,26 @@ Respond ONLY with valid JSON conforming to this structure:
 
         return nodes, edges, summary
 
-    def synthesize_reasoning_explanation(self, prompt: str) -> Optional[str]:
-        """Invoke Groq / Gemini LLM to synthesize dynamic natural language scientific reasoning."""
+    def synthesize_reasoning_explanation(self, prompt: str, temperature: float = 0.3) -> Optional[str]:
+        """Invoke Groq / Gemini LLM to synthesize dynamic natural language scientific reasoning with non-deterministic temperature."""
         groq_key = os.getenv("GROQ_API_KEY")
         if groq_key:
             url = "https://api.groq.com/openai/v1/chat/completions"
-            for model in ["groq/compound-mini", "qwen/qwen3.6-27b", "groq/compound"]:
+            for model in ["qwen/qwen3.6-27b", "groq/compound-mini", "groq/compound", "qwen/qwen3.8-27b"]:
                 payload = {
                     "model": model,
                     "messages": [
                         {"role": "system", "content": "You are SAAR (सार), an elite scientific reasoning engine. You explain complex causal mechanisms, statistical evidence, correlations, and hypotheses clearly, concisely, and with structured markdown formatting (using executive summaries, markdown tables, step-by-step causal pathways, and bold takeaways)."},
                         {"role": "user", "content": prompt}
                     ],
-                    "temperature": 0.2,
-                    "max_tokens": 1024
+                    "temperature": max(0.1, min(1.0, temperature)),
+                    "max_tokens": 750
                 }
                 try:
                     req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {groq_key}",
-                        "User-Agent": "SaarEngine/1.0"
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     })
                     with urllib.request.urlopen(req, timeout=12) as resp:
                         res = json.loads(resp.read().decode("utf-8"))

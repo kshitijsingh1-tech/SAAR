@@ -7,6 +7,7 @@ import { ChatSidebar } from './components/ChatSidebar';
 import { ChatGPTView } from './components/ChatGPTView';
 import { ToolCanvasDrawer } from './components/ToolCanvasDrawer';
 import { HelpDrawer } from './components/HelpDrawer';
+import monsteraInvestigation from './data/monsteraInvestigation.json';
 
 export default function App() {
   // Theme State (Strictly white background with dark text)
@@ -52,6 +53,12 @@ export default function App() {
       query: 'Highway Pavement Surface Cracking & GPR Cavity Void',
       domain: 'infrastructure',
       timestamp: 'Yesterday'
+    },
+    {
+      id: 'session-3',
+      query: 'Monstera adansonii: Foliar Fenestration & Plant Health',
+      domain: 'agriculture',
+      timestamp: 'Just now'
     }
   ];
 
@@ -79,6 +86,66 @@ export default function App() {
         text: `### Autonomous Investigation Executed (INFRASTRUCTURE)\n\n**Perception & Workflow**: Evaluated 4 investigation phases utilizing provider **Saar Dynamic Loop**.\n\n- **Evidence Graph**: **5 nodes** and **4 directed relationships** formulated.\n- **Graph Confidence**: **91%** (Stabilized after specialized tool execution).\n\n#### Diagnostic Verdict:\nRepetitive surface water infiltration eroded sub-base aggregates, creating a 1.8m underground void verified via GPR reflection loss before asphalt fatigue shear failure.`,
         timestamp: 'Yesterday'
       }
+    ],
+    'session-3': [
+      {
+        role: 'user',
+        text: 'Attached image of potted Monstera adansonii. Are the holes in the leaves caused by insect pests, and what does the new emergent shoot say about the plant\'s health?',
+        files: ['monstera_adansonii_foliage.png'],
+        timestamp: 'Just now'
+      },
+      {
+        role: 'assistant',
+        text: `## 📋 Autonomous Botanical Investigation Executed (MONSTERA ADANSONII)
+
+**Perception & Workflow**: Evaluated 4 dynamic phases utilizing provider **Saar Vision Engine & Groq ReAct Loop**.
+
+- **Spatial Entities Grounded**: **8 nodes** (Elliptical leaf perforations \`[90, 300, 430, 590]\`, apical shoot \`[310, 520, 750, 610]\`, container substrate \`[480, 450, 980, 720]\`, cascading foliage).
+- **Specialized Tool Executed**: \`Foliar Margin Morphology & Fenestration Phenotyper\` (*foliar_morphology_eval*).
+- **Causal Belief Resolution**: High-resolution edge inspection proves smooth, suberized hole perimeters with continuous vascular veins (**Programmed Cell Death**). Contradicts and definitively refutes chewing pest defoliation and fungal shot-hole disease.
+- **Graph Confidence**: Stabilized at **80.1%** (+6.1% Bayesian evidence gain).
+
+---
+
+### Clinical Botanical Diagnosis & Health Status
+
+| Parameter | Visual Observation | Clinical Interpretation |
+| :--- | :--- | :--- |
+| **Leaf Fenestrations** | Symmetrical elliptical perforations | **Natural PCD-driven adaptation**: Enhances light infiltration & reduces wind drag. Pest damage and shot-hole disease excluded. |
+| **Photosystem II ($F_v/F_m$)** | $0.81$ (Optimal) | Healthy, non-stressed tropical aroid; robust chlorophyll turgor with zero photo-oxidative stress. |
+| **Emergent Shoot** | Bright green juvenile apical leaf | **Active vegetative vigor**: Plant is actively allocating carbon assimilates to new leaf formation. |
+| **Container Substrate** | Coarse peat-perlite medium | **Well-aerated**: Minimizes root hypoxia and *Pythium* root-rot colonization risk. |
+
+**Horticultural Care Recommendation**: Maintain bright, indirect light; water when top 2–3 cm of substrate dries; provide moss pole support for climbing mature leaf expansion.`,
+        terminology: [
+          {
+            term: "Leaf Fenestration",
+            phonetic: "/liːf ˌfɛn.əˈstreɪ.ʃən/",
+            domain: "Plant Evolutionary Morphology",
+            formal_definition: "Natural elliptical or circular perforations in the leaf blade formed during early leaf morphogenesis via genetically programmed cell death (PCD).",
+            investigation_context: "Differentiates healthy evolutionary adaptations in Araceae (e.g. Monstera adansonii) from destructive chewing insect damage or fungal shot-hole necrosis.",
+            diagnostic_relevance: "Suberized, entire hole margins bounded by intact veins without surrounding necrotic chlorotic halos."
+          },
+          {
+            term: "Monstera adansonii",
+            phonetic: "/mɒnˈstɪərə əˈdænsənaɪ/",
+            domain: "Araceae Systematics & Indoor Agronomy",
+            formal_definition: "A hemiepiphytic tropical climbing vine native to Central and South America characterized by extensive natural leaf perforations.",
+            investigation_context: "Target species under botanical phenotyping; exhibits robust fenestrated foliage, emergent apical shoots, and aerated substrate requirements.",
+            diagnostic_relevance: "Ovate-lanceolate leaves with multiple fenestrations per side, climbing habit, and aerial root nodes."
+          },
+          {
+            term: "Programmed Cell Death (Botany)",
+            phonetic: "/ˈproʊ.ɡræmd sɛl dɛθ/",
+            domain: "Plant Developmental Biology",
+            formal_definition: "Genetically regulated physiological suicide of specific groups of cells in juvenile leaf primordia to generate perforations and lobes.",
+            investigation_context: "The molecular developmental mechanism responsible for leaf holes in Monstera, contrasting with traumatic pathogen necrosis.",
+            diagnostic_relevance: "Clean cellular lysis bordered by protective suberin synthesis without frass or pathogen exudates."
+          }
+        ],
+        report: monsteraInvestigation,
+        timestamp: 'Just now'
+      }
     ]
   };
 
@@ -88,7 +155,12 @@ export default function App() {
       const saved = localStorage.getItem('saar_chat_sessions');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (!parsed.some((s) => s.id === 'session-3')) {
+            return [DEFAULT_SESSIONS[2], ...parsed];
+          }
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn("Failed to load sessions from storage:", e);
@@ -101,7 +173,7 @@ export default function App() {
       const saved = localStorage.getItem('saar_active_session_id');
       if (saved) return saved;
     } catch (e) {}
-    return 'session-1';
+    return 'session-3';
   });
 
   const [allMessages, setAllMessages] = useState(() => {
@@ -109,7 +181,14 @@ export default function App() {
       const saved = localStorage.getItem('saar_session_messages');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (typeof parsed === 'object' && parsed !== null) return parsed;
+        if (typeof parsed === 'object' && parsed !== null) {
+          if (!parsed['session-3']) {
+            parsed['session-3'] = DEFAULT_MESSAGES['session-3'];
+          } else if (Array.isArray(parsed['session-3']) && parsed['session-3'][1] && !parsed['session-3'][1].report) {
+            parsed['session-3'][1].report = monsteraInvestigation;
+          }
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn("Failed to load messages from storage:", e);
@@ -160,17 +239,41 @@ export default function App() {
     document.documentElement.className = 'light';
   }, []);
 
-  // Initial Load: Warm up domains & baseline (Agriculture Tomato Chlorosis by default)
+  // Synchronize active session context (datasets, image feeds, graphs)
+  useEffect(() => {
+    if (activeSessionId === 'session-3') {
+      setSelectedDomain('agriculture');
+      setInvestigationData(monsteraInvestigation);
+      setCustomImageUrl('/monstera_sample.png');
+      setCameraConnected(true);
+    } else if (activeSessionId === 'session-1') {
+      setSelectedDomain('agriculture');
+      setCustomImageData(null);
+      setCustomImageUrl(null);
+    } else if (activeSessionId === 'session-2') {
+      setSelectedDomain('infrastructure');
+      setCustomImageData(null);
+      setCustomImageUrl(null);
+    }
+  }, [activeSessionId]);
+
+  // Initial Load: Warm up domains & baseline
   useEffect(() => {
     async function init() {
       try {
         const domainList = await fetchDomains();
         setDomains(domainList);
 
-        const res = await runInvestigation('agriculture', 'agri_tomato_chlorosis', {
-          vlmProvider: 'auto'
-        });
-        setInvestigationData(res);
+        if (activeSessionId === 'session-3') {
+          setInvestigationData(monsteraInvestigation);
+          setCustomImageUrl('/monstera_sample.png');
+          setCameraConnected(true);
+        } else {
+          const res = await runInvestigation('agriculture', 'agri_tomato_chlorosis', {
+            vlmProvider: 'auto'
+          });
+          setInvestigationData(res);
+        }
 
         const baseRes = await fetchBaseline('agriculture', 'agri_tomato_chlorosis');
         setBaselineData(baseRes);
@@ -247,6 +350,99 @@ export default function App() {
     }
   };
 
+  // Unified Autonomous Image Investigation Pipeline
+  const executeImageInvestigation = async (fileOrDataUrl, rawFileName, optionalUserText) => {
+    let base64Data = null;
+    let fileName = rawFileName || 'uploaded_evidence.png';
+
+    if (typeof fileOrDataUrl === 'string') {
+      base64Data = fileOrDataUrl;
+    } else if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
+      fileName = fileOrDataUrl.name || fileName;
+      base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(fileOrDataUrl);
+      });
+    }
+
+    if (!base64Data) return;
+
+    setCustomImageData(base64Data);
+    setCameraConnected(true);
+
+    const userMsgText = optionalUserText && optionalUserText.trim()
+      ? optionalUserText.trim()
+      : `Attached photo: \`${fileName}\` for autonomous visual perception and scientific causal reasoning.`;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        text: userMsgText,
+        files: [fileName],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+
+    setIsProcessing(true);
+
+    try {
+      const res = await runInvestigation(selectedDomain, null, {
+        imageData: base64Data,
+        vlmProvider: 'auto'
+      });
+      setInvestigationData(res);
+
+      const nodeCount = res.final_graph?.nodes?.length || 0;
+      const edgeCount = res.final_graph?.edges?.length || 0;
+      const confidencePct = Math.round(
+        (res.final_graph?.overall_confidence || 0.90) * 100
+      );
+
+      let reply = `### Autonomous Visual Investigation (${selectedDomain.toUpperCase()})\n\n`;
+      reply += `**Visual Perception**: Grounded **${nodeCount} spatial entities** with **${edgeCount} causal relationships** from \`${fileName}\`.\n`;
+      reply += `**Graph Confidence**: **${confidencePct}%**\n\n`;
+      reply += `#### Scientific Analysis:\n${res.conclusion || 'Investigation completed successfully.'}`;
+
+      if (optionalUserText && optionalUserText.trim()) {
+        try {
+          const askRes = await askSaarQuestion(res.investigation_id || 'latest', optionalUserText.trim());
+          if (askRes?.answer_summary) {
+            reply += `\n\n---\n\n### Inquiry: *"${optionalUserText.trim()}"*\n${askRes.answer_summary}`;
+          }
+        } catch (askErr) {
+          console.warn("Follow-up inquiry error:", askErr);
+        }
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: reply,
+          report: res,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+
+      setActiveTool('camera');
+      setIsToolDrawerOpen(true);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: `**Visual Analysis Error**: ${err.message || 'Failed to complete VLM analysis pipeline.'}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Send Message / Execute Investigation
   const handleSendMessage = async (userText, attachedFiles = []) => {
     const currentFiles = [...attachedFiles];
@@ -261,16 +457,6 @@ export default function App() {
       )
     );
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'user',
-        text: msgText,
-        files: currentFiles.map((f) => f.name),
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-    ]);
-
     setIsProcessing(true);
 
     try {
@@ -283,37 +469,7 @@ export default function App() {
         const isCsv = /\.(csv|tsv|txt|xlsx|xls)$/i.test(fileName) || fileType.includes('csv') || fileType.includes('spreadsheet') || fileType.includes('excel');
 
         if (isImage) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setCustomImageData(e.target.result);
-            setCameraConnected(true);
-            setActiveTool('camera');
-            setIsToolDrawerOpen(true);
-          };
-          reader.readAsDataURL(file);
-
-          let imageReplyText = `**Visual Inspection Media Ingested**: \`${fileName}\`\n\nDispatched multi-modal VLM perception pipeline. Activating Visual Monitor tool to inspect crack propagation, surface anomalies, and spatial geometries.`;
-
-          if (userText && userText.trim()) {
-            try {
-              const askRes = await askSaarQuestion('latest', userText.trim());
-              if (askRes?.answer_summary) {
-                imageReplyText += `\n\n---\n\n### Visual Analysis Inquiry: *"${userText.trim()}"*\n${askRes.answer_summary}`;
-              }
-            } catch (imgErr) {
-              console.warn("Visual inquiry error:", imgErr);
-            }
-          }
-
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              text: imageReplyText,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }
-          ]);
-          setIsProcessing(false);
+          await executeImageInvestigation(file, fileName, userText);
           return;
         }
 
@@ -823,11 +979,41 @@ export default function App() {
         }}
         customImageData={customImageData}
         customImageUrl={customImageUrl}
-        onUploadCustomImage={(dataUrl) => {
-          setCustomImageData(dataUrl);
-          setCameraConnected(true);
+        onUploadCustomImage={(fileOrDataUrl) => {
+          executeImageInvestigation(fileOrDataUrl);
         }}
-        onPasteImageUrl={(url) => setCustomImageUrl(url)}
+        onPasteImageUrl={async (url) => {
+          setCustomImageUrl(url);
+          setCameraConnected(true);
+          setIsProcessing(true);
+          try {
+            const res = await runInvestigation(selectedDomain, null, {
+              imageUrl: url,
+              vlmProvider: 'auto'
+            });
+            setInvestigationData(res);
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'user',
+                text: `Loaded image URL: ${url}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              },
+              {
+                role: 'assistant',
+                text: `### Autonomous Visual Investigation (${selectedDomain.toUpperCase()})\n\n${res.conclusion || 'Visual analysis completed.'}`,
+                report: res,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            setActiveTool('camera');
+            setIsToolDrawerOpen(true);
+          } catch (err) {
+            console.error("Paste image URL error:", err);
+          } finally {
+            setIsProcessing(false);
+          }
+        }}
         cameraConnected={cameraConnected}
         onCloseCamera={() => setCameraConnected(false)}
         onExportDossier={handleExportDossier}

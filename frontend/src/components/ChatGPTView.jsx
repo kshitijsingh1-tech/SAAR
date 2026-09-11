@@ -5,7 +5,7 @@ import {
   BookOpen, ChevronDown, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
-  Crosshair, BookA
+  Crosshair, BookA, Image as ImageIcon
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -232,6 +232,56 @@ export function ChatGPTView({
     if (files.length > 0) {
       setAttachedFiles((prev) => [...prev, ...files]);
     }
+  };
+
+  const handlePaste = (e) => {
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    // Check for clipboard files (e.g. copied screenshots, images from Snipping Tool, copied files)
+    const items = Array.from(clipboardData.items || []);
+    const fileItems = items.filter((item) => item.kind === 'file');
+
+    if (fileItems.length > 0) {
+      const pastedFiles = [];
+      for (const item of fileItems) {
+        const file = item.getAsFile();
+        if (file) {
+          let name = file.name;
+          if (!name || name === 'image.png') {
+            const ext = file.type.split('/')[1] || 'png';
+            name = `pasted_evidence_${Date.now()}.${ext}`;
+          }
+          const namedFile = new File([file], name, { type: file.type });
+          pastedFiles.push(namedFile);
+        }
+      }
+
+      if (pastedFiles.length > 0) {
+        e.preventDefault();
+        setAttachedFiles((prev) => [...prev, ...pastedFiles]);
+        return;
+      }
+    }
+
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      e.preventDefault();
+      const files = Array.from(clipboardData.files);
+      setAttachedFiles((prev) => [...prev, ...files]);
+      return;
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      setAttachedFiles((prev) => [...prev, ...droppedFiles]);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
   return (
@@ -741,7 +791,11 @@ export function ChatGPTView({
           <div className="composer-files-tray">
             {attachedFiles.map((file, idx) => (
               <span key={idx} className="file-preview-pill">
-                <FileText size={12} />
+                {file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name) ? (
+                  <ImageIcon size={12} />
+                ) : (
+                  <FileText size={12} />
+                )}
                 <span>{file.name}</span>
                 <button
                   className="remove-file-btn"
@@ -754,7 +808,12 @@ export function ChatGPTView({
           </div>
         )}
 
-        <div className="composer-capsule">
+        <div
+          className="composer-capsule"
+          onPaste={handlePaste}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
           <input
             type="file"
             ref={fileInputRef}
@@ -791,7 +850,10 @@ export function ChatGPTView({
             value={inputText}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Saar anything about the evidence, upload datasets, or simulate interventions..."
+            onPaste={handlePaste}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            placeholder="Ask Saar anything about the evidence, upload datasets, paste screenshots (Ctrl+V), or simulate interventions..."
           />
 
           {/* Send Button */}

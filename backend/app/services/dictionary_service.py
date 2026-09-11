@@ -59,6 +59,33 @@ PRELOADED_DOMAIN_TERMS = {
             "related_nodes": ["Substrate pH", "Bioavailable Fe²⁺", "Chlorosis", "Nutrient Lockup"]
         },
         {
+            "term": "Leaf Fenestration",
+            "phonetic": "/liːf ˌfɛn.əˈstreɪ.ʃən/",
+            "domain": "Plant Evolutionary Morphology",
+            "definition": "Natural elliptical or circular perforations in the leaf blade formed during early leaf morphogenesis via genetically programmed cell death (PCD).",
+            "investigation_context": "Differentiates healthy evolutionary adaptations in Araceae (e.g. Monstera adansonii) from destructive chewing insect damage or fungal shot-hole necrosis.",
+            "diagnostic_indicator": "Suberized, entire hole margins bounded by intact veins without surrounding necrotic chlorotic halos.",
+            "related_nodes": ["Elliptical Leaf Fenestrations", "Foliar Margin Morphology", "Programmed Cell Death", "Vegetative Vigor"]
+        },
+        {
+            "term": "Monstera adansonii",
+            "phonetic": "/mɒnˈstɪərə əˈdænsənaɪ/",
+            "domain": "Araceae Systematics & Indoor Agronomy",
+            "definition": "A hemiepiphytic tropical climbing vine native to Central and South America characterized by extensive natural leaf perforations.",
+            "investigation_context": "Target species under botanical phenotyping; exhibits robust fenestrated foliage, emergent apical shoots, and aerated substrate requirements.",
+            "diagnostic_indicator": "Ovate-lanceolate leaves with multiple fenestrations per side, climbing habit, and aerial root nodes.",
+            "related_nodes": ["Leaf Fenestrations", "Apical Shoot", "Substrate Aeration", "Canopy Fluorometry"]
+        },
+        {
+            "term": "Programmed Cell Death (Botany)",
+            "phonetic": "/ˈproʊ.ɡræmd sɛl dɛθ/",
+            "domain": "Plant Developmental Biology",
+            "definition": "Genetically regulated physiological suicide of specific groups of cells in juvenile leaf primordia to generate perforations and lobes.",
+            "investigation_context": "The molecular developmental mechanism responsible for leaf holes in Monstera, contrasting with traumatic pathogen necrosis.",
+            "diagnostic_indicator": "Clean cellular lysis bordered by protective suberin synthesis without frass or pathogen exudates.",
+            "related_nodes": ["Leaf Fenestrations", "Morphology Phenotyper", "Aroid Foliage", "Vegetative Vigor"]
+        },
+        {
             "term": "Chlorosis",
             "phonetic": "/kləˈroʊ.sɪs/",
             "domain": "Plant Pathology",

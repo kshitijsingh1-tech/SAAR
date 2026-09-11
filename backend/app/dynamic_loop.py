@@ -36,7 +36,11 @@ class DynamicWorkflowOrchestrator:
         api_key: Optional[str] = None
     ) -> InvestigationResponse:
         plugin = self.get_plugin(domain)
-        if not preset_id:
+        image_input = image_data or image_url
+        effective_images = list(images) if images else []
+
+        # Only default to preset scenario if NO custom image and NO preset_id was provided
+        if not preset_id and not image_input and not effective_images:
             preset_id = plugin.presets[0]["id"]
 
         graph_engine = ReasoningGraphEngine()
@@ -46,9 +50,6 @@ class DynamicWorkflowOrchestrator:
         # ---------------------------------------------------------
         # Step 1: PERCEIVE - Extract entities, properties, observations via VLM
         # ---------------------------------------------------------
-        image_input = image_data or image_url
-        effective_images = list(images) if images else []
-
         if preset_id:
             for p in plugin.presets:
                 if p["id"] == preset_id:
@@ -87,7 +88,10 @@ class DynamicWorkflowOrchestrator:
         # ---------------------------------------------------------
         # Dynamic Tool Loop (Steps 2..N)
         # ---------------------------------------------------------
-        available_tools = plugin.get_available_tools()
+        try:
+            available_tools = plugin.get_available_tools(current_nodes=initial_nodes)
+        except TypeError:
+            available_tools = plugin.get_available_tools()
 
         for tool_info in available_tools:
             tool_id = tool_info["tool_id"]
@@ -154,12 +158,12 @@ class DynamicWorkflowOrchestrator:
             graph_snapshot=final_graph
         ))
 
-        baseline_comp = plugin.get_baseline_comparison(preset_id)
+        baseline_comp = plugin.get_baseline_comparison(preset_id or "custom_investigation")
 
         return InvestigationResponse(
             investigation_id=str(uuid.uuid4())[:8],
             domain=domain,
-            preset_id=preset_id,
+            preset_id=preset_id or "custom_investigation",
             vlm_provider_used=provider_used,
             is_live_vlm=is_live,
             steps=steps,

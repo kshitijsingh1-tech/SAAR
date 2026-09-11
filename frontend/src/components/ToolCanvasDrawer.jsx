@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, Maximize2, Minimize2, BarChart2, BookOpen,
-  Camera, GitFork, BookA, Crosshair, GripVertical
+  Camera, GitFork, BookA, Crosshair, GripVertical, Sparkles
 } from 'lucide-react';
 import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { ImageInspector } from './ImageInspector';
@@ -76,6 +76,7 @@ export function ToolCanvasDrawer({
     { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} /> },
     { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} /> },
     { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
+    { id: 'spectrometer', label: 'Tissue Spectrometer', icon: <Sparkles size={15} /> },
     { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} /> },
     { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
     { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
@@ -175,6 +176,9 @@ export function ToolCanvasDrawer({
                 nodes={investigationData?.final_graph?.nodes || saarData?.graph_data?.nodes || []}
                 selectedNodeId={selectedNodeId}
                 onSelectNode={onSelectNode}
+                onOpenTool={(toolId) => onSelectTool(toolId)}
+                onAskQuery={(q) => onSendToChat && onSendToChat(q)}
+                onOpenGlossary={() => onSelectTool('dictionary')}
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '460px' }}>
@@ -226,9 +230,14 @@ export function ToolCanvasDrawer({
               nodes={investigationData?.final_graph?.nodes || saarData?.graph_data?.nodes || []}
               selectedNodeId={selectedNodeId}
               onSelectNode={onSelectNode}
+              onOpenTool={(toolId) => onSelectTool(toolId)}
+              onAskQuery={(q) => onSendToChat && onSendToChat(q)}
+              onOpenGlossary={() => onSelectTool('dictionary')}
             />
           </div>
         )}
+
+
 
         {/* Tool 3: Telemetry & Trend Analytics (PlotlyGraphViewer.jsx / AnalyticsService) */}
         {activeTool === 'analytics' && (
