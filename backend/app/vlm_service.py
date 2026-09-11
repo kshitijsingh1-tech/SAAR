@@ -28,7 +28,7 @@ Structure:
       "node_type": "object|property|observation|hypothesis",
       "category": "infrastructure|environment|structural|measurement|risk|pathology",
       "confidence": 0.95,
-      "bbox": [ymin, xmin, ymax, xmax],
+      "bbox": [ymin, xmin, ymax, xmax], // Normalized integers 0 to 1000 covering the visual region (e.g., [120, 250, 780, 820])
       "visual_anchor": true,
       "properties": {{"key": "value"}}
     }}
@@ -399,7 +399,29 @@ Structure:
                 parsed_bbox = None
                 if isinstance(raw_bbox, list) and len(raw_bbox) == 4:
                     try:
-                        parsed_bbox = [float(coord) for coord in raw_bbox]
+                        coords = [float(coord) for coord in raw_bbox]
+                        max_coord = max(coords)
+                        # If model output normalized 0..1 decimals, scale to 0..1000
+                        if max_coord <= 1.05:
+                            coords = [c * 1000.0 for c in coords]
+                        # If model output normalized 0..100 percentages, scale to 0..1000
+                        elif max_coord <= 100.0:
+                            coords = [c * 10.0 for c in coords]
+                        
+                        ymin, xmin, ymax, xmax = coords
+                        # If model provided [xmin, ymin, width, height] format
+                        if ymax < ymin:
+                            ymax = ymin + ymax
+                        if xmax < xmin:
+                            xmax = xmin + xmax
+                        
+                        # Clamp and ensure reasonable minimum size
+                        ymin = max(0.0, min(950.0, ymin))
+                        xmin = max(0.0, min(950.0, xmin))
+                        ymax = max(ymin + 40.0, min(1000.0, ymax))
+                        xmax = max(xmin + 40.0, min(1000.0, xmax))
+
+                        parsed_bbox = [round(ymin, 1), round(xmin, 1), round(ymax, 1), round(xmax, 1)]
                     except (ValueError, TypeError):
                         parsed_bbox = None
 

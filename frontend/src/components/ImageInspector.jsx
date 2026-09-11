@@ -193,9 +193,45 @@ export const ImageInspector = ({
   // Extract or synthesize grounded nodes with normalized bounding boxes [ymin, xmin, ymax, xmax] (0 to 1000)
   const groundedNodes = useMemo(() => {
     const rawList = Array.isArray(nodes) ? nodes : [];
-    const valid = rawList.filter(
-      (n) => n.bbox && Array.isArray(n.bbox) && n.bbox.length === 4
-    );
+    const valid = rawList
+      .filter((n) => n.bbox && Array.isArray(n.bbox) && n.bbox.length === 4)
+      .map((n) => {
+        let [ymin, xmin, ymax, xmax] = n.bbox.map(Number);
+        if (isNaN(ymin) || isNaN(xmin) || isNaN(ymax) || isNaN(xmax)) return null;
+
+        const maxCoord = Math.max(ymin, xmin, ymax, xmax);
+
+        // Auto-scale 0..1 normalized decimal coordinates to 0..1000 SVG coordinate system
+        if (maxCoord <= 1.05) {
+          ymin *= 1000;
+          xmin *= 1000;
+          ymax *= 1000;
+          xmax *= 1000;
+        }
+        // Auto-scale 0..100 percentage coordinates to 0..1000
+        else if (maxCoord <= 100) {
+          ymin *= 10;
+          xmin *= 10;
+          ymax *= 10;
+          xmax *= 10;
+        }
+
+        // Handle [xmin, ymin, width, height] format where ymax or xmax represents dimension
+        if (ymax < ymin) ymax = ymin + ymax;
+        if (xmax < xmin) xmax = xmin + xmax;
+
+        // Ensure reasonable minimum dimensions and bounds (at least 60px size in 1000px coordinate space)
+        ymin = Math.max(0, Math.min(940, ymin));
+        xmin = Math.max(0, Math.min(940, xmin));
+        ymax = Math.max(ymin + 60, Math.min(1000, ymax));
+        xmax = Math.max(xmin + 60, Math.min(1000, xmax));
+
+        return {
+          ...n,
+          bbox: [Math.round(ymin), Math.round(xmin), Math.round(ymax), Math.round(xmax)]
+        };
+      })
+      .filter(Boolean);
 
     if (valid.length > 0) {
       return valid;
@@ -981,7 +1017,7 @@ export const ImageInspector = ({
                     </div>
 
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', opacity: 0.8 }}>
-                      bbox: [{node.bbox[1]},{node.bbox[0]}]
+                      pos: {Math.round(node.bbox[1] / 10)}%,{Math.round(node.bbox[0] / 10)}% · {Math.max(1, Math.round((node.bbox[3] - node.bbox[1]) / 10))}×{Math.max(1, Math.round((node.bbox[2] - node.bbox[0]) / 10))}%
                     </span>
                   </div>
 
