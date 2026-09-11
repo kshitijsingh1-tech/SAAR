@@ -219,8 +219,8 @@ export const ImageInspector = ({
         category: 'pathology',
         confidence: 0.95,
         nodes: [
-          { id: 'chlorotic_zone', label: 'Interveinal Foliar Chlorosis', bbox: [210, 250, 630, 750], confidence: 0.96, category: 'pathology', properties: { spad: '34.2', pattern: 'interveinal yellowing' } },
-          { id: 'root_zone_emitter', label: 'Drip Emitter (48% VWC Saturation)', bbox: [700, 490, 920, 840], confidence: 0.94, category: 'infrastructure', properties: { flow_l_hr: 2.8, status: 'waterlogged' } }
+          { id: 'chlorotic_zone', label: 'Interveinal Foliar Chlorosis', bbox: [210, 250, 630, 750], confidence: 0.96, category: 'pathology', properties: { pattern: 'interveinal yellowing', severity: 'moderate' } },
+          { id: 'root_zone_emitter', label: 'Drip Emitter (Visible Saturation)', bbox: [700, 490, 920, 840], confidence: 0.94, category: 'infrastructure', properties: { type: 'drip emitter', status: 'soil visibly saturated' } }
         ]
       },
       {
@@ -229,8 +229,8 @@ export const ImageInspector = ({
         category: 'physiology',
         confidence: 0.93,
         nodes: [
-          { id: 'petiole_turgor', label: 'Petiole Turgor Angle (62°)', bbox: [390, 360, 760, 630], confidence: 0.93, category: 'physiology', properties: { angle_deg: 62, turgor_psi: 14.5 } },
-          { id: 'fruit_01', label: 'Apical Fruit Truss (3.8°Bx)', bbox: [430, 100, 640, 340], confidence: 0.94, category: 'developmental', properties: { brix: '3.8°Bx', rot_risk: 'elevated' } }
+          { id: 'petiole_turgor', label: 'Petiole Angle Assessment', bbox: [390, 360, 760, 630], confidence: 0.93, category: 'physiology', properties: { posture: 'upright', turgor: 'adequate' } },
+          { id: 'fruit_01', label: 'Apical Fruit Truss', bbox: [430, 100, 640, 340], confidence: 0.94, category: 'developmental', properties: { color: 'green/immature', cluster: 'apical' } }
         ]
       },
       {
@@ -239,7 +239,7 @@ export const ImageInspector = ({
         category: 'substrate',
         confidence: 0.94,
         nodes: [
-          { id: 'soil_drainage', label: 'Porous Bark-Perlite Substrate', bbox: [580, 320, 970, 810], confidence: 0.92, category: 'substrate', properties: { porosity: '38%', pythium_risk: 'moderate' } }
+          { id: 'soil_drainage', label: 'Bark-Perlite Substrate', bbox: [580, 320, 970, 810], confidence: 0.92, category: 'substrate', properties: { texture: 'coarse chunky', drainage: 'visible perlite' } }
         ]
       }
     ];
@@ -438,18 +438,18 @@ export const ImageInspector = ({
     // High-fidelity fallback grounding coordinates based on active preset / domain
     if (presetId === 'infra_damaged_road' || preset?.id === 'infra_damaged_road') {
       return [
-        { id: 'road_01', label: 'Longitudinal Surface Crack', bbox: [310, 190, 780, 520], confidence: 0.96, category: 'structural', properties: { aperture_mm: 18, length_m: 4.5 } },
-        { id: 'water_01', label: 'Accumulated Ponding Water', bbox: [440, 470, 880, 860], confidence: 0.93, category: 'environment', properties: { area_m2: 12.5, depth_cm: 4.2 } },
-        { id: 'drain_01', label: 'Storm Water Drain Grate', bbox: [120, 670, 410, 940], confidence: 0.98, category: 'infrastructure', properties: { blockage_pct: 88, flow: 'restricted' } },
+        { id: 'road_01', label: 'Longitudinal Surface Crack', bbox: [310, 190, 780, 520], confidence: 0.96, category: 'structural', properties: { orientation: 'longitudinal', severity: 'wide open' } },
+        { id: 'water_01', label: 'Accumulated Ponding Water', bbox: [440, 470, 880, 860], confidence: 0.93, category: 'environment', properties: { coverage: 'large area', color: 'turbid' } },
+        { id: 'drain_01', label: 'Storm Water Drain Grate', bbox: [120, 670, 410, 940], confidence: 0.98, category: 'infrastructure', properties: { condition: 'partially blocked', flow: 'restricted' } },
         { id: 'debris_01', label: 'Organic & Solid Debris', bbox: [150, 640, 370, 890], confidence: 0.91, category: 'obstacle', properties: { type: 'silt & leaves' } }
       ];
     }
 
     if (presetId === 'astro_stellar_spectrum' || preset?.id === 'astro_stellar_spectrum') {
       return [
-        { id: 'spectrum_01', label: 'Stellar Absorption Spectrum', bbox: [140, 80, 460, 920], confidence: 0.99, category: 'spectroscopy', properties: { resolution: 'R=45000' } },
-        { id: 'shift_01', label: 'Doppler Line Shift (Δλ)', bbox: [250, 460, 390, 570], confidence: 0.92, category: 'measurement', properties: { shift_angstrom: 0.187 } },
-        { id: 'time_series_01', label: 'Photometric Light Curve Dip', bbox: [560, 110, 890, 890], confidence: 0.88, category: 'photometry', properties: { depth_pct: 0.84 } }
+        { id: 'spectrum_01', label: 'Stellar Absorption Spectrum', bbox: [140, 80, 460, 920], confidence: 0.99, category: 'spectroscopy', properties: { type: 'absorption lines', bands: 'visible' } },
+        { id: 'shift_01', label: 'Doppler Line Shift (Δλ)', bbox: [250, 460, 390, 570], confidence: 0.92, category: 'measurement', properties: { direction: 'redshift', prominence: 'visible' } },
+        { id: 'time_series_01', label: 'Photometric Light Curve Dip', bbox: [560, 110, 890, 890], confidence: 0.88, category: 'photometry', properties: { pattern: 'periodic dip', depth: 'shallow' } }
       ];
     }
 
@@ -474,9 +474,9 @@ export const ImageInspector = ({
     // Default agriculture foliar chlorosis grounding with tomato fruit
     return [
       { id: 'leaf_chlorosis_01', label: 'Interveinal Foliar Chlorosis', bbox: [180, 240, 680, 760], confidence: 0.96, category: 'pathology', properties: { pattern: 'interveinal yellowing', severity: 'acute' } },
-      { id: 'fruit_01', label: 'Tomato Fruit Truss (Apical Cluster)', bbox: [440, 110, 640, 340], confidence: 0.95, category: 'developmental', properties: { brix_sugar: '3.8°Bx', rot_risk: 'elevated' } },
-      { id: 'irrigation_emitter_01', label: 'Continuous Drip Line Emitter', bbox: [670, 70, 870, 420], confidence: 0.98, category: 'infrastructure', properties: { flow_l_hr: 2.8, pulse: 'unregulated' } },
-      { id: 'soil_moisture_sensor_01', label: 'Root Zone Moisture Sensor (48% VWC)', bbox: [720, 520, 910, 830], confidence: 0.94, category: 'measurement', properties: { vwc_pct: 48.2, status: 'waterlogged' } }
+      { id: 'fruit_01', label: 'Tomato Fruit Truss (Apical Cluster)', bbox: [440, 110, 640, 340], confidence: 0.95, category: 'developmental', properties: { color: 'green/unripe', cluster: 'apical position' } },
+      { id: 'irrigation_emitter_01', label: 'Continuous Drip Irrigation Line', bbox: [670, 70, 870, 420], confidence: 0.98, category: 'infrastructure', properties: { type: 'drip line', regime: 'continuous' } },
+      { id: 'soil_moisture_sensor_01', label: 'Root Zone (Visibly Saturated)', bbox: [720, 520, 910, 830], confidence: 0.94, category: 'observation', properties: { surface: 'wet/dark', drainage: 'poor' } }
     ];
   }, [nodes, presetId, preset, mediaMode, activeKeyframe]);
 
