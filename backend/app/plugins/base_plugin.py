@@ -19,7 +19,7 @@ class BaseDomainPlugin(ABC):
         pass
 
     @abstractmethod
-    def get_available_tools(self) -> List[Dict[str, Any]]:
+    def get_available_tools(self, current_nodes: Optional[List[NodeModel]] = None) -> List[Dict[str, Any]]:
         """Return list of specialized analytical tools provided by domain plugin."""
         pass
 

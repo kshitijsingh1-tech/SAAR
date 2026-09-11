@@ -1,22 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Wrench, GitFork, BarChart2, BookOpen, Camera,
-  Layers, GitCompare, BookA, X
+  BookA, X, Crosshair
 } from 'lucide-react';
 
 export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef(null);
 
-  // Tools specified in architecture:
-  // 1. Knowledge Graph (KnowledgeGraphCanvas.jsx)
-  // 2. Photo Evidence Monitor (ImageInspector.jsx)
-  // 3. Telemetry & Trend Analytics (PlotlyGraphViewer.jsx / AnalyticsService)
-  // 4. Multi-Domain Literature RAG (DomainRAGRadar.jsx / RAGKnowledgeService)
-  // 5. Scientific Dictionary & Grounded Lexical Explorer (ScientificDictionaryDrawer.jsx)
-  // 6. Benchmark Comparison: Single-Pass VLM vs Saar (BenchmarkComparison.jsx)
-  // 7. Decoupled ReAct Architecture (ArchitectureView.jsx)
+  // Operational Scientific Tools:
+  // 1. Grounded Split Graph (Image-to-Graph Grounding)
+  // 2. Causal Knowledge Graph (NetworkX / Cytoscape)
+  // 3. Photo Evidence Monitor (ImageInspector)
+  // 4. Telemetry Analytics (PlotlyGraphViewer / AnalyticsService)
+  // 5. Multi-Domain Literature RAG (DomainRAGRadar / RAGKnowledgeService)
+  // 6. Scientific Dictionary (ScientificDictionaryDrawer / TerminologyService)
   const tools = [
+    {
+      id: 'grounded',
+      label: 'Grounded Split Graph',
+      tooltip: 'Bidirectional Image-to-Knowledge Graph Linkage',
+      icon: <Crosshair size={17} />,
+      gradient: 'linear-gradient(135deg, #0284c7, #10b981)',
+      glow: 'rgba(14, 165, 233, 0.45)'
+    },
     {
       id: 'graph',
       label: 'Causal Graph',
@@ -35,43 +42,27 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     },
     {
       id: 'analytics',
-      label: 'Telemetry Analytics',
-      tooltip: 'Deterministic Correlations & Trends',
+      label: 'Sensor Analytics',
+      tooltip: 'Longitudinal Sensor Trends, 30-Day Timeline & Statistical Correlations',
       icon: <BarChart2 size={17} />,
       gradient: 'linear-gradient(135deg, #38bdf8, #0ea5e9)',
       glow: 'rgba(56, 189, 248, 0.45)'
     },
     {
       id: 'rag',
-      label: 'Literature RAG',
-      tooltip: 'Multi-Domain BM25 Literature Index',
+      label: 'Scientific References',
+      tooltip: 'Peer-Reviewed Scientific Literature & Evidence References',
       icon: <BookOpen size={17} />,
       gradient: 'linear-gradient(135deg, #6366f1, #4f46e5)',
       glow: 'rgba(99, 102, 241, 0.45)'
     },
     {
       id: 'dictionary',
-      label: 'Dictionary',
-      tooltip: 'Scientific Dictionary & Grounded Lexical Explorer',
+      label: 'Scientific Dictionary',
+      tooltip: 'Scientific Nomenclature & Diagnostic Terminology Engine',
       icon: <BookA size={17} />,
       gradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
       glow: 'rgba(245, 158, 11, 0.45)'
-    },
-    {
-      id: 'benchmark',
-      label: 'VLM Benchmark',
-      tooltip: 'Single-Pass VLM vs Saar Audit Matrix',
-      icon: <GitCompare size={17} />,
-      gradient: 'linear-gradient(135deg, #10b981, #059669)',
-      glow: 'rgba(16, 185, 129, 0.45)'
-    },
-    {
-      id: 'architecture',
-      label: 'Architecture',
-      tooltip: 'Decoupled Multi-Agent Reasoning Engine',
-      icon: <Layers size={17} />,
-      gradient: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-      glow: 'rgba(139, 92, 246, 0.45)'
     }
   ];
 

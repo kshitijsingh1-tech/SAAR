@@ -1,13 +1,74 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Sparkles, ArrowUp, Paperclip, Camera, FileText,
-  X, Loader2, GitFork, GitCompare, BarChart2, ShieldCheck, Sliders,
+  X, Loader2, GitFork, BarChart2, ShieldCheck, Sliders,
   BookOpen, ChevronDown, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
-  HelpCircle, Download, Copy, Check, Globe, FileCode
+  HelpCircle, Download, Copy, Check, Globe, FileCode,
+  Crosshair, BookA, Image as ImageIcon
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
+
+// Built-in grounded domain lexicon for automatic chat dictionary linking
+const SCIENTIFIC_LEXICON = [
+  {
+    term: "Rhizosphere",
+    domain: "Soil Microbiology",
+    definition: "The narrow micro-ecological zone of soil surrounding plant roots directly influenced by root secretions, microbial activity, and nutrient exchange.",
+    diagnostic_indicator: "Root-zone moisture >45% VWC with dissolved oxygen <0.8 mg/L.",
+    investigation_context: "The primary interface where waterlogging and pH shifts govern nutrient uptake in crops.",
+    related_nodes: ["Root Zone Moisture", "Substrate pH", "Bioavailable Fe²⁺", "Hypoxia"]
+  },
+  {
+    term: "Substrate Alkalinization",
+    domain: "Soil Chemistry",
+    definition: "An increase in root substrate pH above neutral (>7.5), causing soluble ferrous iron (Fe²⁺) to precipitate into insoluble ferric hydroxides.",
+    diagnostic_indicator: "Substrate pH rising above 7.6 accompanied by sharp drops in bioavailable Fe²⁺.",
+    investigation_context: "Primary causal driver of iron lockup in tomato crops.",
+    related_nodes: ["Substrate pH", "Bioavailable Fe²⁺", "Chlorosis"]
+  },
+  {
+    term: "Chlorosis",
+    domain: "Plant Pathology",
+    definition: "Loss of normal green pigmentation in plant foliage caused by impaired chlorophyll biosynthesis or iron mobilization.",
+    diagnostic_indicator: "Interveinal yellowing of leaf tissue with green vein retention.",
+    investigation_context: "Direct biological symptom of iron starvation in terminal foliage.",
+    related_nodes: ["Bioavailable Fe²⁺", "NDRE Index", "Photosynthesis"]
+  },
+  {
+    term: "NDRE Index",
+    domain: "Remote Sensing",
+    definition: "Normalized Difference Red Edge index measuring foliar chlorophyll density in dense vegetative canopies.",
+    diagnostic_indicator: "Drop from healthy 0.65 down to acute chlorosis 0.18.",
+    investigation_context: "Continuous optical verification of chlorophyll degradation.",
+    related_nodes: ["Foliar Chlorosis", "Vegetative Vigor"]
+  },
+  {
+    term: "Root Anoxia",
+    domain: "Plant Physiology",
+    definition: "Complete or near-complete depletion of dissolved oxygen (<0.8 mg/L) in the root zone, shutting down aerobic ATP generation.",
+    diagnostic_indicator: "Moisture > 45% VWC sustained for >72 hours.",
+    investigation_context: "Paralyzes active H⁺-ATPase pumps, preventing nutrient uptake.",
+    related_nodes: ["Soil Saturation", "ATP Synthesis", "Root Rot"]
+  },
+  {
+    term: "GPR Hyperbolic Reflection",
+    domain: "Geotechnical NDT",
+    definition: "A characteristic point-source radar signature formed by radar pulse velocity contrasts between asphalt and subterranean air/water voids.",
+    diagnostic_indicator: "High-amplitude radar echo loss (-82%).",
+    investigation_context: "Non-destructive verification of subsurface cavity.",
+    related_nodes: ["Sub-base Void", "Dielectric Permittivity"]
+  },
+  {
+    term: "Sub-base Void",
+    domain: "Structural Engineering",
+    definition: "An unsupported air or water cavity formed beneath the asphalt binder layer by internal aggregate erosion.",
+    diagnostic_indicator: "Void diameter > 1.2m with shear fatigue cracking.",
+    investigation_context: "Direct causal driver of flexible pavement collapse.",
+    related_nodes: ["GPR Reflection", "Alligator Cracking"]
+  }
+];
 
 export function ChatGPTView({
   messages,
@@ -171,6 +232,56 @@ export function ChatGPTView({
     if (files.length > 0) {
       setAttachedFiles((prev) => [...prev, ...files]);
     }
+  };
+
+  const handlePaste = (e) => {
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    // Check for clipboard files (e.g. copied screenshots, images from Snipping Tool, copied files)
+    const items = Array.from(clipboardData.items || []);
+    const fileItems = items.filter((item) => item.kind === 'file');
+
+    if (fileItems.length > 0) {
+      const pastedFiles = [];
+      for (const item of fileItems) {
+        const file = item.getAsFile();
+        if (file) {
+          let name = file.name;
+          if (!name || name === 'image.png') {
+            const ext = file.type.split('/')[1] || 'png';
+            name = `pasted_evidence_${Date.now()}.${ext}`;
+          }
+          const namedFile = new File([file], name, { type: file.type });
+          pastedFiles.push(namedFile);
+        }
+      }
+
+      if (pastedFiles.length > 0) {
+        e.preventDefault();
+        setAttachedFiles((prev) => [...prev, ...pastedFiles]);
+        return;
+      }
+    }
+
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      e.preventDefault();
+      const files = Array.from(clipboardData.files);
+      setAttachedFiles((prev) => [...prev, ...files]);
+      return;
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      setAttachedFiles((prev) => [...prev, ...droppedFiles]);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
   return (
@@ -468,6 +579,15 @@ export function ChatGPTView({
                       <div className="chat-tool-badges-row">
                         <button
                           className="tool-invoke-badge badge-graph"
+                          onClick={() => onOpenTool('grounded')}
+                        >
+                          <Crosshair size={14} className="text-primary" />
+                          <span>Grounded Split Graph</span>
+                          <ArrowRight size={12} className="badge-arrow" />
+                        </button>
+
+                        <button
+                          className="tool-invoke-badge badge-graph"
                           onClick={() => onOpenTool('graph')}
                         >
                           <GitFork size={14} className="text-purple" />
@@ -480,7 +600,7 @@ export function ChatGPTView({
                           onClick={() => onOpenTool('analytics')}
                         >
                           <BarChart2 size={14} className="text-primary" />
-                          <span>Telemetry &amp; Trend Analytics</span>
+                          <span>Sensor Analytics</span>
                           <ArrowRight size={12} className="badge-arrow" />
                         </button>
 
@@ -498,16 +618,16 @@ export function ChatGPTView({
                           onClick={() => onOpenTool('rag')}
                         >
                           <BookOpen size={14} className="text-purple" />
-                          <span>Literature RAG Index</span>
+                          <span>Scientific References</span>
                           <ArrowRight size={12} className="badge-arrow" />
                         </button>
 
                         <button
-                          className="tool-invoke-badge badge-benchmark"
-                          onClick={() => onOpenTool('benchmark')}
+                          className="tool-invoke-badge badge-dictionary"
+                          onClick={() => onOpenTool('dictionary')}
                         >
-                          <GitCompare size={14} className="text-emerald" />
-                          <span>VLM vs. Saar Benchmark</span>
+                          <BookA size={14} className="text-amber" />
+                          <span>Scientific Dictionary</span>
                           <ArrowRight size={12} className="badge-arrow" />
                         </button>
                       </div>
@@ -585,29 +705,49 @@ export function ChatGPTView({
                     )}
 
                     {/* Scientific Terminology & Grounded Lexical Intelligence */}
-                    {msg.role === 'assistant' && msg.terminology && Array.isArray(msg.terminology) && msg.terminology.length > 0 && (
-                      <div className="chat-terminology-container">
-                        <div className="terminology-header">
-                          <BookOpen size={13} className="text-purple" />
-                          <span>Scientific Concepts &amp; Terminology</span>
+                    {msg.role === 'assistant' && (() => {
+                      const terms = (msg.terminology && Array.isArray(msg.terminology) && msg.terminology.length > 0)
+                        ? msg.terminology
+                        : (msg.text
+                            ? SCIENTIFIC_LEXICON.filter((lex) => {
+                                const tLower = lex.term.toLowerCase();
+                                const textLower = msg.text.toLowerCase();
+                                return textLower.includes(tLower) ||
+                                  (lex.term === 'Chlorosis' && textLower.includes('chloros')) ||
+                                  (lex.term === 'Rhizosphere' && (textLower.includes('rhizospher') || textLower.includes('rhizophere'))) ||
+                                  (lex.term === 'Substrate Alkalinization' && (textLower.includes('alkalin') || textLower.includes('ph > 7') || textLower.includes('alkaline'))) ||
+                                  (lex.term === 'NDRE Index' && textLower.includes('ndre')) ||
+                                  (lex.term === 'Root Anoxia' && (textLower.includes('anoxia') || textLower.includes('hypoxia'))) ||
+                                  (lex.term === 'Sub-base Void' && (textLower.includes('void') || textLower.includes('cavity')));
+                              })
+                            : []);
+
+                      if (!terms || terms.length === 0) return null;
+
+                      return (
+                        <div className="chat-terminology-container">
+                          <div className="terminology-header">
+                            <BookOpen size={13} className="text-purple" />
+                            <span>Scientific Concepts &amp; Terminology</span>
+                          </div>
+                          <div className="terminology-chips-row">
+                            {terms.map((t, tIdx) => (
+                              <button
+                                key={tIdx}
+                                type="button"
+                                className="terminology-chip"
+                                onClick={() => setActiveTermModal(t)}
+                                title={`Inspect scientific definition for ${t.term}`}
+                              >
+                                <span className="term-badge-icon">📖</span>
+                                <span className="term-name">{t.term}</span>
+                                {t.domain && <span className="term-domain-pill">{t.domain.split(' ')[0]}</span>}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <div className="terminology-chips-row">
-                          {msg.terminology.map((t, tIdx) => (
-                            <button
-                              key={tIdx}
-                              type="button"
-                              className="terminology-chip"
-                              onClick={() => setActiveTermModal(t)}
-                              title={`Inspect scientific definition for ${t.term}`}
-                            >
-                              <span className="term-badge-icon">📖</span>
-                              <span className="term-name">{t.term}</span>
-                              {t.domain && <span className="term-domain-pill">{t.domain.split(' ')[0]}</span>}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -651,7 +791,11 @@ export function ChatGPTView({
           <div className="composer-files-tray">
             {attachedFiles.map((file, idx) => (
               <span key={idx} className="file-preview-pill">
-                <FileText size={12} />
+                {file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name) ? (
+                  <ImageIcon size={12} />
+                ) : (
+                  <FileText size={12} />
+                )}
                 <span>{file.name}</span>
                 <button
                   className="remove-file-btn"
@@ -664,7 +808,12 @@ export function ChatGPTView({
           </div>
         )}
 
-        <div className="composer-capsule">
+        <div
+          className="composer-capsule"
+          onPaste={handlePaste}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
           <input
             type="file"
             ref={fileInputRef}
@@ -701,7 +850,10 @@ export function ChatGPTView({
             value={inputText}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Saar anything about the evidence, upload datasets, or simulate interventions..."
+            onPaste={handlePaste}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            placeholder="Ask Saar anything about the evidence, upload datasets, paste screenshots (Ctrl+V), or simulate interventions..."
           />
 
           {/* Send Button */}
@@ -782,7 +934,7 @@ export function ChatGPTView({
 
               {activeTermModal.diagnostic_indicator && (
                 <div className="term-modal-section">
-                  <div className="term-section-label">Diagnostic Telemetry Indicator</div>
+                  <div className="term-section-label">Diagnostic Sensor Indicator</div>
                   <p className="term-modal-indicator">{activeTermModal.diagnostic_indicator}</p>
                 </div>
               )}

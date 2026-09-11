@@ -3,7 +3,6 @@ import { DomainSelector } from './DomainSelector';
 import { ImageInspector } from './ImageInspector';
 import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { SaarFindingsPanel } from './SaarFindingsPanel';
-import { BenchmarkComparison } from './BenchmarkComparison';
 import { Layers, Activity, Eye, BarChart2 } from 'lucide-react';
 
 export function VisualAnalyticsPage({
@@ -116,7 +115,7 @@ export function VisualAnalyticsPage({
               <Activity size={14} />
               <span>Relation Graph &amp; Dynamic Causal Belief Canvas {saarData?.dataset?.filename ? `(${saarData.dataset.filename})` : ''}</span>
             </div>
-            <div style={{ flex: 1, padding: '0.5rem', position: 'relative' }}>
+            <div style={{ flex: 1, padding: '0.5rem', position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
               <KnowledgeGraphCanvas
                 graphData={activeGraphToRender}
                 graphState={activeGraphToRender}
@@ -142,15 +141,6 @@ export function VisualAnalyticsPage({
               />
             </div>
           </section>
-
-          {/* Benchmark Comparison Matrix */}
-          {investigationData && (
-            <BenchmarkComparison
-              investigationData={investigationData}
-              selectedDomain={selectedDomain}
-              selectedPreset={selectedPreset}
-            />
-          )}
         </div>
 
         {/* DIVISION 2 (RIGHT): Vision (Top) & Analysis (Bottom) */}

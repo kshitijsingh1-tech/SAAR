@@ -1,7 +1,7 @@
 import os
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(override=True)
 except ImportError:
     pass
 
@@ -62,6 +62,7 @@ def run_investigation(req: InvestigationRequest):
             preset_id=req.preset_id,
             image_url=req.image_url,
             image_data=req.image_data,
+            images=req.images,
             vlm_provider=req.vlm_provider,
             api_key=req.api_key
         )

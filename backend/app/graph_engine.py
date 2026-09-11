@@ -21,7 +21,9 @@ class ReasoningGraphEngine:
             category=node.category,
             confidence=node.confidence,
             properties=node.properties,
-            status=node.status
+            status=node.status,
+            bbox=node.bbox,
+            visual_anchor=node.visual_anchor
         )
         return node
 
@@ -62,7 +64,9 @@ class ReasoningGraphEngine:
             category=data.get('category', 'general'),
             confidence=data.get('confidence', 1.0),
             properties=data.get('properties', {}),
-            status=data.get('status', 'confirmed')
+            status=data.get('status', 'confirmed'),
+            bbox=data.get('bbox'),
+            visual_anchor=data.get('visual_anchor', True)
         )
 
     def calculate_uncertainty(self) -> Tuple[float, Optional[str]]:
@@ -102,7 +106,9 @@ class ReasoningGraphEngine:
                 category=data.get('category', 'general'),
                 confidence=round(data.get('confidence', 1.0), 3),
                 properties=data.get('properties', {}),
-                status=data.get('status', 'confirmed')
+                status=data.get('status', 'confirmed'),
+                bbox=data.get('bbox'),
+                visual_anchor=data.get('visual_anchor', True)
             ))
 
         edges_list = []

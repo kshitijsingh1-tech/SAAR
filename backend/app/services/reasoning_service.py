@@ -93,7 +93,9 @@ class ReasoningService:
                     description=n_label,
                     category=getattr(node, "category", "general"),
                     confidence=n_conf,
-                    status=status_enum
+                    status=status_enum,
+                    bbox=getattr(node, "bbox", None),
+                    visual_anchor=getattr(node, "visual_anchor", True)
                 ))
 
             for edge in getattr(final_graph, "edges", []):
@@ -321,7 +323,7 @@ class ReasoningService:
 
         dataset_context_text = "\n".join(dataset_inspection_lines)
 
-        ai_prompt = f"""You are SAAR (सार), an autonomous scientific reasoning engine. Answer the user's question accurately based on direct dataset inspection and evidence.
+        ai_prompt = f"""You are SAAR (सार), an autonomous scientific reasoning engine. Answer the user's question accurately by synthesizing scientific domain knowledge, causal graph reasoning, and empirical dataset observations.
 
 User Question:
 "{question}"
@@ -335,15 +337,21 @@ Discovered Statistical Correlations in Dataset:
 Domain Literature Knowledge (RAG):
 {chr(10).join([f"- [{r.domain}] {r.content[:180]}..." for r in rag_results[:2]])}
 
-MANDATORY FORMATTING GUIDELINES:
-1. **Executive Summary**: 1 direct, high-level natural language sentence answering the query.
-   - Summarize the total count, value range, and date span naturally (e.g. "Soil moisture fell below 50% across 48 recorded observations, ranging from 22.42% to 22.63% between 2026-04-01 and 2026-05-18.").
-   - Do NOT dump raw observation lists (like 'Day 46113: 22.47, Day 46114: 22.52...') into the summary text. Put specific rows in the Evidence Matrix table.
-   - If the queried variable is NOT present in the dataset: explicitly state that the uploaded dataset does not contain that column and report what features ARE available.
-2. **Evidence Matrix (Markdown Table)**:
-   - Provide a clean markdown table presenting the relevant evidence (observations, variable coverage, or statistical correlations) with appropriate column headers.
-3. **Key Takeaways**: Exactly 2 crisp bullet points directly addressing the user's query.
-4. End with `**Bottom line:** <1 sentence conclusion>`.
+MANDATORY GUIDELINES:
+1. **Understand Query Intent**:
+   - If the user is asking about a **scientific concept, mechanism, definition, or physiological state** (e.g., 'rhizosphere', 'chlorosis', 'iron lockup', 'void', 'hypoxia', 'GPR'):
+     - FIRST provide an authoritative, clear scientific explanation of what the concept is and its physical or biochemical mechanism.
+     - THEN connect it directly to the active investigation (e.g., how root-zone moisture 48% VWC and alkaline pH 7.85 directly represent the physical rhizosphere state in this crop failure).
+     - Do NOT dismiss the question as a missing dataset column. You are a scientific reasoning engine, not a simple database column filter!
+   - If the user is querying a specific tabular column or numeric metric (e.g., 'what was average moisture?', 'did temperature exceed 30C?'):
+     - Answer directly from the matching observations and statistical correlations.
+     - If an exact requested column is absent, explain which related proxies in the dataset reflect that variable.
+
+2. **Executive Summary**: 1-2 direct, high-level natural language sentences explaining the concept or answering the query in rich scientific context.
+3. **Evidence Matrix (Markdown Table)**:
+   - Provide a clean markdown table presenting relevant evidence (measurements, proxy variables, correlations, or biological thresholds).
+4. **Key Takeaways**: Exactly 2 crisp bullet points highlighting the diagnostic significance.
+5. End with `**Bottom line:** <1 sentence scientific conclusion>`.
 """
         answer_text = None
         try:

@@ -9,6 +9,7 @@ from .plugins.base_plugin import BaseDomainPlugin
 from .plugins.infrastructure_plugin import InfrastructurePlugin
 from .plugins.astronomy_plugin import AstronomyPlugin
 from .plugins.agriculture_plugin import AgriculturePlugin
+from .plugins.pediatrics_plugin import PediatricsPlugin
 from .vlm_service import VLMService
 
 class DynamicWorkflowOrchestrator:
@@ -16,7 +17,8 @@ class DynamicWorkflowOrchestrator:
         self.plugins: Dict[str, BaseDomainPlugin] = {
             "infrastructure": InfrastructurePlugin(),
             "astronomy": AstronomyPlugin(),
-            "agriculture": AgriculturePlugin()
+            "agriculture": AgriculturePlugin(),
+            "pediatrics": PediatricsPlugin()
         }
         self.vlm_service = VLMService()
 
@@ -29,11 +31,16 @@ class DynamicWorkflowOrchestrator:
         preset_id: Optional[str] = None,
         image_url: Optional[str] = None,
         image_data: Optional[str] = None,
+        images: Optional[List[str]] = None,
         vlm_provider: str = "auto",
         api_key: Optional[str] = None
     ) -> InvestigationResponse:
         plugin = self.get_plugin(domain)
-        if not preset_id:
+        image_input = image_data or image_url
+        effective_images = list(images) if images else []
+
+        # Only default to preset scenario if NO custom image and NO preset_id was provided
+        if not preset_id and not image_input and not effective_images:
             preset_id = plugin.presets[0]["id"]
 
         graph_engine = ReasoningGraphEngine()
@@ -43,11 +50,13 @@ class DynamicWorkflowOrchestrator:
         # ---------------------------------------------------------
         # Step 1: PERCEIVE - Extract entities, properties, observations via VLM
         # ---------------------------------------------------------
-        image_input = image_data or image_url
-        if not image_input and preset_id:
+        if preset_id:
             for p in plugin.presets:
                 if p["id"] == preset_id:
-                    image_input = p.get("image")
+                    if not image_input:
+                        image_input = p.get("image")
+                    if not effective_images and p.get("images"):
+                        effective_images = p.get("images")
                     break
 
         initial_nodes, initial_edges, vlm_summary, provider_used = self.vlm_service.analyze_image(
@@ -55,7 +64,8 @@ class DynamicWorkflowOrchestrator:
             domain=domain,
             preset_id=preset_id,
             vlm_provider=vlm_provider,
-            api_key=api_key
+            api_key=api_key,
+            images=effective_images
         )
 
         for n in initial_nodes:
@@ -78,7 +88,10 @@ class DynamicWorkflowOrchestrator:
         # ---------------------------------------------------------
         # Dynamic Tool Loop (Steps 2..N)
         # ---------------------------------------------------------
-        available_tools = plugin.get_available_tools()
+        try:
+            available_tools = plugin.get_available_tools(current_nodes=initial_nodes)
+        except TypeError:
+            available_tools = plugin.get_available_tools()
 
         for tool_info in available_tools:
             tool_id = tool_info["tool_id"]
@@ -145,12 +158,12 @@ class DynamicWorkflowOrchestrator:
             graph_snapshot=final_graph
         ))
 
-        baseline_comp = plugin.get_baseline_comparison(preset_id)
+        baseline_comp = plugin.get_baseline_comparison(preset_id or "custom_investigation")
 
         return InvestigationResponse(
             investigation_id=str(uuid.uuid4())[:8],
             domain=domain,
-            preset_id=preset_id,
+            preset_id=preset_id or "custom_investigation",
             vlm_provider_used=provider_used,
             is_live_vlm=is_live,
             steps=steps,

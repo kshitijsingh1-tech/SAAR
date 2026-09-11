@@ -20,13 +20,13 @@ class AstronomyPlugin(BaseDomainPlugin):
 
     def perceive_initial_scene(self, preset_id: str) -> Tuple[List[NodeModel], List[EdgeModel]]:
         nodes = [
-            NodeModel(id="spectrum_01", label="Stellar Absorption Spectrum", node_type="object", category="observation", confidence=0.99, properties={"spectral_class": "G0V", "target_line": "Balmer H-alpha (656.28nm)"}),
-            NodeModel(id="shift_01", label="Observed Spectral Line Shift (Δλ)", node_type="property", category="measurement", confidence=0.88, properties={"delta_lambda_nm": "+0.042nm", "direction": "Redshift"}),
-            NodeModel(id="time_series_01", label="Time-Series Observation Epochs", node_type="observation", category="data", confidence=0.95, properties={"num_epochs": 14, "duration_days": 12.4}),
+            NodeModel(id="spectrum_01", label="Stellar Absorption Spectrum", node_type="object", category="observation", confidence=0.99, bbox=[140, 80, 460, 920], visual_anchor=True, properties={"spectral_class": "G0V", "target_line": "Balmer H-alpha (656.28nm)"}),
+            NodeModel(id="shift_01", label="Observed Spectral Line Shift (Δλ)", node_type="property", category="measurement", confidence=0.88, bbox=[250, 460, 390, 570], visual_anchor=True, properties={"delta_lambda_nm": "+0.042nm", "direction": "Redshift"}),
+            NodeModel(id="time_series_01", label="Time-Series Observation Epochs", node_type="observation", category="data", confidence=0.95, bbox=[560, 110, 890, 890], visual_anchor=True, properties={"num_epochs": 14, "duration_days": 12.4}),
             
             # Hypotheses
-            NodeModel(id="hypo_exoplanet", label="Hypothesis A: Orbiting Sub-Jupiter Exoplanet", node_type="hypothesis", category="astrophysics", confidence=0.50, status="hypothesis"),
-            NodeModel(id="hypo_binary_star", label="Hypothesis B: M-Dwarf Binary Stellar Companion", node_type="hypothesis", category="astrophysics", confidence=0.40, status="hypothesis")
+            NodeModel(id="hypo_exoplanet", label="Hypothesis A: Orbiting Sub-Jupiter Exoplanet", node_type="hypothesis", category="astrophysics", confidence=0.50, bbox=None, visual_anchor=False, status="hypothesis"),
+            NodeModel(id="hypo_binary_star", label="Hypothesis B: M-Dwarf Binary Stellar Companion", node_type="hypothesis", category="astrophysics", confidence=0.40, bbox=None, visual_anchor=False, status="hypothesis")
         ]
 
         edges = [

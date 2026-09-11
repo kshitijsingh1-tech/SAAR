@@ -43,10 +43,10 @@ export function HelpDrawer({ isOpen, onClose }) {
                 <strong>Answer Targeted Inquiries:</strong> When the reasoning engine detects high causal ambiguity, it presents interactive questions. Answering them immediately updates confidence scores!
               </li>
               <li>
-                <strong>Inspect the Causal Knowledge Graph:</strong> Open the NetworkX dynamic graph to visualize directed causal links, node confidences, and topological uncertainty.
+                <strong>Inspect the Causal Knowledge Graph:</strong> Open the dynamic causal graph to visualize directed causal links, node confidences, and topological uncertainty.
               </li>
               <li>
-                <strong>Roll Out Specialized Tools:</strong> Access Telemetry Analytics for Pearson correlations/trends, Multi-Domain Literature RAG for peer-reviewed citations, Visual Evidence Monitor for 16:9 imagery, and the VLM Benchmark Matrix to compare Saar vs. standard single-pass VLMs.
+                <strong>Roll Out Operational Scientific Tools:</strong> Access Grounded Split Graph for image-to-graph linkage, Sensor Analytics for Pearson correlations/trends, Scientific References for peer-reviewed citations, Visual Evidence Monitor for high-resolution imagery, and the Scientific Dictionary for domain terminology.
               </li>
             </ol>
           </div>
