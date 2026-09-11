@@ -115,7 +115,7 @@ export function VisualAnalyticsPage({
               <Activity size={14} />
               <span>Relation Graph &amp; Dynamic Causal Belief Canvas {saarData?.dataset?.filename ? `(${saarData.dataset.filename})` : ''}</span>
             </div>
-            <div style={{ flex: 1, padding: '0.5rem', position: 'relative' }}>
+            <div style={{ flex: 1, padding: '0.5rem', position: 'relative', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
               <KnowledgeGraphCanvas
                 graphData={activeGraphToRender}
                 graphState={activeGraphToRender}

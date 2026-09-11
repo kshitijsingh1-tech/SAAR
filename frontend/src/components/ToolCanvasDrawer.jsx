@@ -162,7 +162,7 @@ export function ToolCanvasDrawer({
             overflowY: 'auto',
             padding: '0.75rem'
           }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <ImageInspector
                 preset={investigationData?.preset}
                 presetId={investigationData?.preset_id || 'infra_damaged_road'}
@@ -181,7 +181,7 @@ export function ToolCanvasDrawer({
                 onOpenGlossary={() => onSelectTool('dictionary')}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '460px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '460px', minWidth: 0, overflow: 'hidden' }}>
               <KnowledgeGraphCanvas
                 activeInvestigation={saarData || investigationData}
                 graphData={saarData?.graph_data || investigationData?.final_graph || null}

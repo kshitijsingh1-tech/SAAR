@@ -995,44 +995,59 @@ export const KnowledgeGraphCanvas = ({
       </div>
 
       {/* 3. Dedicated Docked Bottom Inspector Panel (Zero Occlusion of Graph!) */}
+      {/* 3. Dedicated Docked Bottom Inspector Panel (Zero Occlusion of Graph & Responsive Layout) */}
       {activeInspectedNode ? (
         <div style={{
-          height: '115px',
+          minHeight: '85px',
+          maxHeight: '125px',
           borderTop: '1px solid #cbd5e1',
           background: '#ffffff',
           display: 'grid',
-          gridTemplateColumns: 'minmax(220px, 1.2fr) minmax(200px, 1.3fr) minmax(200px, 1.3fr) auto',
-          gap: '1rem',
-          padding: '0.65rem 1rem',
+          gridTemplateColumns: 'minmax(140px, 1.1fr) minmax(130px, 1.1fr) minmax(140px, 1.2fr) auto',
+          gap: '0.65rem',
+          padding: '0.5rem 0.75rem',
           boxShadow: '0 -4px 15px rgba(0, 0, 0, 0.04)',
           zIndex: 10,
-          alignItems: 'center'
+          alignItems: 'center',
+          boxSizing: 'border-box',
+          width: '100%',
+          overflowX: 'auto',
+          overflowY: 'hidden'
         }}>
           {/* Column 1: Node Title, Type & Confidence */}
-          <div style={{ borderRight: '1px solid #f1f5f9', paddingRight: '0.75rem' }}>
+          <div style={{ minWidth: 0, borderRight: '1px solid #f1f5f9', paddingRight: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
               <span style={{
-                fontSize: '0.65rem',
+                fontSize: '0.62rem',
                 fontWeight: '700',
-                padding: '0.1rem 0.4rem',
+                padding: '0.1rem 0.35rem',
                 borderRadius: '4px',
                 background: getNodeTheme(activeInspectedNode.node_type).chipBg,
-                color: getNodeTheme(activeInspectedNode.node_type).headerText
+                color: getNodeTheme(activeInspectedNode.node_type).headerText,
+                whiteSpace: 'nowrap'
               }}>
                 {getNodeTheme(activeInspectedNode.node_type).tag}
               </span>
               {activeInspectedNode.visual_anchor && (
-                <span style={{ fontSize: '0.65rem', fontWeight: '700', color: '#0284c7' }}>
+                <span style={{ fontSize: '0.62rem', fontWeight: '700', color: '#0284c7', whiteSpace: 'nowrap' }}>
                   ● GROUNDED
                 </span>
               )}
             </div>
-            <h4 style={{ margin: '0.15rem 0', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <h4 style={{
+              margin: '0.15rem 0',
+              fontSize: '0.82rem',
+              fontWeight: '700',
+              color: '#0f172a',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }} title={activeInspectedNode.label}>
               {activeInspectedNode.label}
             </h4>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-              <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Confidence:</span>
-              <div style={{ height: '5px', width: '90px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+              <span style={{ fontSize: '0.68rem', color: '#64748b', whiteSpace: 'nowrap' }}>Confidence:</span>
+              <div style={{ height: '5px', width: '70px', minWidth: '40px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%',
                   width: `${Math.round(activeInspectedNode.confidence * 100)}%`,
@@ -1040,17 +1055,17 @@ export const KnowledgeGraphCanvas = ({
                   borderRadius: '3px'
                 }} />
               </div>
-              <strong style={{ fontSize: '0.72rem', color: '#0f172a' }}>{Math.round(activeInspectedNode.confidence * 100)}%</strong>
+              <strong style={{ fontSize: '0.7rem', color: '#0f172a' }}>{Math.round(activeInspectedNode.confidence * 100)}%</strong>
             </div>
           </div>
 
           {/* Column 2: Direct Causes (Inflow) */}
-          <div style={{ borderRight: '1px solid #f1f5f9', paddingRight: '0.75rem', overflowY: 'auto', maxHeight: '90px' }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#b45309', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ minWidth: 0, borderRight: '1px solid #f1f5f9', paddingRight: '0.5rem', overflowY: 'auto', maxHeight: '85px' }}>
+            <div style={{ fontSize: '0.67rem', fontWeight: '700', color: '#b45309', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
               <ArrowLeft size={11} />
               <span>Direct Causes ({directInflowNodes.length}):</span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
               {directInflowNodes.length > 0 ? (
                 directInflowNodes.map(({ node }) => (
                   <span
@@ -1059,31 +1074,35 @@ export const KnowledgeGraphCanvas = ({
                     style={{
                       background: '#fef3c7',
                       color: '#92400e',
-                      padding: '0.15rem 0.4rem',
+                      padding: '0.12rem 0.35rem',
                       borderRadius: '4px',
                       cursor: 'pointer',
-                      fontSize: '0.68rem',
+                      fontSize: '0.66rem',
                       fontWeight: '600',
-                      border: '1px solid #fde68a'
+                      border: '1px solid #fde68a',
+                      maxWidth: '100%',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
-                    title="Click to trace this cause"
+                    title={`Click to trace cause: ${node.label}`}
                   >
                     ← {node.label}
                   </span>
                 ))
               ) : (
-                <span style={{ color: '#94a3b8', fontSize: '0.68rem', fontStyle: 'italic' }}>None (Root Environmental Input)</span>
+                <span style={{ color: '#94a3b8', fontSize: '0.66rem', fontStyle: 'italic' }}>None (Root Environmental Input)</span>
               )}
             </div>
           </div>
 
           {/* Column 3: Direct Consequences (Outflow) */}
-          <div style={{ overflowY: 'auto', maxHeight: '90px', paddingRight: '0.5rem' }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: '700', color: '#047857', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ minWidth: 0, paddingRight: '0.4rem', overflowY: 'auto', maxHeight: '85px' }}>
+            <div style={{ fontSize: '0.67rem', fontWeight: '700', color: '#047857', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
               <span>Direct Impacts ({directOutflowNodes.length}):</span>
               <ArrowRight size={11} />
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
               {directOutflowNodes.length > 0 ? (
                 directOutflowNodes.map(({ node }) => (
                   <span
@@ -1092,33 +1111,46 @@ export const KnowledgeGraphCanvas = ({
                     style={{
                       background: '#d1fae5',
                       color: '#065f46',
-                      padding: '0.15rem 0.4rem',
+                      padding: '0.12rem 0.35rem',
                       borderRadius: '4px',
                       cursor: 'pointer',
-                      fontSize: '0.68rem',
+                      fontSize: '0.66rem',
                       fontWeight: '600',
-                      border: '1px solid #a7f3d0'
+                      border: '1px solid #a7f3d0',
+                      maxWidth: '100%',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
-                    title="Click to trace this impact"
+                    title={`Click to trace impact: ${node.label}`}
                   >
                     {node.label} →
                   </span>
                 ))
               ) : (
-                <span style={{ color: '#94a3b8', fontSize: '0.68rem', fontStyle: 'italic' }}>None (Terminal Effect / Diagnosis)</span>
+                <span style={{ color: '#94a3b8', fontSize: '0.66rem', fontStyle: 'italic' }}>None (Terminal Diagnosis)</span>
               )}
             </div>
           </div>
 
           {/* Column 4: Actions & Close */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{
+            minWidth: 'fit-content',
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            paddingLeft: '0.2rem'
+          }}>
             <button
               style={{
                 border: 'none',
                 background: '#f1f5f9',
                 borderRadius: '4px',
-                width: '20px',
-                height: '20px',
+                width: '22px',
+                height: '22px',
                 cursor: 'pointer',
                 display: 'grid',
                 placeItems: 'center',
@@ -1127,30 +1159,31 @@ export const KnowledgeGraphCanvas = ({
               onClick={() => onSelectNode(null)}
               title="Close Docked Inspector"
             >
-              <X size={12} />
+              <X size={13} />
             </button>
             {onSendToChat && (
               <button
                 style={{
-                  padding: '0.35rem 0.75rem',
+                  padding: '0.3rem 0.55rem',
                   background: '#0284c7',
                   color: '#ffffff',
                   border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.72rem',
+                  borderRadius: '5px',
+                  fontSize: '0.68rem',
                   fontWeight: '600',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '5px',
+                  gap: '4px',
                   whiteSpace: 'nowrap'
                 }}
                 onClick={() => {
                   onSendToChat(`Can you explain the causal mechanism and empirical evidence for "${activeInspectedNode.label}"?`);
                 }}
+                title="Inquire in Chat"
               >
-                <MessageSquare size={12} />
-                <span>Inquire in Chat</span>
+                <MessageSquare size={11} />
+                <span>Ask SAAR</span>
               </button>
             )}
           </div>
