@@ -2,8 +2,12 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Eye, EyeOff, Radio, Upload, Sparkles, Link as LinkIcon,
   Camera, X, Crosshair, Target, Layers, Activity, Droplets,
-  HelpCircle, ExternalLink, Zap, Check
+  HelpCircle, ExternalLink, Zap, Check, Film, Play, Pause,
+  Sprout, RotateCcw, AlertCircle
 } from 'lucide-react';
+import { VideoTimelineScrubber } from './VideoTimelineScrubber';
+import { PlantCareCard } from './PlantCareCard';
+import { ToddlerPostureCard } from './ToddlerPostureCard';
 
 // Domain-aware color palette for visual anchors & bounding boxes
 const ANCHOR_COLORS = [
@@ -133,7 +137,179 @@ export const ImageInspector = ({
   const [visibleBoxIds, setVisibleBoxIds] = useState(() => new Set());
   const [hoveredBoxId, setHoveredBoxId] = useState(null);
   const [activeHudNode, setActiveHudNode] = useState(null);
+  const [activeSpecialistTab, setActiveSpecialistTab] = useState('anchors'); // 'anchors' | 'plantCare' | 'toddlerPosture'
   const fileInputRef = useRef(null);
+
+  // ------------------------------------------------------------------
+  // Multimodal Video Playback & Timeline State (Workstream 4)
+  // ------------------------------------------------------------------
+  const [mediaMode, setMediaMode] = useState('image'); // 'image' | 'video'
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(12.0);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [activeKeyframeIndex, setActiveKeyframeIndex] = useState(0);
+  const [customVideoUrl, setCustomVideoUrl] = useState(null);
+  const videoRef = useRef(null);
+
+  const isPediatrics = presetId?.startsWith('toddler') || preset?.domain === 'pediatrics';
+  const isAgriculture = presetId?.startsWith('agri') || preset?.domain === 'agriculture' || presetId === 'session-3';
+
+  // Pre-configured temporal keyframe streams for video analysis demonstrations
+  const temporalKeyframes = useMemo(() => {
+    if (isPediatrics) {
+      return [
+        {
+          timestamp: 0.0,
+          label: 'Initial Stance & Plumb Axis',
+          category: 'biomechanics',
+          confidence: 0.96,
+          nodes: [
+            { id: 'toddler_spine', label: 'Spinal Lumbar Curve (~38.5°)', bbox: [320, 290, 610, 520], confidence: 0.94, category: 'biomechanics', properties: { lordosis_deg: 38.5, status: 'physiologic' } },
+            { id: 'toddler_stance', label: 'Base of Support (22.4 cm)', bbox: [810, 260, 970, 740], confidence: 0.92, category: 'motor', properties: { stance: 'broad', balance: 'compensated' } }
+          ]
+        },
+        {
+          timestamp: 3.2,
+          label: 'Gait Initiation & Stance Phase',
+          category: 'gait',
+          confidence: 0.94,
+          nodes: [
+            { id: 'knee_bowing', label: 'Symmetrical Genu Varum (2.2 cm)', bbox: [600, 310, 860, 670], confidence: 0.93, category: 'orthopedic', properties: { symmetry: 'high', gap_cm: 2.2 } },
+            { id: 'flatfoot_pad', label: 'Flexible Plantar Fat Pad', bbox: [830, 360, 980, 710], confidence: 0.89, category: 'motor', properties: { arch: 'physiologic fat pad' } }
+          ]
+        },
+        {
+          timestamp: 6.8,
+          label: 'High-Guard Upper Limb Balance',
+          category: 'motor',
+          confidence: 0.95,
+          nodes: [
+            { id: 'toddler_arms', label: 'Bilateral High-Guard Balance', bbox: [240, 220, 490, 770], confidence: 0.95, category: 'motor', properties: { guard_posture: 'high-guard', stability: 'seeking' } },
+            { id: 'anterior_pelvis', label: 'Anterior Pelvic Tilt (~16°)', bbox: [460, 320, 670, 630], confidence: 0.91, category: 'biomechanics', properties: { tilt_deg: 16.2 } }
+          ]
+        },
+        {
+          timestamp: 10.2,
+          label: 'Weight Transfer & Terminal Stance',
+          category: 'biomechanics',
+          confidence: 0.92,
+          nodes: [
+            { id: 'dynamic_cop', label: 'Dynamic Center of Pressure', bbox: [770, 300, 960, 690], confidence: 0.90, category: 'biomechanics', properties: { trajectory: 'anterior-medial' } },
+            { id: 'toddler_spine', label: 'Spinal Alignment (Compensated)', bbox: [330, 290, 610, 520], confidence: 0.93, category: 'biomechanics', properties: { plumb_shift: '5.8 mm' } }
+          ]
+        }
+      ];
+    }
+
+    // Default agriculture foliar chlorosis and fenestration temporal keyframes
+    return [
+      {
+        timestamp: 0.0,
+        label: 'Canopy Overview & Apical Shoot',
+        category: 'morphology',
+        confidence: 0.97,
+        nodes: [
+          { id: 'apical_leaf', label: 'Emergent Juvenile Apical Shoot', bbox: [120, 350, 490, 690], confidence: 0.96, category: 'vegetative_vigor', properties: { turgor: 'high', meristem: 'active expansion' } },
+          { id: 'leaf_fenestrations_01', label: 'Fenestrated Leaf Margin (PCD)', bbox: [260, 150, 720, 530], confidence: 0.97, category: 'morphology', properties: { mechanism: 'PCD apoptosis', pest_damage: 'None' } }
+        ]
+      },
+      {
+        timestamp: 3.5,
+        label: 'Mid-Canopy Chlorosis Diagnostic',
+        category: 'pathology',
+        confidence: 0.95,
+        nodes: [
+          { id: 'chlorotic_zone', label: 'Interveinal Foliar Chlorosis', bbox: [210, 250, 630, 750], confidence: 0.96, category: 'pathology', properties: { spad: '34.2', pattern: 'interveinal yellowing' } },
+          { id: 'root_zone_emitter', label: 'Drip Emitter (48% VWC Saturation)', bbox: [700, 490, 920, 840], confidence: 0.94, category: 'infrastructure', properties: { flow_l_hr: 2.8, status: 'waterlogged' } }
+        ]
+      },
+      {
+        timestamp: 7.2,
+        label: 'Petiole Turgor & Abaxial Stomata',
+        category: 'physiology',
+        confidence: 0.93,
+        nodes: [
+          { id: 'petiole_turgor', label: 'Petiole Turgor Angle (62°)', bbox: [390, 360, 760, 630], confidence: 0.93, category: 'physiology', properties: { angle_deg: 62, turgor_psi: 14.5 } },
+          { id: 'fruit_01', label: 'Apical Fruit Truss (3.8°Bx)', bbox: [430, 100, 640, 340], confidence: 0.94, category: 'developmental', properties: { brix: '3.8°Bx', rot_risk: 'elevated' } }
+        ]
+      },
+      {
+        timestamp: 10.5,
+        label: 'Root Substrate Aeration Diagnostic',
+        category: 'substrate',
+        confidence: 0.94,
+        nodes: [
+          { id: 'soil_drainage', label: 'Porous Bark-Perlite Substrate', bbox: [580, 320, 970, 810], confidence: 0.92, category: 'substrate', properties: { porosity: '38%', pythium_risk: 'moderate' } }
+        ]
+      }
+    ];
+  }, [isPediatrics]);
+
+  // Compute active keyframe based on videoCurrentTime
+  const activeKeyframe = useMemo(() => {
+    if (!temporalKeyframes || temporalKeyframes.length === 0) return null;
+    let selected = temporalKeyframes[0];
+    let selectedIdx = 0;
+    for (let i = 0; i < temporalKeyframes.length; i++) {
+      if (videoCurrentTime >= temporalKeyframes[i].timestamp) {
+        selected = temporalKeyframes[i];
+        selectedIdx = i;
+      }
+    }
+    return { ...selected, index: selectedIdx };
+  }, [videoCurrentTime, temporalKeyframes]);
+
+  // Handle play/pause simulation or HTML5 video synchronization
+  useEffect(() => {
+    let interval = null;
+    if (isVideoPlaying) {
+      interval = setInterval(() => {
+        setVideoCurrentTime((prev) => {
+          if (prev >= videoDuration) {
+            setIsVideoPlaying(false);
+            return 0;
+          }
+          return Number((prev + 0.1).toFixed(1));
+        });
+      }, 100);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isVideoPlaying, videoDuration]);
+
+  // Sync HTML5 video element if loaded
+  const handleVideoTimeUpdate = () => {
+    if (videoRef.current) {
+      setVideoCurrentTime(videoRef.current.currentTime);
+      if (videoRef.current.duration && !isNaN(videoRef.current.duration)) {
+        setVideoDuration(videoRef.current.duration);
+      }
+    }
+  };
+
+  const handlePlayToggle = () => {
+    if (videoRef.current) {
+      if (isVideoPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(() => {});
+      }
+    }
+    setIsVideoPlaying(!isVideoPlaying);
+  };
+
+  const handleSeek = (newTime) => {
+    setVideoCurrentTime(newTime);
+    if (videoRef.current) {
+      videoRef.current.currentTime = newTime;
+    }
+  };
+
+  const handleSelectKeyframe = (index, kf) => {
+    setActiveKeyframeIndex(index);
+    handleSeek(kf.timestamp);
+  };
 
   const displayImage =
     customImageData ||
@@ -149,10 +325,24 @@ export const ImageInspector = ({
       ? 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&w=1200&q=80'
       : '/monstera_sample.png');
 
-  // Unified upload dispatcher
-  const handleUpload = (imgDataOrFile, url) => {
-    if (onImageUploaded) onImageUploaded(imgDataOrFile, url);
-    if (imgDataOrFile && onUploadCustom) onUploadCustom(imgDataOrFile);
+  // Unified upload dispatcher (supports both photos and video clips)
+  const handleUpload = (fileDataOrFile, url) => {
+    if (fileDataOrFile instanceof File) {
+      const isVideo = fileDataOrFile.type.startsWith('video/') || /\.(mp4|mov|webm|avi|mkv)$/i.test(fileDataOrFile.name);
+      if (isVideo) {
+        const objectUrl = URL.createObjectURL(fileDataOrFile);
+        setCustomVideoUrl(objectUrl);
+        setMediaMode('video');
+        return;
+      }
+    }
+    if (url && (url.endsWith('.mp4') || url.endsWith('.webm') || url.includes('video'))) {
+      setCustomVideoUrl(url);
+      setMediaMode('video');
+      return;
+    }
+    if (onImageUploaded) onImageUploaded(fileDataOrFile, url);
+    if (fileDataOrFile && onUploadCustom) onUploadCustom(fileDataOrFile);
     if (url && onPasteUrl) onPasteUrl(url);
   };
 
@@ -192,6 +382,14 @@ export const ImageInspector = ({
 
   // Extract or synthesize grounded nodes with normalized bounding boxes [ymin, xmin, ymax, xmax] (0 to 1000)
   const groundedNodes = useMemo(() => {
+    // If in video mode, dynamically ground nodes to the active temporal keyframe!
+    if (mediaMode === 'video' && activeKeyframe && activeKeyframe.nodes) {
+      return activeKeyframe.nodes.map((n) => ({
+        ...n,
+        bbox: n.bbox
+      }));
+    }
+
     const rawList = Array.isArray(nodes) ? nodes : [];
     const valid = rawList
       .filter((n) => n.bbox && Array.isArray(n.bbox) && n.bbox.length === 4)
@@ -280,7 +478,7 @@ export const ImageInspector = ({
       { id: 'irrigation_emitter_01', label: 'Continuous Drip Line Emitter', bbox: [670, 70, 870, 420], confidence: 0.98, category: 'infrastructure', properties: { flow_l_hr: 2.8, pulse: 'unregulated' } },
       { id: 'soil_moisture_sensor_01', label: 'Root Zone Moisture Sensor (48% VWC)', bbox: [720, 520, 910, 830], confidence: 0.94, category: 'measurement', properties: { vwc_pct: 48.2, status: 'waterlogged' } }
     ];
-  }, [nodes, presetId, preset]);
+  }, [nodes, presetId, preset, mediaMode, activeKeyframe]);
 
   // Synchronize visibleBoxIds when groundedNodes change (default: reveal all grounded anchors)
   useEffect(() => {
@@ -306,24 +504,23 @@ export const ImageInspector = ({
           next.add(match.id);
           return next;
         });
+        setActiveHudNode(match);
       }
     }
   }, [selectedNodeId, groundedNodes]);
 
-  // Toggle single anchor rectangle visibility on/off
-  const toggleBoxVisibility = (nodeId) => {
+  const toggleBoxVisibility = (boxId) => {
     setVisibleBoxIds((prev) => {
       const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
+      if (next.has(boxId)) {
+        next.delete(boxId);
       } else {
-        next.add(nodeId);
+        next.add(boxId);
       }
       return next;
     });
   };
 
-  // Bulk actions: Show All or Hide All rectangles
   const showAllBoxes = () => {
     setVisibleBoxIds(new Set(groundedNodes.map((n) => n.id)));
   };
@@ -334,45 +531,97 @@ export const ImageInspector = ({
 
   return (
     <div
-      className="glass-panel"
+      className="image-inspector-root custom-pane-scrollbar"
       style={{
-        padding: '0.9rem',
-        marginBottom: '1.5rem',
         display: 'flex',
         flexDirection: 'column',
-        position: 'relative',
-        borderRadius: '12px',
-        overflow: 'visible',
-        flexShrink: 0
+        width: '100%',
+        minHeight: '100%',
+        boxSizing: 'border-box'
       }}
     >
-      {/* 1. Sleek Compact Header */}
+      {/* 1. Header Toolbar with Multimodal Mode Switcher */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <div style={{
             width: '28px',
             height: '28px',
             borderRadius: '6px',
-            background: 'rgba(56, 189, 248, 0.12)',
+            background: mediaMode === 'video' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(52, 211, 153, 0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <Camera size={15} color="var(--primary)" />
+            {mediaMode === 'video' ? (
+              <Film size={15} color="var(--primary)" />
+            ) : (
+              <Camera size={15} color="var(--emerald)" />
+            )}
           </div>
           <div>
-            <span style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)' }}>Visual Evidence Grounding</span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>({groundedNodes.length} anchors)</span>
+            <span style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)' }}>
+              {mediaMode === 'video' ? 'Temporal Video Grounding Engine' : 'Visual Evidence Grounding'}
+            </span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
+              ({groundedNodes.length} active anchors)
+            </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          {/* Quick upload button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+          {/* Media Mode Toggle (Photo vs Video) */}
+          <div style={{ display: 'flex', background: 'var(--bg-dark)', borderRadius: '6px', border: '1px solid var(--border-color)', padding: '2px' }}>
+            <button
+              type="button"
+              onClick={() => setMediaMode('image')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
+                background: mediaMode === 'image' ? 'rgba(52, 211, 153, 0.2)' : 'transparent',
+                border: 'none',
+                color: mediaMode === 'image' ? 'var(--emerald)' : 'var(--text-muted)',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              title="Inspect still photo evidence"
+            >
+              <Camera size={11} />
+              <span>Photo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMediaMode('video')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
+                background: mediaMode === 'video' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                border: 'none',
+                color: mediaMode === 'video' ? 'var(--primary)' : 'var(--text-muted)',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              title="Inspect temporal video recording"
+            >
+              <Film size={11} />
+              <span>Video</span>
+            </button>
+          </div>
+
+          {/* Quick upload button (Accepts images and video clips) */}
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept="image/*"
+            accept="image/*,video/*"
             style={{ display: 'none' }}
           />
           <button
@@ -390,7 +639,7 @@ export const ImageInspector = ({
               cursor: 'pointer',
               fontWeight: 500
             }}
-            title="Upload specimen photo"
+            title="Upload specimen photo or video clip"
           >
             <Upload size={12} />
             <span>Upload</span>
@@ -412,7 +661,7 @@ export const ImageInspector = ({
               cursor: 'pointer',
               fontWeight: 500
             }}
-            title="Load image from URL"
+            title="Load media from URL"
           >
             <LinkIcon size={12} />
             <span>URL</span>
@@ -461,7 +710,7 @@ export const ImageInspector = ({
             type="url"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="Paste direct image URL (https://...)"
+            placeholder="Paste direct image or video URL (https://...)"
             style={{
               flex: 1,
               padding: '0.3rem 0.55rem',
@@ -478,7 +727,7 @@ export const ImageInspector = ({
         </form>
       )}
 
-      {/* 2. Visual Evidence Container */}
+      {/* 2. Visual Evidence Container (Photo or Video Player) */}
       <div style={{
         position: 'relative',
         width: '100%',
@@ -494,8 +743,56 @@ export const ImageInspector = ({
         justifyContent: 'center',
         boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
       }}>
-        {/* Base Image */}
-        {displayImage ? (
+        {/* Media Rendering: Video or Image */}
+        {mediaMode === 'video' ? (
+          customVideoUrl ? (
+            <video
+              ref={videoRef}
+              src={customVideoUrl}
+              onTimeUpdate={handleVideoTimeUpdate}
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : (
+            // Animated simulated video canvas using active frame backdrop
+            <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+              <img
+                src={displayImage}
+                alt="Temporal Video Keyframe"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  filter: isVideoPlaying ? 'brightness(1.05)' : 'brightness(0.95)',
+                  transition: 'filter 0.3s ease'
+                }}
+              />
+              {/* Scanline / Live Video HUD Overlay */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(0, 0, 0, 0.7)',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.66rem',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.3)'
+                }}
+              >
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isVideoPlaying ? '#10b981' : '#f59e0b', boxShadow: isVideoPlaying ? '0 0 6px #10b981' : 'none' }} />
+                <span>{isVideoPlaying ? 'PLAYING' : 'PAUSED'}</span>
+                <span>•</span>
+                <span>{videoCurrentTime.toFixed(1)}s / {videoDuration.toFixed(1)}s</span>
+              </div>
+            </div>
+          )
+        ) : displayImage ? (
           <img
             src={displayImage}
             alt="Visual Evidence"
@@ -518,8 +815,8 @@ export const ImageInspector = ({
           </div>
         )}
 
-        {/* SVG Bounding Boxes Overlay - Multi-box rendering based on visibleBoxIds */}
-        {displayImage && groundedNodes.length > 0 && (
+        {/* SVG Bounding Boxes Overlay - Multi-box rendering based on visibleBoxIds & Video Keyframe */}
+        {(displayImage || customVideoUrl) && groundedNodes.length > 0 && (
           <svg
             viewBox="0 0 1000 1000"
             preserveAspectRatio="none"
@@ -648,14 +945,31 @@ export const ImageInspector = ({
           zIndex: 10,
           pointerEvents: 'none'
         }}>
-          <span style={{ fontWeight: 500, opacity: 0.9 }}>{preset?.title || "Visual Evidence"}</span>
+          <span style={{ fontWeight: 500, opacity: 0.9 }}>
+            {mediaMode === 'video' ? `Keyframe @ ${videoCurrentTime.toFixed(1)}s: ${activeKeyframe?.label || 'Continuous Track'}` : preset?.title || "Visual Evidence"}
+          </span>
           <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--emerald)' : 'var(--text-muted)' }}>
             {visibleBoxIds.size} of {groundedNodes.length} Rectangles Active
           </span>
         </div>
       </div>
 
-      {/* 3. Dedicated Inspector Card (Rendered cleanly below the photo, leaving image 100% visible) */}
+      {/* 3. Interactive Video Timeline Scrubber (Rendered when in Video Mode) */}
+      {mediaMode === 'video' && (
+        <VideoTimelineScrubber
+          currentTime={videoCurrentTime}
+          duration={videoDuration}
+          isPlaying={isVideoPlaying}
+          onPlayToggle={handlePlayToggle}
+          onSeek={handleSeek}
+          keyframes={temporalKeyframes}
+          activeKeyframeIndex={activeKeyframe?.index || 0}
+          onSelectKeyframe={handleSelectKeyframe}
+          fps={2.0}
+        />
+      )}
+
+      {/* 4. Dedicated Inspector Card (Rendered cleanly below the media container) */}
       {activeHudNode && (
         <div
           className="animate-fade-in"
@@ -804,9 +1118,100 @@ export const ImageInspector = ({
         </div>
       )}
 
-      {/* 4. Interactive Visual Labels & Anchors Directory */}
-      {groundedNodes.length > 0 && (
-        <div style={{ marginTop: '0.85rem' }}>
+      {/* 5. Domain Specialist Navigation Tabs */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        marginTop: '0.85rem',
+        borderBottom: '1px solid var(--border-color)',
+        paddingBottom: '0.4rem'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveSpecialistTab('anchors')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '0.35rem 0.7rem',
+            borderRadius: '6px',
+            background: activeSpecialistTab === 'anchors' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+            border: activeSpecialistTab === 'anchors' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+            color: activeSpecialistTab === 'anchors' ? 'var(--primary)' : 'var(--text-muted)',
+            fontSize: '0.74rem',
+            fontWeight: activeSpecialistTab === 'anchors' ? 700 : 500,
+            cursor: 'pointer'
+          }}
+        >
+          <Target size={13} />
+          <span>Visual Anchors ({groundedNodes.length})</span>
+        </button>
+
+        {isAgriculture && (
+          <button
+            type="button"
+            onClick={() => setActiveSpecialistTab('plantCare')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '0.35rem 0.7rem',
+              borderRadius: '6px',
+              background: activeSpecialistTab === 'plantCare' ? 'rgba(52, 211, 153, 0.15)' : 'transparent',
+              border: activeSpecialistTab === 'plantCare' ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid transparent',
+              color: activeSpecialistTab === 'plantCare' ? 'var(--emerald)' : 'var(--text-muted)',
+              fontSize: '0.74rem',
+              fontWeight: activeSpecialistTab === 'plantCare' ? 700 : 500,
+              cursor: 'pointer'
+            }}
+          >
+            <Sprout size={13} />
+            <span>Botanical Care & Treatment Plan</span>
+          </button>
+        )}
+
+        {isPediatrics && (
+          <button
+            type="button"
+            onClick={() => setActiveSpecialistTab('toddlerPosture')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '0.35rem 0.7rem',
+              borderRadius: '6px',
+              background: activeSpecialistTab === 'toddlerPosture' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+              border: activeSpecialistTab === 'toddlerPosture' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+              color: activeSpecialistTab === 'toddlerPosture' ? 'var(--primary)' : 'var(--text-muted)',
+              fontSize: '0.74rem',
+              fontWeight: activeSpecialistTab === 'toddlerPosture' ? 700 : 500,
+              cursor: 'pointer'
+            }}
+          >
+            <Activity size={13} />
+            <span>Toddler Posture & Screening</span>
+          </button>
+        )}
+      </div>
+
+      {/* 6. Active Tab Pane Content */}
+      {activeSpecialistTab === 'plantCare' && isAgriculture && (
+        <PlantCareCard
+          presetId={presetId}
+          onAskAgronomist={(q) => onAskQuery && onAskQuery(q)}
+        />
+      )}
+
+      {activeSpecialistTab === 'toddlerPosture' && isPediatrics && (
+        <ToddlerPostureCard
+          presetId={presetId}
+          onAskSpecialist={(q) => onAskQuery && onAskQuery(q)}
+        />
+      )}
+
+      {activeSpecialistTab === 'anchors' && groundedNodes.length > 0 && (
+        <div style={{ marginTop: '0.65rem' }}>
           {/* Section Header with Bulk Actions & Guidance */}
           <div style={{
             display: 'flex',
@@ -818,9 +1223,8 @@ export const ImageInspector = ({
             padding: '0 0.1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Target size={14} color="var(--primary)" />
-              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-main)' }}>
-                Visual Anchors & Regional Labels
+              <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                Regional Bounding Box Directory
               </span>
               <span style={{
                 fontSize: '0.68rem',
@@ -854,7 +1258,7 @@ export const ImageInspector = ({
                   fontWeight: 500,
                   cursor: 'pointer'
                 }}
-                title="Display all bounding boxes on the image"
+                title="Display all bounding boxes on the media canvas"
               >
                 <Eye size={12} />
                 <span>Show All</span>
@@ -885,7 +1289,7 @@ export const ImageInspector = ({
           </div>
 
           <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
-            Click any label card to toggle its rectangle on/off on the photo. Multiple rectangles can be viewed simultaneously.
+            Click any label card to toggle its rectangle on/off on the canvas. Multiple rectangles can be viewed simultaneously.
           </div>
 
           {/* Cards Grid */}
@@ -898,12 +1302,6 @@ export const ImageInspector = ({
             {groundedNodes.map((node, idx) => {
               const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
               const isVisible = visibleBoxIds.has(node.id);
-              const isSelected =
-                (selectedNodeId &&
-                  (node.id === selectedNodeId ||
-                    node.id.toLowerCase() === selectedNodeId.toLowerCase() ||
-                    node.label?.toLowerCase().includes(selectedNodeId.toLowerCase()))) ||
-                (activeHudNode && activeHudNode.id === node.id);
               const isHovered = hoveredBoxId === node.id;
               const mapping = getToolMapping(node.id);
 
@@ -1055,7 +1453,7 @@ export const ImageInspector = ({
                     </div>
                   )}
 
-                  {/* Card Action Buttons (Quick launcher for tools & chat) */}
+                  {/* Card Action Buttons */}
                   <div
                     style={{
                       display: 'flex',
@@ -1148,3 +1546,5 @@ export const ImageInspector = ({
     </div>
   );
 };
+
+export default ImageInspector;

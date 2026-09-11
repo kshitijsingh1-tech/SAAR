@@ -5,7 +5,7 @@ import {
   BookOpen, ChevronDown, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
-  Crosshair, BookA, Image as ImageIcon
+  Crosshair, BookA, Image as ImageIcon, Film
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -791,7 +791,9 @@ export function ChatGPTView({
           <div className="composer-files-tray">
             {attachedFiles.map((file, idx) => (
               <span key={idx} className="file-preview-pill">
-                {file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name) ? (
+                {file.type?.startsWith('video/') || /\.(mp4|mov|webm|avi|mkv)$/i.test(file.name) ? (
+                  <Film size={12} color="#38bdf8" />
+                ) : file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name) ? (
                   <ImageIcon size={12} />
                 ) : (
                   <FileText size={12} />
@@ -818,7 +820,7 @@ export function ChatGPTView({
             type="file"
             ref={fileInputRef}
             style={{ display: 'none' }}
-            accept=".csv,.xlsx,.xls,.png,.jpg,.jpeg"
+            accept=".csv,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.avi"
             onChange={handleFileChange}
           />
 
@@ -826,7 +828,7 @@ export function ChatGPTView({
           <button
             className="composer-action-btn"
             onClick={() => fileInputRef.current?.click()}
-            title="Attach CSV/XLSX dataset or photo"
+            title="Attach dataset, image, or video"
           >
             <Paperclip size={18} />
           </button>

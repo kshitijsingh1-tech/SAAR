@@ -6915,6 +6915,49 @@ body {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.5) !important;
 }
 
+/* ===================================================================
+   MULTIMODAL VIDEO TIMELINE SCRUBBER & SPECIALIST CARDS (WORKSTREAM 4)
+   =================================================================== */
+
+.video-timeline-scrubber-container input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #38bdf8;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8), 0 0 2px #ffffff;
+  border: 2px solid #ffffff;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.video-timeline-scrubber-container input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 1), 0 0 3px #ffffff;
+}
+
+.video-timeline-scrubber-container input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #38bdf8;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8), 0 0 2px #ffffff;
+  border: 2px solid #ffffff;
+}
+
+.plant-care-card,
+.toddler-posture-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.plant-care-card:hover,
+.toddler-posture-card:hover {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+
 
 
 
