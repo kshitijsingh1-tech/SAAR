@@ -333,7 +333,19 @@ export const ImageInspector = ({
   };
 
   return (
-    <div className="glass-panel" style={{ padding: '0.9rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', position: 'relative', borderRadius: '12px' }}>
+    <div
+      className="glass-panel"
+      style={{
+        padding: '0.9rem',
+        marginBottom: '1.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        borderRadius: '12px',
+        overflow: 'visible',
+        flexShrink: 0
+      }}
+    >
       {/* 1. Sleek Compact Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -880,7 +892,8 @@ export const ImageInspector = ({
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '0.6rem'
+            gap: '0.6rem',
+            paddingBottom: '2.5rem'
           }}>
             {groundedNodes.map((node, idx) => {
               const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];

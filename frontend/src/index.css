@@ -5811,6 +5811,7 @@ body {
   min-width: 720px;
   max-width: 92vw;
   height: 100vh;
+  max-height: 100vh;
   background: var(--bg-card);
   border-left: 1px solid var(--border-color);
   display: flex;
@@ -5819,6 +5820,7 @@ body {
   animation: rolloutSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 60;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
 @keyframes rolloutSlideIn {
@@ -5894,6 +5896,7 @@ body {
   padding: 0.65rem 1.25rem;
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-card);
+  flex-shrink: 0;
 }
 
 .canvas-header-left {
@@ -5987,14 +5990,43 @@ body {
 }
 
 .canvas-body {
-  flex: 1;
-  overflow-y: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .tool-body-pane {
+  flex: 1 1 0;
+  min-height: 0;
   height: 100%;
+  max-height: 100%;
   overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Sleek visible scrollbar for tool drawer panes */
+.custom-pane-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-pane-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
+.custom-pane-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+}
+.custom-pane-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+.custom-pane-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
 
 /* ===================================================================

@@ -199,24 +199,31 @@ export function ToolCanvasDrawer({
             style={{
               display: 'flex',
               flexDirection: 'row',
+              flex: '1 1 0',
               height: '100%',
+              minHeight: 0,
+              maxHeight: '100%',
               overflow: 'hidden',
               padding: '0.65rem',
               gap: 0,
-              position: 'relative'
+              position: 'relative',
+              boxSizing: 'border-box'
             }}
           >
             {/* Left Pane: Image Evidence & Regional Labels */}
             <div
+              className="split-left-pane custom-pane-scrollbar"
               style={{
                 width: `calc(${splitRatio}% - 6px)`,
                 minWidth: '280px',
                 maxWidth: 'calc(100% - 280px)',
                 height: '100%',
+                maxHeight: '100%',
+                minHeight: 0,
                 overflowY: 'auto',
+                overflowX: 'hidden',
                 paddingRight: '0.65rem',
-                display: 'flex',
-                flexDirection: 'column',
+                display: 'block',
                 flexShrink: 0,
                 pointerEvents: isSplitResizing ? 'none' : 'auto',
                 boxSizing: 'border-box'
@@ -307,7 +314,8 @@ export function ToolCanvasDrawer({
                 width: `calc(${100 - splitRatio}% - 6px)`,
                 minWidth: '280px',
                 height: '100%',
-                minHeight: '460px',
+                maxHeight: '100%',
+                minHeight: 0,
                 paddingLeft: '0.65rem',
                 display: 'flex',
                 flexDirection: 'column',
@@ -351,7 +359,7 @@ export function ToolCanvasDrawer({
 
         {/* Tool 2: Visual Photo Evidence Monitor (ImageInspector.jsx) */}
         {activeTool === 'camera' && (
-          <div className="tool-body-pane">
+          <div className="tool-body-pane custom-pane-scrollbar" style={{ height: '100%', maxHeight: '100%', minHeight: 0, overflowY: 'auto', padding: '0.65rem', display: 'block', boxSizing: 'border-box' }}>
             <ImageInspector
               preset={investigationData?.preset}
               presetId={investigationData?.preset_id || 'infra_damaged_road'}
