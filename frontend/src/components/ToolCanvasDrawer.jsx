@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Maximize2, Minimize2, BarChart2, BookOpen,
   Camera, GitFork, BookA, Crosshair, GripVertical, Sparkles
@@ -39,6 +39,45 @@ export function ToolCanvasDrawer({
     return Math.min(Math.round(window.innerWidth * 0.88), 1300);
   });
   const [isResizing, setIsResizing] = useState(false);
+
+  // IDE-style split pane ratio (% width for left pane)
+  const [splitRatio, setSplitRatio] = useState(48);
+  const [isSplitResizing, setIsSplitResizing] = useState(false);
+  const splitContainerRef = useRef(null);
+
+  // Dragging handler for the internal junction between Image evidence and Knowledge graph
+  useEffect(() => {
+    const handleSplitMouseMove = (e) => {
+      if (!isSplitResizing || !splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const offsetX = e.clientX - rect.left;
+      const newRatio = (offsetX / rect.width) * 100;
+      // Clamp between 20% and 80% to ensure both panes stay comfortable and usable
+      const clamped = Math.max(20, Math.min(80, newRatio));
+      setSplitRatio(clamped);
+    };
+
+    const handleSplitMouseUp = () => {
+      if (isSplitResizing) {
+        setIsSplitResizing(false);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+
+    if (isSplitResizing) {
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', handleSplitMouseMove);
+      window.addEventListener('mouseup', handleSplitMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleSplitMouseMove);
+      window.removeEventListener('mouseup', handleSplitMouseUp);
+    };
+  }, [isSplitResizing]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -152,17 +191,37 @@ export function ToolCanvasDrawer({
 
       {/* Tool Content Body */}
       <div className="canvas-body">
-        {/* Tool: Grounded Split View (Side-by-Side Synchronized Image + Graph) */}
+        {/* Tool: Grounded Split View (Side-by-Side Synchronized Image + Graph with IDE-style Resizable Splitter) */}
         {activeTool === 'grounded' && (
-          <div className="tool-body-pane" style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(340px, 1.25fr)',
-            gap: '1rem',
-            height: '100%',
-            overflowY: 'auto',
-            padding: '0.75rem'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div
+            ref={splitContainerRef}
+            className="tool-body-pane"
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              height: '100%',
+              overflow: 'hidden',
+              padding: '0.65rem',
+              gap: 0,
+              position: 'relative'
+            }}
+          >
+            {/* Left Pane: Image Evidence & Regional Labels */}
+            <div
+              style={{
+                width: `calc(${splitRatio}% - 6px)`,
+                minWidth: '280px',
+                maxWidth: 'calc(100% - 280px)',
+                height: '100%',
+                overflowY: 'auto',
+                paddingRight: '0.65rem',
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+                pointerEvents: isSplitResizing ? 'none' : 'auto',
+                boxSizing: 'border-box'
+              }}
+            >
               <ImageInspector
                 preset={investigationData?.preset}
                 presetId={investigationData?.preset_id || 'infra_damaged_road'}
@@ -181,7 +240,83 @@ export function ToolCanvasDrawer({
                 onOpenGlossary={() => onSelectTool('dictionary')}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '460px', minWidth: 0, overflow: 'hidden' }}>
+
+            {/* IDE-style Draggable Splitter Divider Junction */}
+            <div
+              className="ide-split-junction"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsSplitResizing(true);
+              }}
+              onDoubleClick={() => setSplitRatio(48)}
+              title="Drag junction to expand/shrink panels (Double-click to reset 50/50)"
+              style={{
+                width: '12px',
+                margin: '0 -2px',
+                cursor: 'col-resize',
+                position: 'relative',
+                zIndex: 20,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: isSplitResizing ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
+                transition: 'background 0.15s ease',
+                userSelect: 'none',
+                flexShrink: 0
+              }}
+            >
+              {/* Vertical Rule Line */}
+              <div
+                style={{
+                  width: '2px',
+                  height: '100%',
+                  background: isSplitResizing ? '#0284c7' : 'rgba(203, 213, 225, 0.75)',
+                  borderRadius: '1px',
+                  boxShadow: isSplitResizing ? '0 0 8px rgba(2, 132, 199, 0.6)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              />
+
+              {/* Centered Floating Grip Handle Pill */}
+              <div
+                style={{
+                  position: 'absolute',
+                  width: '16px',
+                  height: '34px',
+                  borderRadius: '4px',
+                  background: isSplitResizing ? '#0284c7' : '#ffffff',
+                  border: isSplitResizing ? '1px solid #38bdf8' : '1px solid #cbd5e1',
+                  boxShadow: isSplitResizing
+                    ? '0 0 10px rgba(56, 189, 248, 0.6)'
+                    : '0 2px 5px rgba(0, 0, 0, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isSplitResizing ? '#ffffff' : '#64748b',
+                  cursor: 'col-resize',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <GripVertical size={12} />
+              </div>
+            </div>
+
+            {/* Right Pane: Knowledge Graph Canvas */}
+            <div
+              style={{
+                width: `calc(${100 - splitRatio}% - 6px)`,
+                minWidth: '280px',
+                height: '100%',
+                minHeight: '460px',
+                paddingLeft: '0.65rem',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                flexShrink: 0,
+                pointerEvents: isSplitResizing ? 'none' : 'auto',
+                boxSizing: 'border-box'
+              }}
+            >
               <KnowledgeGraphCanvas
                 activeInvestigation={saarData || investigationData}
                 graphData={saarData?.graph_data || investigationData?.final_graph || null}

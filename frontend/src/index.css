@@ -6852,6 +6852,37 @@ body {
   line-height: 1.5;
 }
 
+/* ===================================================================
+   IDE-STYLE RESIZABLE SPLIT JUNCTION
+   =================================================================== */
+.ide-split-junction {
+  transition: background 0.15s ease;
+}
+
+.ide-split-junction:hover > div:first-child {
+  background: #38bdf8 !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6) !important;
+}
+
+.ide-split-junction:hover > div:last-child {
+  border-color: #38bdf8 !important;
+  color: #0284c7 !important;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3) !important;
+  transform: scale(1.08);
+}
+
+.ide-split-junction:active > div:first-child {
+  background: #0284c7 !important;
+  box-shadow: 0 0 12px rgba(2, 132, 199, 0.8) !important;
+}
+
+.ide-split-junction:active > div:last-child {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5) !important;
+}
+
 
 
 
