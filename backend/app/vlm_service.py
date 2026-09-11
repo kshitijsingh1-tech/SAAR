@@ -113,17 +113,17 @@ Structure:
             all_images.insert(0, image_input)
         primary_image = all_images[0] if all_images else None
 
-        # 1. Try Groq API (Ultra-High Speed Qwen & LLaMA 3.2 Vision)
+        # 1. Try Gemini VLM API (Google AI Studio - Multi-Image Multimodal Gemini 3.6 Flash)
+        if (vlm_provider in ("gemini", "auto")) and gemini_key:
+            res = self._call_gemini_vlm(all_images, domain, gemini_key)
+            if res and len(res[0]) > 0:
+                return res[0], res[1], res[2], f"Google AI Studio (Gemini 3.6 Flash - {len(all_images)} frames)"
+
+        # 2. Try Groq API (Ultra-High Speed Qwen & LLaMA 3.2 Vision)
         if (vlm_provider in ("groq", "qwen", "auto")) and groq_key:
             res = self._call_groq_vlm(primary_image, domain, groq_key)
             if res and len(res[0]) > 0:
                 return res[0], res[1], res[2], "Groq Qwen & LLaMA Engine (Ultra-High Speed)"
-
-        # 2. Try Gemini VLM API (Google AI Studio - Multi-Image Multimodal VLM)
-        if (vlm_provider in ("gemini", "auto")) and gemini_key:
-            res = self._call_gemini_vlm(all_images, domain, gemini_key)
-            if res and len(res[0]) > 0:
-                return res[0], res[1], res[2], f"Google AI Studio (Gemini 1.5 Flash - {len(all_images)} frames)"
 
         # 3. Try Local Ollama Engine (Qwen2.5-VL / LLaVA)
         if vlm_provider in ("ollama", "qwen", "auto"):
@@ -154,7 +154,6 @@ Structure:
         if not image_inputs:
             return None
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         prompt = self.SYSTEM_PROMPT.format(domain=domain)
         parts = [{"text": prompt}]
 
@@ -179,19 +178,30 @@ Structure:
             }
         }
 
-        try:
-            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=12) as response:
-                result = json.loads(response.read().decode("utf-8"))
-                text = result["candidates"][0]["content"]["parts"][0]["text"]
-                return self._parse_vlm_json_response(text)
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8", errors="ignore")
-            print(f"[VLMService] Gemini API call failed (HTTP {e.code}): {err_body}")
-            return None
-        except Exception as e:
-            print(f"[VLMService] Gemini API call failed: {e}")
-            return None
+        # Try active generation models (Google Gemini 3.6 Flash / 3.5 Flash / Flash Latest)
+        candidate_models = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.7-flash"]
+        for model in candidate_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=18) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+                    text = result["candidates"][0]["content"]["parts"][0]["text"]
+                    parsed = self._parse_vlm_json_response(text)
+                    if parsed and len(parsed[0]) > 0:
+                        return parsed
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8", errors="ignore")
+                print(f"[VLMService] Gemini ({model}) failed (HTTP {e.code}): {err_body[:200]}")
+                continue
+            except Exception as e:
+                print(f"[VLMService] Gemini ({model}) call failed: {e}")
+                continue
+        return None
 
     def _call_openai_vlm(self, image_inputs: List[str], domain: str, api_key: str) -> Optional[Tuple[List[NodeModel], List[EdgeModel], str]]:
         if not image_inputs:
@@ -749,7 +759,31 @@ Structure:
         return nodes, edges, summary
 
     def synthesize_reasoning_explanation(self, prompt: str, temperature: float = 0.3) -> Optional[str]:
-        """Invoke Groq / Gemini LLM to synthesize dynamic natural language scientific reasoning with non-deterministic temperature."""
+        """Invoke Gemini / Groq LLM to synthesize dynamic natural language scientific reasoning with non-deterministic temperature."""
+        # 1. Primary: Google Gemini 3.6 Flash
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        if gemini_key:
+            for gemini_model in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"]:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
+                payload = {
+                    "contents": [{"parts": [{"text": f"You are SAAR (सार), an elite scientific reasoning engine. Synthesize an evidence-backed answer with clear markdown tables, step-by-step causal mechanisms, and bold takeaways.\n\n{prompt}"}]}],
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
+                }
+                try:
+                    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        res = json.loads(resp.read().decode("utf-8"))
+                        text = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE).strip()
+                        text = re.sub(r"<think>[\s\S]*", "", text, flags=re.IGNORECASE).strip()
+                        if text:
+                            print(f"[VLMService] Successfully synthesized scientific explanation using Gemini '{gemini_model}'")
+                            return text
+                except Exception as e:
+                    print(f"[VLMService] Gemini ({gemini_model}) synthesis failed: {e}")
+                    continue
+
+        # 2. Alternative: Groq API
         groq_key = os.getenv("GROQ_API_KEY")
         if groq_key:
             url = "https://api.groq.com/openai/v1/chat/completions"
@@ -779,26 +813,6 @@ Structure:
                             return text
                 except Exception as e:
                     print(f"[VLMService] Groq synthesis failed for model {model}: {e}")
-
-        # Gemini fallback
-        gemini_key = os.getenv("GEMINI_API_KEY")
-        if gemini_key:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-            payload = {
-                "contents": [{"parts": [{"text": f"You are SAAR (सार), an elite scientific reasoning engine. Synthesize an evidence-backed answer with clear markdown tables, step-by-step causal mechanisms, and bold takeaways.\n\n{prompt}"}]}],
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
-            }
-            try:
-                req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
-                with urllib.request.urlopen(req, timeout=12) as resp:
-                    res = json.loads(resp.read().decode("utf-8"))
-                    text = res["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE).strip()
-                    text = re.sub(r"<think>[\s\S]*", "", text, flags=re.IGNORECASE).strip()
-                    if text:
-                        return text
-            except Exception as e:
-                print(f"[VLMService] Gemini synthesis failed: {e}")
 
         return None
 
