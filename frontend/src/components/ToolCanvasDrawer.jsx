@@ -115,7 +115,6 @@ export function ToolCanvasDrawer({
     { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} /> },
     { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} /> },
     { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
-    { id: 'spectrometer', label: 'Tissue Spectrometer', icon: <Sparkles size={15} /> },
     { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} /> },
     { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
     { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
