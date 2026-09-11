@@ -1,12 +1,22 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Eye, EyeOff, Radio, Upload, Sparkles, Link as LinkIcon,
   Camera, X, Crosshair, Target, Layers, Activity, Droplets,
-  HelpCircle, ExternalLink, Zap
+  HelpCircle, ExternalLink, Zap, Check
 } from 'lucide-react';
 
+// Domain-aware color palette for visual anchors & bounding boxes
+const ANCHOR_COLORS = [
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' }, // Cyan / Sky
+  { stroke: '#34d399', fill: 'rgba(52, 211, 153, 0.18)', glow: 'rgba(52, 211, 153, 0.35)', text: '#34d399', bg: 'rgba(52, 211, 153, 0.1)', border: 'rgba(52, 211, 153, 0.4)' }, // Emerald
+  { stroke: '#fbbf24', fill: 'rgba(251, 191, 36, 0.18)', glow: 'rgba(251, 191, 36, 0.35)', text: '#fbbf24', bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.4)' }, // Amber
+  { stroke: '#a78bfa', fill: 'rgba(167, 139, 250, 0.18)', glow: 'rgba(167, 139, 250, 0.35)', text: '#a78bfa', bg: 'rgba(167, 139, 250, 0.1)', border: 'rgba(167, 139, 250, 0.4)' }, // Violet
+  { stroke: '#f472b6', fill: 'rgba(244, 114, 182, 0.18)', glow: 'rgba(244, 114, 182, 0.35)', text: '#f472b6', bg: 'rgba(244, 114, 182, 0.1)', border: 'rgba(244, 114, 182, 0.4)' }, // Pink
+  { stroke: '#60a5fa', fill: 'rgba(96, 165, 250, 0.18)', glow: 'rgba(96, 165, 250, 0.35)', text: '#60a5fa', bg: 'rgba(96, 165, 250, 0.1)', border: 'rgba(96, 165, 250, 0.4)' }  // Blue
+];
+
 // Domain-aware mapping of visual entities to analytical tools & queries
-export const ENTITY_TOOL_MAPPINGS = {
+const ENTITY_TOOL_MAPPINGS = {
   // Agriculture & Indoor Aroid Entities
   leaf_fenestrations_01: {
     toolId: 'telemetry',
@@ -120,7 +130,7 @@ export const ImageInspector = ({
 }) => {
   const [urlInput, setUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
-  const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
+  const [visibleBoxIds, setVisibleBoxIds] = useState(() => new Set());
   const [hoveredBoxId, setHoveredBoxId] = useState(null);
   const [activeHudNode, setActiveHudNode] = useState(null);
   const fileInputRef = useRef(null);
@@ -236,6 +246,56 @@ export const ImageInspector = ({
     ];
   }, [nodes, presetId, preset]);
 
+  // Synchronize visibleBoxIds when groundedNodes change (default: reveal all grounded anchors)
+  useEffect(() => {
+    if (groundedNodes && groundedNodes.length > 0) {
+      setVisibleBoxIds(new Set(groundedNodes.map((n) => n.id)));
+    } else {
+      setVisibleBoxIds(new Set());
+    }
+  }, [groundedNodes]);
+
+  // When an external node is selected (e.g. from the knowledge graph), ensure its rectangle is visible
+  useEffect(() => {
+    if (selectedNodeId && groundedNodes && groundedNodes.length > 0) {
+      const match = groundedNodes.find(
+        (n) =>
+          n.id === selectedNodeId ||
+          n.id.toLowerCase() === selectedNodeId.toLowerCase() ||
+          n.label?.toLowerCase().includes(selectedNodeId.toLowerCase())
+      );
+      if (match) {
+        setVisibleBoxIds((prev) => {
+          const next = new Set(prev);
+          next.add(match.id);
+          return next;
+        });
+      }
+    }
+  }, [selectedNodeId, groundedNodes]);
+
+  // Toggle single anchor rectangle visibility on/off
+  const toggleBoxVisibility = (nodeId) => {
+    setVisibleBoxIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  };
+
+  // Bulk actions: Show All or Hide All rectangles
+  const showAllBoxes = () => {
+    setVisibleBoxIds(new Set(groundedNodes.map((n) => n.id)));
+  };
+
+  const hideAllBoxes = () => {
+    setVisibleBoxIds(new Set());
+  };
+
   return (
     <div className="glass-panel" style={{ padding: '0.9rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', position: 'relative', borderRadius: '12px' }}>
       {/* 1. Sleek Compact Header */}
@@ -310,26 +370,32 @@ export const ImageInspector = ({
             <span>URL</span>
           </button>
 
-          {/* Bounding Box Toggle */}
+          {/* Bounding Box Master Toggle */}
           <button
-            onClick={() => setShowBoundingBoxes(!showBoundingBoxes)}
+            onClick={() => {
+              if (visibleBoxIds.size > 0) {
+                hideAllBoxes();
+              } else {
+                showAllBoxes();
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
               padding: '0.25rem 0.55rem',
               borderRadius: '6px',
-              background: showBoundingBoxes ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-dark)',
-              border: showBoundingBoxes ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-color)',
+              background: visibleBoxIds.size > 0 ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-dark)',
+              border: visibleBoxIds.size > 0 ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-color)',
               fontSize: '0.72rem',
-              color: showBoundingBoxes ? 'var(--primary)' : 'var(--text-muted)',
+              color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)',
               cursor: 'pointer',
               fontWeight: 600
             }}
-            title="Toggle bounding boxes on image"
+            title={visibleBoxIds.size > 0 ? 'Hide all bounding boxes' : 'Show all bounding boxes'}
           >
-            {showBoundingBoxes ? <Eye size={12} /> : <EyeOff size={12} />}
-            <span>{showBoundingBoxes ? 'Anchors ON' : 'OFF'}</span>
+            {visibleBoxIds.size > 0 ? <Eye size={12} /> : <EyeOff size={12} />}
+            <span>{visibleBoxIds.size > 0 ? `${visibleBoxIds.size} Visible` : 'All Hidden'}</span>
           </button>
 
           {onCloseCamera && (
@@ -404,8 +470,8 @@ export const ImageInspector = ({
           </div>
         )}
 
-        {/* SVG Bounding Boxes Overlay */}
-        {showBoundingBoxes && displayImage && groundedNodes.length > 0 && (
+        {/* SVG Bounding Boxes Overlay - Multi-box rendering based on visibleBoxIds */}
+        {displayImage && groundedNodes.length > 0 && (
           <svg
             viewBox="0 0 1000 1000"
             preserveAspectRatio="none"
@@ -415,7 +481,7 @@ export const ImageInspector = ({
               left: 0,
               width: '100%',
               height: '100%',
-              pointerEvents: 'auto',
+              pointerEvents: 'none',
               zIndex: 5
             }}
           >
@@ -426,7 +492,10 @@ export const ImageInspector = ({
               </filter>
             </defs>
 
-            {groundedNodes.map((node) => {
+            {groundedNodes.map((node, idx) => {
+              if (!visibleBoxIds.has(node.id)) return null;
+
+              const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
               const [ymin, xmin, ymax, xmax] = node.bbox;
               const width = Math.max(30, xmax - xmin);
               const height = Math.max(30, ymax - ymin);
@@ -437,23 +506,20 @@ export const ImageInspector = ({
                     node.label?.toLowerCase().includes(selectedNodeId.toLowerCase()))) ||
                 (activeHudNode && activeHudNode.id === node.id);
               const isHovered = hoveredBoxId === node.id;
-
               const labelWidth = Math.min(Math.max(width, 130), 220);
 
               return (
                 <g
                   key={node.id}
-                  onClick={() => {
+                  style={{ pointerEvents: 'auto', cursor: 'pointer', transition: 'all 0.15s ease-out' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
                     const next = activeHudNode?.id === node.id ? null : node;
                     setActiveHudNode(next);
                     if (onSelectNode) onSelectNode(next ? node.id : null);
                   }}
                   onMouseEnter={() => setHoveredBoxId(node.id)}
                   onMouseLeave={() => setHoveredBoxId(null)}
-                  style={{
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease-out'
-                  }}
                 >
                   {/* Bounding Box Rectangle */}
                   <rect
@@ -464,24 +530,24 @@ export const ImageInspector = ({
                     rx="6"
                     fill={
                       isSelected
-                        ? 'rgba(56, 189, 248, 0.28)'
+                        ? color.fill.replace('0.18', '0.35')
                         : isHovered
-                        ? 'rgba(56, 189, 248, 0.14)'
-                        : 'rgba(56, 189, 248, 0.04)'
+                        ? color.fill.replace('0.18', '0.26')
+                        : color.fill
                     }
-                    stroke={isSelected ? '#38bdf8' : isHovered ? '#7dd3fc' : 'rgba(56, 189, 248, 0.85)'}
-                    strokeWidth={isSelected ? 4 : isHovered ? 3 : 2}
-                    strokeDasharray={isSelected ? '8,4' : 'none'}
+                    stroke={isSelected ? '#ffffff' : color.stroke}
+                    strokeWidth={isSelected ? 3.5 : isHovered ? 2.8 : 2}
+                    strokeDasharray={isSelected ? '7,3' : 'none'}
                     filter={isSelected || isHovered ? 'url(#box-glow)' : 'none'}
                   />
 
                   {/* Corner Target Reticles */}
                   {isSelected && (
                     <>
-                      <circle cx={xmin} cy={ymin} r="4.5" fill="#38bdf8" />
-                      <circle cx={xmax} cy={ymin} r="4.5" fill="#38bdf8" />
-                      <circle cx={xmin} cy={ymax} r="4.5" fill="#38bdf8" />
-                      <circle cx={xmax} cy={ymax} r="4.5" fill="#38bdf8" />
+                      <circle cx={xmin} cy={ymin} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                      <circle cx={xmax} cy={ymin} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                      <circle cx={xmin} cy={ymax} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                      <circle cx={xmax} cy={ymax} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
                     </>
                   )}
 
@@ -493,18 +559,16 @@ export const ImageInspector = ({
                       width={labelWidth}
                       height="24"
                       rx="5"
-                      fill={isSelected ? '#0284c7' : isHovered ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.88)'}
-                      stroke={isSelected ? '#7dd3fc' : isHovered ? '#38bdf8' : 'rgba(56, 189, 248, 0.4)'}
+                      fill={isSelected ? color.stroke : isHovered ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.88)'}
+                      stroke={color.stroke}
                       strokeWidth="1.2"
                     />
 
-                    <circle cx="12" cy="12" r="5" fill={isSelected ? 'rgba(255,255,255,0.3)' : 'rgba(56, 189, 248, 0.3)'} />
-                    <text x="9" y="15" fill={isSelected ? '#ffffff' : '#38bdf8'} fontSize="9px" fontWeight="bold">⚡</text>
-
+                    <circle cx="12" cy="12" r="4.5" fill={isSelected ? '#ffffff' : color.stroke} />
                     <text
                       x="22"
                       y="16"
-                      fill="#ffffff"
+                      fill={isSelected ? '#0f172a' : '#ffffff'}
                       fontSize="11px"
                       fontFamily="Outfit, sans-serif"
                       fontWeight="600"
@@ -537,8 +601,8 @@ export const ImageInspector = ({
           pointerEvents: 'none'
         }}>
           <span style={{ fontWeight: 500, opacity: 0.9 }}>{preset?.title || "Visual Evidence"}</span>
-          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--emerald)' }}>
-            {groundedNodes.length} Anchors Grounded
+          <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--emerald)' : 'var(--text-muted)' }}>
+            {visibleBoxIds.size} of {groundedNodes.length} Rectangles Active
           </span>
         </div>
       </div>
@@ -692,60 +756,341 @@ export const ImageInspector = ({
         </div>
       )}
 
-      {/* 4. Sleek Visual Anchors Chips */}
+      {/* 4. Interactive Visual Labels & Anchors Directory */}
       {groundedNodes.length > 0 && (
-        <div style={{ marginTop: '0.75rem' }}>
+        <div style={{ marginTop: '0.85rem' }}>
+          {/* Section Header with Bulk Actions & Guidance */}
           <div style={{
-            fontSize: '0.72rem',
-            fontWeight: 600,
-            color: 'var(--text-muted)',
-            marginBottom: '0.4rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px'
+            justifyContent: 'space-between',
+            marginBottom: '0.5rem',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+            padding: '0 0.1rem'
           }}>
-            <Target size={12} color="var(--primary)" />
-            <span>Interactive Anchors (click to inspect):</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Target size={14} color="var(--primary)" />
+              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-main)' }}>
+                Visual Anchors & Regional Labels
+              </span>
+              <span style={{
+                fontSize: '0.68rem',
+                fontFamily: 'var(--font-mono)',
+                padding: '0.12rem 0.45rem',
+                borderRadius: '10px',
+                background: visibleBoxIds.size > 0 ? 'rgba(52, 211, 153, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                color: visibleBoxIds.size > 0 ? 'var(--emerald)' : 'var(--text-muted)',
+                fontWeight: 600,
+                border: visibleBoxIds.size > 0 ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid var(--border-color)'
+              }}>
+                {visibleBoxIds.size} of {groundedNodes.length} visible
+              </span>
+            </div>
+
+            {/* Quick Bulk Action Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button
+                type="button"
+                onClick={showAllBoxes}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '0.22rem 0.55rem',
+                  borderRadius: '6px',
+                  background: visibleBoxIds.size === groundedNodes.length ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-dark)',
+                  border: '1px solid var(--border-color)',
+                  color: visibleBoxIds.size === groundedNodes.length ? 'var(--primary)' : 'var(--text-main)',
+                  fontSize: '0.7rem',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+                title="Display all bounding boxes on the image"
+              >
+                <Eye size={12} />
+                <span>Show All</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={hideAllBoxes}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '0.22rem 0.55rem',
+                  borderRadius: '6px',
+                  background: visibleBoxIds.size === 0 ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-dark)',
+                  border: '1px solid var(--border-color)',
+                  color: visibleBoxIds.size === 0 ? '#ef4444' : 'var(--text-muted)',
+                  fontSize: '0.7rem',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+                title="Hide all bounding boxes for an unobstructed view"
+              >
+                <EyeOff size={12} />
+                <span>Hide All</span>
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-            {groundedNodes.map((n) => {
+          <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
+            Click any label card to toggle its rectangle on/off on the photo. Multiple rectangles can be viewed simultaneously.
+          </div>
+
+          {/* Cards Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '0.6rem'
+          }}>
+            {groundedNodes.map((node, idx) => {
+              const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
+              const isVisible = visibleBoxIds.has(node.id);
               const isSelected =
                 (selectedNodeId &&
-                  (n.id === selectedNodeId ||
-                    n.id.toLowerCase() === selectedNodeId.toLowerCase() ||
-                    n.label?.toLowerCase().includes(selectedNodeId.toLowerCase()))) ||
-                (activeHudNode && activeHudNode.id === n.id);
+                  (node.id === selectedNodeId ||
+                    node.id.toLowerCase() === selectedNodeId.toLowerCase() ||
+                    node.label?.toLowerCase().includes(selectedNodeId.toLowerCase()))) ||
+                (activeHudNode && activeHudNode.id === node.id);
+              const isHovered = hoveredBoxId === node.id;
+              const mapping = getToolMapping(node.id);
 
               return (
-                <button
-                  key={n.id}
+                <div
+                  key={node.id}
                   onClick={() => {
-                    const next = activeHudNode?.id === n.id ? null : n;
-                    setActiveHudNode(next);
-                    if (onSelectNode) onSelectNode(next ? n.id : null);
+                    toggleBoxVisibility(node.id);
+                    if (!isVisible) {
+                      setActiveHudNode(node);
+                      if (onSelectNode) onSelectNode(node.id);
+                    }
                   }}
+                  onMouseEnter={() => setHoveredBoxId(node.id)}
+                  onMouseLeave={() => setHoveredBoxId(null)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '0.3rem 0.65rem',
-                    borderRadius: '20px',
-                    background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-dark)',
-                    border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                    color: isSelected ? 'var(--primary)' : 'var(--text-main)',
-                    fontSize: '0.74rem',
-                    fontWeight: isSelected ? '600' : '400',
+                    borderRadius: '9px',
+                    border: isVisible
+                      ? `1.5px solid ${color.stroke}`
+                      : isHovered
+                      ? '1px solid rgba(255, 255, 255, 0.25)'
+                      : '1px solid var(--border-color)',
+                    background: isVisible
+                      ? 'rgba(15, 23, 42, 0.82)'
+                      : 'rgba(15, 23, 42, 0.4)',
+                    boxShadow: isVisible
+                      ? `0 4px 14px ${color.glow}`
+                      : 'none',
+                    padding: '0.65rem 0.75rem',
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease'
+                    transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.45rem',
+                    position: 'relative',
+                    overflow: 'hidden'
                   }}
                 >
-                  <Crosshair size={11} color={isSelected ? 'var(--primary)' : 'var(--emerald)'} />
-                  <span>{n.label}</span>
-                  <span style={{ fontSize: '0.66rem', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
-                    {Math.round((n.confidence || 0.9) * 100)}%
-                  </span>
-                </button>
+                  {/* Top accent line when rectangle is visible */}
+                  {isVisible && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '2.5px',
+                      background: color.stroke,
+                      boxShadow: `0 0 8px ${color.stroke}`
+                    }} />
+                  )}
+
+                  {/* Card Top Row: Color indicator dot, Title, and Toggle pill */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                      <span
+                        style={{
+                          width: '10px',
+                          height: '10px',
+                          minWidth: '10px',
+                          borderRadius: '50%',
+                          background: isVisible ? color.stroke : 'var(--text-muted)',
+                          boxShadow: isVisible ? `0 0 7px ${color.stroke}` : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '0.83rem',
+                          color: isVisible ? '#ffffff' : 'var(--text-muted)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                        title={node.label}
+                      >
+                        {node.label}
+                      </span>
+                    </div>
+
+                    {/* Toggle State Pill */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '0.2rem 0.45rem',
+                        borderRadius: '10px',
+                        fontSize: '0.66rem',
+                        fontWeight: 600,
+                        background: isVisible ? color.bg : 'rgba(255, 255, 255, 0.04)',
+                        border: isVisible ? `1px solid ${color.border}` : '1px solid var(--border-color)',
+                        color: isVisible ? color.text : 'var(--text-muted)',
+                        flexShrink: 0,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {isVisible ? <Eye size={11} /> : <EyeOff size={11} />}
+                      <span>{isVisible ? 'ON' : 'OFF'}</span>
+                    </div>
+                  </div>
+
+                  {/* Card Sub-row: Category badge, Confidence % and Dimensions */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.68rem', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{
+                        textTransform: 'uppercase',
+                        fontWeight: 600,
+                        fontSize: '0.62rem',
+                        padding: '0.1rem 0.35rem',
+                        borderRadius: '4px',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        color: 'var(--text-muted)'
+                      }}>
+                        {node.category || 'feature'}
+                      </span>
+                      <span style={{
+                        color: 'var(--emerald)',
+                        fontFamily: 'var(--font-mono)',
+                        fontWeight: 600
+                      }}>
+                        {Math.round((node.confidence || 0.9) * 100)}% Conf.
+                      </span>
+                    </div>
+
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', opacity: 0.8 }}>
+                      bbox: [{node.bbox[1]},{node.bbox[0]}]
+                    </span>
+                  </div>
+
+                  {/* Optional Properties preview */}
+                  {node.properties && Object.keys(node.properties).length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '1px' }}>
+                      {Object.entries(node.properties).slice(0, 2).map(([k, v]) => (
+                        <span
+                          key={k}
+                          style={{
+                            fontSize: '0.63rem',
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '3px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            color: 'var(--text-muted)',
+                            fontFamily: 'var(--font-mono)'
+                          }}
+                        >
+                          {k.replace(/_/g, ' ')}: <strong style={{ color: isVisible ? color.text : 'var(--text-main)' }}>{String(v)}</strong>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Card Action Buttons (Quick launcher for tools & chat) */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '4px',
+                      marginTop: '2px',
+                      paddingTop: '0.35rem',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.05)'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenTool) onOpenTool(mapping.toolId, node);
+                      }}
+                      style={{
+                        flex: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '3px',
+                        padding: '0.25rem 0.45rem',
+                        borderRadius: '5px',
+                        background: isVisible ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-dark)',
+                        border: isVisible ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid var(--border-color)',
+                        color: isVisible ? 'var(--primary)' : 'var(--text-muted)',
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      title={`Launch ${mapping.toolName}`}
+                    >
+                      <Sparkles size={11} />
+                      <span>{mapping.actionLabel?.split(' ')[0] || 'Analyze'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onAskQuery) onAskQuery(mapping.suggestedQuery || `Analyze ${node.label}`);
+                      }}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '3px',
+                        padding: '0.25rem 0.45rem',
+                        borderRadius: '5px',
+                        background: 'var(--bg-dark)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-main)',
+                        fontSize: '0.68rem',
+                        cursor: 'pointer'
+                      }}
+                      title="Ask SAAR Chat about this region"
+                    >
+                      <Crosshair size={11} color="var(--primary)" />
+                      <span>Ask</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenGlossary) onOpenGlossary(node.label);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0.25rem 0.45rem',
+                        borderRadius: '5px',
+                        background: 'var(--bg-dark)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-muted)',
+                        fontSize: '0.68rem',
+                        cursor: 'pointer'
+                      }}
+                      title="Open Glossary Definition"
+                    >
+                      <Layers size={11} color="var(--emerald)" />
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>
