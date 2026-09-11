@@ -36,7 +36,7 @@ export function ToolCanvasDrawer({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(() => {
-    return Math.min(Math.round(window.innerWidth * 0.8), 1150);
+    return Math.min(Math.round(window.innerWidth * 0.88), 1300);
   });
   const [isResizing, setIsResizing] = useState(false);
 

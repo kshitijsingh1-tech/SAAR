@@ -237,83 +237,29 @@ export const ImageInspector = ({
   }, [nodes, presetId, preset]);
 
   return (
-    <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      {/* Panel Header */}
-      <div className="panel-title" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+    <div className="glass-panel" style={{ padding: '0.9rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', position: 'relative', borderRadius: '12px' }}>
+      {/* 1. Sleek Compact Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Camera size={18} color="var(--primary)" />
-          <span>Interactive Visual Evidence Monitor &amp; Tool Anchors</span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          {/* Bounding Box Overlay Toggle */}
-          <button
-            onClick={() => setShowBoundingBoxes(!showBoundingBoxes)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.2rem 0.6rem',
-              borderRadius: '12px',
-              background: showBoundingBoxes ? 'rgba(56, 189, 248, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-              border: showBoundingBoxes ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(148, 163, 184, 0.3)',
-              fontSize: '0.72rem',
-              color: showBoundingBoxes ? 'var(--primary)' : 'var(--text-muted)',
-              fontFamily: 'var(--font-mono)',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-            title="Toggle Visual Bounding Box Annotations"
-          >
-            {showBoundingBoxes ? <Eye size={12} /> : <EyeOff size={12} />}
-            <span>{showBoundingBoxes ? 'Tool Anchors ON' : 'Tool Anchors OFF'}</span>
-          </button>
-
-          {/* VLM Provider Badge */}
           <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
+            background: 'rgba(56, 189, 248, 0.12)',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.35rem',
-            padding: '0.2rem 0.6rem',
-            borderRadius: '12px',
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            fontSize: '0.72rem',
-            color: 'var(--emerald)',
-            fontFamily: 'var(--font-mono)',
-            fontWeight: '600'
+            justifyContent: 'center'
           }}>
-            <Sparkles size={12} />
-            <span>{vlmProviderUsed || vlmProvider || 'Single-Pass Grounded VLM'}</span>
+            <Camera size={15} color="var(--primary)" />
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
-            <Radio size={14} className="spin" style={{ animationDuration: '3s' }} />
-            <span>INTERACTIVE</span>
+          <div>
+            <span style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)' }}>Visual Evidence Grounding</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>({groundedNodes.length} anchors)</span>
           </div>
-
-          {onCloseCamera && (
-            <button onClick={onCloseCamera} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-              <X size={16} />
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Toolbar Controls */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '0.75rem',
-        padding: '0.5rem 0.75rem',
-        borderRadius: '8px',
-        background: 'var(--bg-dark)',
-        border: '1px solid var(--border-color)',
-        fontSize: '0.8rem',
-        gap: '0.5rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          {/* Quick upload button */}
           <input
             type="file"
             ref={fileInputRef}
@@ -322,33 +268,81 @@ export const ImageInspector = ({
             style={{ display: 'none' }}
           />
           <button
-            className="btn btn-secondary"
             onClick={() => fileInputRef.current?.click()}
-            style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '0.25rem 0.55rem',
+              borderRadius: '6px',
+              background: 'var(--bg-dark)',
+              border: '1px solid var(--border-color)',
+              fontSize: '0.72rem',
+              color: 'var(--text-main)',
+              cursor: 'pointer',
+              fontWeight: 500
+            }}
+            title="Upload specimen photo"
           >
-            <Upload size={13} />
-            Upload Photo
+            <Upload size={12} />
+            <span>Upload</span>
           </button>
-          
-          <button
-            className="btn btn-secondary"
-            onClick={() => setShowUrlInput(!showUrlInput)}
-            style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-          >
-            <LinkIcon size={13} />
-            Stream URL
-          </button>
-        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontSize: '0.74rem' }}>
-          <Zap size={13} color="var(--primary)" />
-          <span>Click any bounding box label on the photo to launch tools</span>
+          {/* Stream URL Toggle */}
+          <button
+            onClick={() => setShowUrlInput(!showUrlInput)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '0.25rem 0.55rem',
+              borderRadius: '6px',
+              background: showUrlInput ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-dark)',
+              border: showUrlInput ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+              fontSize: '0.72rem',
+              color: showUrlInput ? 'var(--primary)' : 'var(--text-main)',
+              cursor: 'pointer',
+              fontWeight: 500
+            }}
+            title="Load image from URL"
+          >
+            <LinkIcon size={12} />
+            <span>URL</span>
+          </button>
+
+          {/* Bounding Box Toggle */}
+          <button
+            onClick={() => setShowBoundingBoxes(!showBoundingBoxes)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '0.25rem 0.55rem',
+              borderRadius: '6px',
+              background: showBoundingBoxes ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-dark)',
+              border: showBoundingBoxes ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-color)',
+              fontSize: '0.72rem',
+              color: showBoundingBoxes ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+            title="Toggle bounding boxes on image"
+          >
+            {showBoundingBoxes ? <Eye size={12} /> : <EyeOff size={12} />}
+            <span>{showBoundingBoxes ? 'Anchors ON' : 'OFF'}</span>
+          </button>
+
+          {onCloseCamera && (
+            <button onClick={onCloseCamera} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}>
+              <X size={15} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* URL Input Form */}
       {showUrlInput && (
-        <form onSubmit={handleUrlSubmit} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+        <form onSubmit={handleUrlSubmit} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.6rem' }}>
           <input
             type="url"
             value={urlInput}
@@ -356,39 +350,41 @@ export const ImageInspector = ({
             placeholder="Paste direct image URL (https://...)"
             style={{
               flex: 1,
-              padding: '0.35rem 0.6rem',
+              padding: '0.3rem 0.55rem',
               borderRadius: '6px',
               border: '1px solid var(--border-color)',
               background: 'var(--bg-dark)',
               color: 'var(--text-main)',
-              fontSize: '0.8rem'
+              fontSize: '0.76rem'
             }}
           />
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+          <button type="submit" className="btn btn-primary" style={{ padding: '0.3rem 0.65rem', fontSize: '0.75rem' }}>
             Load
           </button>
         </form>
       )}
 
-      {/* 16:9 Aspect Ratio Evidence Visualizer Container */}
+      {/* 2. Visual Evidence Container */}
       <div style={{
         position: 'relative',
         width: '100%',
-        aspectRatio: '16 / 9',
+        minHeight: '260px',
+        maxHeight: '440px',
+        aspectRatio: '16 / 10',
         borderRadius: '10px',
         overflow: 'hidden',
         border: '1px solid var(--border-color)',
-        background: '#000000',
+        background: '#090d16',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.35)'
+        boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
       }}>
-        {/* Base Image Feed */}
+        {/* Base Image */}
         {displayImage ? (
           <img
             src={displayImage}
-            alt="Camera Evidence Feed"
+            alt="Visual Evidence"
             onError={(e) => {
               if (!e.target.src.includes('monstera_sample.png')) {
                 e.target.src = '/monstera_sample.png';
@@ -397,18 +393,18 @@ export const ImageInspector = ({
             style={{
               width: '100%',
               height: '100%',
-              objectFit: 'cover',
+              objectFit: 'contain',
               display: 'block'
             }}
           />
         ) : (
           <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-            <Camera size={36} style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
-            <div>Camera Stream Connected (1080p HD)</div>
+            <Camera size={32} style={{ opacity: 0.5, marginBottom: '0.4rem' }} />
+            <div style={{ fontSize: '0.8rem' }}>No visual evidence loaded</div>
           </div>
         )}
 
-        {/* Hardware-Accelerated SVG Bounding Box Layer */}
+        {/* SVG Bounding Boxes Overlay */}
         {showBoundingBoxes && displayImage && groundedNodes.length > 0 && (
           <svg
             viewBox="0 0 1000 1000"
@@ -425,7 +421,7 @@ export const ImageInspector = ({
           >
             <defs>
               <filter id="box-glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="8" result="blur" />
+                <feGaussianBlur stdDeviation="6" result="blur" />
                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
             </defs>
@@ -442,6 +438,8 @@ export const ImageInspector = ({
                 (activeHudNode && activeHudNode.id === node.id);
               const isHovered = hoveredBoxId === node.id;
 
+              const labelWidth = Math.min(Math.max(width, 130), 220);
+
               return (
                 <g
                   key={node.id}
@@ -454,8 +452,7 @@ export const ImageInspector = ({
                   onMouseLeave={() => setHoveredBoxId(null)}
                   style={{
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease-out',
-                    willChange: 'transform, stroke'
+                    transition: 'all 0.15s ease-out'
                   }}
                 >
                   {/* Bounding Box Rectangle */}
@@ -464,80 +461,55 @@ export const ImageInspector = ({
                     y={ymin}
                     width={width}
                     height={height}
-                    rx="8"
+                    rx="6"
                     fill={
                       isSelected
-                        ? 'rgba(56, 189, 248, 0.32)'
+                        ? 'rgba(56, 189, 248, 0.28)'
                         : isHovered
-                        ? 'rgba(56, 189, 248, 0.18)'
-                        : 'rgba(56, 189, 248, 0.06)'
+                        ? 'rgba(56, 189, 248, 0.14)'
+                        : 'rgba(56, 189, 248, 0.04)'
                     }
                     stroke={isSelected ? '#38bdf8' : isHovered ? '#7dd3fc' : 'rgba(56, 189, 248, 0.85)'}
-                    strokeWidth={isSelected ? 4.5 : isHovered ? 3.5 : 2}
-                    strokeDasharray={isSelected ? '10,5' : 'none'}
+                    strokeWidth={isSelected ? 4 : isHovered ? 3 : 2}
+                    strokeDasharray={isSelected ? '8,4' : 'none'}
                     filter={isSelected || isHovered ? 'url(#box-glow)' : 'none'}
                   />
 
                   {/* Corner Target Reticles */}
                   {isSelected && (
                     <>
-                      <circle cx={xmin} cy={ymin} r="5" fill="#38bdf8" />
-                      <circle cx={xmax} cy={ymin} r="5" fill="#38bdf8" />
-                      <circle cx={xmin} cy={ymax} r="5" fill="#38bdf8" />
-                      <circle cx={xmax} cy={ymax} r="5" fill="#38bdf8" />
+                      <circle cx={xmin} cy={ymin} r="4.5" fill="#38bdf8" />
+                      <circle cx={xmax} cy={ymin} r="4.5" fill="#38bdf8" />
+                      <circle cx={xmin} cy={ymax} r="4.5" fill="#38bdf8" />
+                      <circle cx={xmax} cy={ymax} r="4.5" fill="#38bdf8" />
                     </>
                   )}
 
-                  {/* Grounded Entity Badge (Interactive Tool Launching Button) */}
-                  <g transform={`translate(${xmin}, ${Math.max(10, ymin - 38)})`}>
+                  {/* Compact Grounded Entity Badge */}
+                  <g transform={`translate(${xmin}, ${Math.max(6, ymin - 26)})`}>
                     <rect
                       x="0"
                       y="0"
-                      width={Math.min(Math.max(width, 210), 300)}
-                      height="34"
-                      rx="7"
-                      fill={isSelected ? '#0284c7' : isHovered ? 'rgba(15, 23, 42, 0.98)' : 'rgba(15, 23, 42, 0.92)'}
-                      stroke={isSelected ? '#7dd3fc' : isHovered ? '#38bdf8' : 'rgba(56, 189, 248, 0.5)'}
-                      strokeWidth={isSelected || isHovered ? 2.2 : 1.5}
+                      width={labelWidth}
+                      height="24"
+                      rx="5"
+                      fill={isSelected ? '#0284c7' : isHovered ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.88)'}
+                      stroke={isSelected ? '#7dd3fc' : isHovered ? '#38bdf8' : 'rgba(56, 189, 248, 0.4)'}
+                      strokeWidth="1.2"
                     />
 
-                    {/* Tool Quick-Launch Reticle Icon */}
-                    <circle cx="16" cy="17" r="8" fill={isSelected ? 'rgba(255,255,255,0.25)' : 'rgba(56, 189, 248, 0.25)'} />
-                    <text x="11.5" y="21.5" fill={isSelected ? '#ffffff' : '#38bdf8'} fontSize="13px" fontWeight="bold">⚡</text>
+                    <circle cx="12" cy="12" r="5" fill={isSelected ? 'rgba(255,255,255,0.3)' : 'rgba(56, 189, 248, 0.3)'} />
+                    <text x="9" y="15" fill={isSelected ? '#ffffff' : '#38bdf8'} fontSize="9px" fontWeight="bold">⚡</text>
 
-                    {/* Node Label Text */}
                     <text
-                      x="30"
-                      y="21.5"
+                      x="22"
+                      y="16"
                       fill="#ffffff"
-                      fontSize="13.5px"
+                      fontSize="11px"
                       fontFamily="Outfit, sans-serif"
-                      fontWeight="700"
+                      fontWeight="600"
                     >
-                      {node.label.length > 20 ? node.label.substring(0, 18) + '…' : node.label}
-                    </text>
-
-                    {/* Small 'Tool' badge indicator on right side */}
-                    <rect
-                      x={Math.min(Math.max(width, 210), 300) - 52}
-                      y="7"
-                      width="44"
-                      height="20"
-                      rx="4"
-                      fill="rgba(56, 189, 248, 0.2)"
-                      stroke="rgba(56, 189, 248, 0.4)"
-                      strokeWidth="1"
-                    />
-                    <text
-                      x={Math.min(Math.max(width, 210), 300) - 30}
-                      y="21"
-                      fill="#7dd3fc"
-                      fontSize="10px"
-                      fontFamily="var(--font-mono)"
-                      fontWeight="700"
-                      textAnchor="middle"
-                    >
-                      TOOL
+                      {node.label.length > 22 ? node.label.substring(0, 20) + '…' : node.label}
                     </text>
                   </g>
                 </g>
@@ -546,208 +518,197 @@ export const ImageInspector = ({
           </svg>
         )}
 
-        {/* Dynamic Glassmorphic Entity Action HUD Popover */}
-        {activeHudNode && (
-          <div
-            className="animate-fade-in"
-            style={{
-              position: 'absolute',
-              top: `${Math.min(58, Math.max(12, activeHudNode.bbox ? activeHudNode.bbox[0] / 10 : 20))}%`,
-              left: `${Math.min(55, Math.max(8, activeHudNode.bbox ? activeHudNode.bbox[1] / 10 : 20))}%`,
-              zIndex: 50,
-              minWidth: '320px',
-              maxWidth: '380px',
-              background: 'rgba(15, 23, 42, 0.96)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(56, 189, 248, 0.6)',
-              borderRadius: '12px',
-              padding: '1rem',
-              boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.85), 0 0 25px rgba(56, 189, 248, 0.25)',
-              color: '#ffffff'
-            }}
-          >
-            {/* HUD Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{
-                  width: '30px',
-                  height: '30px',
-                  borderRadius: '7px',
-                  background: 'rgba(56, 189, 248, 0.2)',
-                  border: '1px solid rgba(56, 189, 248, 0.4)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--primary)'
-                }}>
-                  <Zap size={16} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: '700', fontSize: '0.92rem', color: '#f8fafc', lineHeight: 1.2 }}>
-                    {activeHudNode.label}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                    <span style={{ textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600, color: 'var(--primary)' }}>
-                      {activeHudNode.category || 'entity'}
-                    </span>
-                    <span>•</span>
-                    <span style={{ color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
-                      {Math.round((activeHudNode.confidence || 0.9) * 100)}% Confidence
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setActiveHudNode(null)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
-              >
-                <X size={15} />
-              </button>
-            </div>
-
-            {/* Entity Properties / Visual Indicators */}
-            {activeHudNode.properties && Object.keys(activeHudNode.properties).length > 0 && (
-              <div style={{
-                background: 'rgba(2, 6, 23, 0.7)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '7px',
-                padding: '0.45rem 0.65rem',
-                marginBottom: '0.75rem',
-                fontSize: '0.74rem',
-                fontFamily: 'var(--font-mono)'
-              }}>
-                {Object.entries(activeHudNode.properties).slice(0, 3).map(([k, v]) => (
-                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', margin: '2px 0' }}>
-                    <span style={{ color: '#94a3b8' }}>{k.replace(/_/g, ' ')}:</span>
-                    <span style={{ color: '#38bdf8', fontWeight: 600 }}>{String(v)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-              {/* Primary Tool Launcher */}
-              <button
-                className="btn"
-                onClick={() => {
-                  const mapping = getToolMapping(activeHudNode.id);
-                  if (onOpenTool) onOpenTool(mapping.toolId, activeHudNode);
-                  setActiveHudNode(null);
-                }}
-                style={{
-                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                  border: '1px solid #38bdf8',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: '0.78rem',
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.45rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)'
-                }}
-              >
-                <Sparkles size={14} />
-                <span>Launch {getToolMapping(activeHudNode.id).toolName}</span>
-              </button>
-
-              {/* Secondary Drill-Down and Glossary Actions */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    const mapping = getToolMapping(activeHudNode.id);
-                    if (onAskQuery) onAskQuery(mapping.suggestedQuery || `Analyze the physical implications of ${activeHudNode.label}`);
-                    setActiveHudNode(null);
-                  }}
-                  style={{
-                    fontSize: '0.72rem',
-                    padding: '0.4rem 0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.35rem',
-                    background: 'rgba(30, 41, 59, 0.85)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    color: '#f1f5f9'
-                  }}
-                >
-                  <Crosshair size={12} color="var(--primary)" />
-                  <span>Ask SAAR</span>
-                </button>
-
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    if (onOpenGlossary) onOpenGlossary(activeHudNode.label);
-                    setActiveHudNode(null);
-                  }}
-                  style={{
-                    fontSize: '0.72rem',
-                    padding: '0.4rem 0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.35rem',
-                    background: 'rgba(30, 41, 59, 0.85)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    color: '#f1f5f9'
-                  }}
-                >
-                  <Layers size={12} color="var(--emerald)" />
-                  <span>Glossary</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Camera Info Footer Bar */}
+        {/* Minimal subtle bottom bar */}
         <div style={{
           position: 'absolute',
-          bottom: 10,
-          left: 12,
-          right: 12,
+          bottom: 6,
+          left: 8,
+          right: 8,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(0, 0, 0, 0.72)',
-          backdropFilter: 'blur(8px)',
-          padding: '0.4rem 0.75rem',
-          borderRadius: '6px',
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(6px)',
+          padding: '0.25rem 0.6rem',
+          borderRadius: '5px',
           color: '#ffffff',
-          fontSize: '0.75rem',
-          zIndex: 10
+          fontSize: '0.68rem',
+          zIndex: 10,
+          pointerEvents: 'none'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
-            <Layers size={14} color="var(--primary)" />
-            <span>{preset?.title || "Image-Grounded Scene Perception"}</span>
-          </div>
-          <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--emerald)', fontSize: '0.72rem' }}>
-            {groundedNodes.length} Interactive Tool Anchors Active | 60 FPS HD
-          </div>
+          <span style={{ fontWeight: 500, opacity: 0.9 }}>{preset?.title || "Visual Evidence"}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--emerald)' }}>
+            {groundedNodes.length} Anchors Grounded
+          </span>
         </div>
       </div>
 
-      {/* Grounded Entity Quick-Filter Chips */}
-      {groundedNodes.length > 0 && (
-        <div style={{
-          marginTop: '0.75rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.4rem'
-        }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <Target size={13} color="var(--primary)" />
-            <span>Interactive Visual Anchors (Click label to open Action HUD or launch tool):</span>
+      {/* 3. Dedicated Inspector Card (Rendered cleanly below the photo, leaving image 100% visible) */}
+      {activeHudNode && (
+        <div
+          className="animate-fade-in"
+          style={{
+            marginTop: '0.75rem',
+            background: 'var(--bg-dark)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '10px',
+            padding: '0.75rem 0.85rem',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+          }}
+        >
+          {/* Card Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{
+                width: '26px',
+                height: '26px',
+                borderRadius: '6px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)'
+              }}>
+                <Zap size={14} />
+              </div>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)', lineHeight: 1.2 }}>
+                  {activeHudNode.label}
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                  <span style={{ textTransform: 'uppercase', fontWeight: 600, color: 'var(--primary)' }}>
+                    {activeHudNode.category || 'entity'}
+                  </span>
+                  <span>•</span>
+                  <span style={{ color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
+                    {Math.round((activeHudNode.confidence || 0.9) * 100)}% Confidence
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setActiveHudNode(null)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '3px' }}
+              title="Close inspection card"
+            >
+              <X size={15} />
+            </button>
           </div>
-          
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+
+          {/* Properties / Attributes Row */}
+          {activeHudNode.properties && Object.keys(activeHudNode.properties).length > 0 && (
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.35rem',
+              marginBottom: '0.6rem'
+            }}>
+              {Object.entries(activeHudNode.properties).slice(0, 4).map(([k, v]) => (
+                <div
+                  key={k}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.08)',
+                    border: '1px solid rgba(56, 189, 248, 0.2)',
+                    borderRadius: '5px',
+                    padding: '0.2rem 0.45rem',
+                    fontSize: '0.68rem',
+                    fontFamily: 'var(--font-mono)',
+                    display: 'flex',
+                    gap: '4px'
+                  }}
+                >
+                  <span style={{ color: 'var(--text-muted)' }}>{k.replace(/_/g, ' ')}:</span>
+                  <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{String(v)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Action Row */}
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                const mapping = getToolMapping(activeHudNode.id);
+                if (onOpenTool) onOpenTool(mapping.toolId, activeHudNode);
+                setActiveHudNode(null);
+              }}
+              style={{
+                flex: 2,
+                fontSize: '0.74rem',
+                padding: '0.4rem 0.6rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px'
+              }}
+            >
+              <Sparkles size={13} />
+              <span>Launch {getToolMapping(activeHudNode.id).toolName}</span>
+            </button>
+
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                const mapping = getToolMapping(activeHudNode.id);
+                if (onAskQuery) onAskQuery(mapping.suggestedQuery || `Analyze the physical implications of ${activeHudNode.label}`);
+                setActiveHudNode(null);
+              }}
+              style={{
+                flex: 1,
+                fontSize: '0.72rem',
+                padding: '0.4rem 0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}
+            >
+              <Crosshair size={12} color="var(--primary)" />
+              <span>Ask SAAR</span>
+            </button>
+
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                if (onOpenGlossary) onOpenGlossary(activeHudNode.label);
+                setActiveHudNode(null);
+              }}
+              style={{
+                fontSize: '0.72rem',
+                padding: '0.4rem 0.55rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}
+            >
+              <Layers size={12} color="var(--emerald)" />
+              <span>Glossary</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Sleek Visual Anchors Chips */}
+      {groundedNodes.length > 0 && (
+        <div style={{ marginTop: '0.75rem' }}>
+          <div style={{
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            color: 'var(--text-muted)',
+            marginBottom: '0.4rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}>
+            <Target size={12} color="var(--primary)" />
+            <span>Interactive Anchors (click to inspect):</span>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
             {groundedNodes.map((n) => {
               const isSelected =
                 (selectedNodeId &&
@@ -757,67 +718,34 @@ export const ImageInspector = ({
                 (activeHudNode && activeHudNode.id === n.id);
 
               return (
-                <div
+                <button
                   key={n.id}
+                  onClick={() => {
+                    const next = activeHudNode?.id === n.id ? null : n;
+                    setActiveHudNode(next);
+                    if (onSelectNode) onSelectNode(next ? n.id : null);
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    borderRadius: '6px',
+                    gap: '5px',
+                    padding: '0.3rem 0.65rem',
+                    borderRadius: '20px',
+                    background: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-dark)',
                     border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: isSelected ? 'var(--primary-bg)' : 'var(--bg-dark)',
-                    overflow: 'hidden'
+                    color: isSelected ? 'var(--primary)' : 'var(--text-main)',
+                    fontSize: '0.74rem',
+                    fontWeight: isSelected ? '600' : '400',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  <button
-                    onClick={() => {
-                      const next = activeHudNode?.id === n.id ? null : n;
-                      setActiveHudNode(next);
-                      if (onSelectNode) onSelectNode(next ? n.id : null);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      padding: '0.25rem 0.5rem',
-                      background: 'transparent',
-                      border: 'none',
-                      color: isSelected ? 'var(--primary)' : 'var(--text-main)',
-                      fontSize: '0.75rem',
-                      fontWeight: isSelected ? '700' : '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Crosshair size={12} color={isSelected ? 'var(--primary)' : 'var(--emerald)'} />
-                    <span>{n.label}</span>
-                    <span style={{ fontSize: '0.68rem', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
-                      {Math.round((n.confidence || 0.9) * 100)}%
-                    </span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      const mapping = getToolMapping(n.id);
-                      if (onOpenTool) onOpenTool(mapping.toolId, n);
-                    }}
-                    title={`Quick-launch ${getToolMapping(n.id).toolName}`}
-                    style={{
-                      background: 'rgba(56, 189, 248, 0.15)',
-                      border: 'none',
-                      borderLeft: '1px solid rgba(56, 189, 248, 0.3)',
-                      color: 'var(--primary)',
-                      padding: '0.25rem 0.45rem',
-                      fontSize: '0.7rem',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '2px'
-                    }}
-                  >
-                    <Zap size={10} />
-                    <span>Tool</span>
-                  </button>
-                </div>
+                  <Crosshair size={11} color={isSelected ? 'var(--primary)' : 'var(--emerald)'} />
+                  <span>{n.label}</span>
+                  <span style={{ fontSize: '0.66rem', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
+                    {Math.round((n.confidence || 0.9) * 100)}%
+                  </span>
+                </button>
               );
             })}
           </div>
