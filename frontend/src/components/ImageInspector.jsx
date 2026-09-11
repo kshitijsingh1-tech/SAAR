@@ -569,54 +569,32 @@ export const ImageInspector = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {/* Media Mode Toggle (Photo vs Video) */}
-          <div style={{ display: 'flex', background: 'var(--bg-dark)', borderRadius: '6px', border: '1px solid var(--border-color)', padding: '2px' }}>
+          {/* Video mode indicator + reset (only visible when a video is loaded) */}
+          {mediaMode === 'video' && (
             <button
               type="button"
-              onClick={() => setMediaMode('image')}
+              onClick={() => { setMediaMode('image'); setCustomVideoUrl(null); setIsVideoPlaying(false); setVideoCurrentTime(0); }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '0.2rem 0.5rem',
-                borderRadius: '4px',
-                background: mediaMode === 'image' ? 'rgba(52, 211, 153, 0.2)' : 'transparent',
-                border: 'none',
-                color: mediaMode === 'image' ? 'var(--emerald)' : 'var(--text-muted)',
+                padding: '0.22rem 0.5rem',
+                borderRadius: '6px',
+                background: 'rgba(56, 189, 248, 0.12)',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                color: 'var(--primary)',
                 fontSize: '0.68rem',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
-              title="Inspect still photo evidence"
+              title="Exit video mode and return to photo inspection"
             >
               <Camera size={11} />
-              <span>Photo</span>
+              <span>Back to Photo</span>
             </button>
+          )}
 
-            <button
-              type="button"
-              onClick={() => setMediaMode('video')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '0.2rem 0.5rem',
-                borderRadius: '4px',
-                background: mediaMode === 'video' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                border: 'none',
-                color: mediaMode === 'video' ? 'var(--primary)' : 'var(--text-muted)',
-                fontSize: '0.68rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-              title="Inspect temporal video recording"
-            >
-              <Film size={11} />
-              <span>Video</span>
-            </button>
-          </div>
-
-          {/* Quick upload button (Accepts images and video clips) */}
+          {/* Quick upload button (Accepts images and video clips — mode auto-detects) */}
           <input
             type="file"
             ref={fileInputRef}
