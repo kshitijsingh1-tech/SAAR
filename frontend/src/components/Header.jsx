@@ -115,16 +115,9 @@ export function Header({
           onClick={() => onTabChange('rag')}
         >
           <BookOpen size={14} />
-          <span>Literature RAG</span>
+          <span>Scientific References</span>
         </button>
 
-        <button
-          className={`capsule-nav-btn ${activeTab === 'architecture' ? 'active' : ''}`}
-          onClick={() => onTabChange('architecture')}
-        >
-          <Layers size={14} />
-          <span>Architecture</span>
-        </button>
       </nav>
 
       {/* Right Actions (Export, Theme, Help) */}

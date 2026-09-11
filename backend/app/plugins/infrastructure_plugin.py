@@ -26,14 +26,14 @@ class InfrastructurePlugin(BaseDomainPlugin):
 
     def perceive_initial_scene(self, preset_id: str) -> Tuple[List[NodeModel], List[EdgeModel]]:
         nodes = [
-            NodeModel(id="debris_01", label="Organic & Solid Debris", node_type="object", category="obstacle", confidence=0.95, properties={"composition": "leaves, plastics, silt"}),
-            NodeModel(id="drain_01", label="Storm Water Drain Grate", node_type="object", category="infrastructure", confidence=0.98, properties={"type": "catchment grate", "aperture": "cluttered"}),
-            NodeModel(id="water_01", label="Accumulated Ponding Water", node_type="object", category="environment", confidence=0.92, properties={"surface_area": "~14m²", "estimated_depth": "unknown"}),
-            NodeModel(id="road_01", label="Asphalt Pavement Section", node_type="object", category="infrastructure", confidence=0.99, properties={"surface_condition": "alligator cracking"}),
+            NodeModel(id="debris_01", label="Organic & Solid Debris", node_type="object", category="obstacle", confidence=0.95, bbox=[150, 640, 370, 890], visual_anchor=True, properties={"composition": "leaves, plastics, silt"}),
+            NodeModel(id="drain_01", label="Storm Water Drain Grate", node_type="object", category="infrastructure", confidence=0.98, bbox=[120, 670, 410, 940], visual_anchor=True, properties={"type": "catchment grate", "aperture": "cluttered"}),
+            NodeModel(id="water_01", label="Accumulated Ponding Water", node_type="object", category="environment", confidence=0.92, bbox=[440, 470, 880, 860], visual_anchor=True, properties={"surface_area": "~14m²", "estimated_depth": "unknown"}),
+            NodeModel(id="road_01", label="Asphalt Pavement Section", node_type="object", category="infrastructure", confidence=0.99, bbox=[310, 190, 780, 520], visual_anchor=True, properties={"surface_condition": "alligator cracking"}),
             
             # Initial Properties & Hypotheses
-            NodeModel(id="prop_drain_flow", label="Drainage Inflow Rate = Restricted", node_type="property", category="measurement", confidence=0.60),
-            NodeModel(id="hypo_subsurface_erosion", label="Hypothesis: Sub-Base Soil Piping & Structural Cavity", node_type="hypothesis", category="risk", confidence=0.45, status="hypothesis")
+            NodeModel(id="prop_drain_flow", label="Drainage Inflow Rate = Restricted", node_type="property", category="measurement", confidence=0.60, bbox=None, visual_anchor=False),
+            NodeModel(id="hypo_subsurface_erosion", label="Hypothesis: Sub-Base Soil Piping & Structural Cavity", node_type="hypothesis", category="risk", confidence=0.45, bbox=None, visual_anchor=False, status="hypothesis")
         ]
 
         edges = [

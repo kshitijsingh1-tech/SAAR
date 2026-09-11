@@ -20,14 +20,14 @@ class AgriculturePlugin(BaseDomainPlugin):
 
     def perceive_initial_scene(self, preset_id: str) -> Tuple[List[NodeModel], List[EdgeModel]]:
         nodes = [
-            NodeModel(id="leaf_chlorosis_01", label="Interveinal Leaf Chlorosis", node_type="observation", category="pathology", confidence=0.96, properties={"pattern": "yellowing between green primary veins", "affected_area": "upper foliage"}),
-            NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, properties={"vwc_percent": 48.2, "saturation_threshold": 35.0}),
-            NodeModel(id="soil_ph_sensor_01", label="Substrate pH Sensor (pH 7.85)", node_type="property", category="measurement", confidence=0.92, properties={"ph": 7.85, "condition": "calcareous / alkaline"}),
-            NodeModel(id="irrigation_emitter_01", label="Automated Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, properties={"regime": "continuous pulse", "flow_liters_hr": 2.8}),
+            NodeModel(id="leaf_chlorosis_01", label="Interveinal Leaf Chlorosis", node_type="observation", category="pathology", confidence=0.96, bbox=[180, 240, 680, 760], visual_anchor=True, properties={"pattern": "yellowing between green primary veins", "affected_area": "upper foliage"}),
+            NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, bbox=[720, 520, 910, 830], visual_anchor=True, properties={"vwc_percent": 48.2, "saturation_threshold": 35.0}),
+            NodeModel(id="soil_ph_sensor_01", label="Substrate pH Sensor (pH 7.85)", node_type="property", category="measurement", confidence=0.92, bbox=None, visual_anchor=False, properties={"ph": 7.85, "condition": "calcareous / alkaline"}),
+            NodeModel(id="irrigation_emitter_01", label="Automated Drip Irrigation Line", node_type="object", category="infrastructure", confidence=0.98, bbox=[670, 70, 870, 420], visual_anchor=True, properties={"regime": "continuous pulse", "flow_liters_hr": 2.8}),
             
             # Hypotheses
-            NodeModel(id="hypo_iron_deficiency", label="Hypothesis: Bicarbonate-Induced Fe²⁺ Bioavailability Deficit", node_type="hypothesis", category="nutritional_disorder", confidence=0.45, status="hypothesis"),
-            NodeModel(id="hypo_nitrogen_burn", label="Hypothesis: Root-Burn via Excessive Nitrogen Application", node_type="hypothesis", category="chemical_stress", confidence=0.35, status="hypothesis")
+            NodeModel(id="hypo_iron_deficiency", label="Hypothesis: Bicarbonate-Induced Fe²⁺ Bioavailability Deficit", node_type="hypothesis", category="nutritional_disorder", confidence=0.45, bbox=None, visual_anchor=False, status="hypothesis"),
+            NodeModel(id="hypo_nitrogen_burn", label="Hypothesis: Root-Burn via Excessive Nitrogen Application", node_type="hypothesis", category="chemical_stress", confidence=0.35, bbox=None, visual_anchor=False, status="hypothesis")
         ]
 
         edges = [

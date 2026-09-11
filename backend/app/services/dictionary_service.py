@@ -32,6 +32,33 @@ SCIENTIFIC_AFFIX_MAP = [
 PRELOADED_DOMAIN_TERMS = {
     "agriculture": [
         {
+            "term": "Rhizosphere",
+            "phonetic": "/ˈraɪ.zoʊˌsfɪər/",
+            "domain": "Soil Microbiology & Agronomy",
+            "definition": "The narrow micro-ecological zone of soil surrounding plant roots directly influenced by root secretions, microbial activity, and nutrient exchange.",
+            "investigation_context": "The primary interface where waterlogging, respiration blockages, and pH changes directly govern nutrient bioavailability to the plant.",
+            "diagnostic_indicator": "Root-zone moisture, dissolved oxygen levels, and root exudate pH shifts.",
+            "related_nodes": ["Root Zone Moisture", "Substrate pH", "Bioavailable Fe²⁺", "Hypoxia"]
+        },
+        {
+            "term": "Rhizosphere Hypoxia",
+            "phonetic": "/ˈraɪ.zoʊˌsfɪər haɪˈpɒk.si.ə/",
+            "domain": "Plant Physiology",
+            "definition": "A critical oxygen deficit (Dissolved O₂ < 0.8 mg/L) in the root zone caused by water supersaturation, suppressing aerobic cellular respiration and ATP-driven ion pumps.",
+            "investigation_context": "Direct biological consequence of continuous drip irrigation exceeding drainage infiltration capacity.",
+            "diagnostic_indicator": "Substrate moisture > 45% VWC sustained for >72 hours with collapse of active nutrient uptake.",
+            "related_nodes": ["Root Zone Moisture", "Root Anoxia", "ATP Synthesis", "Chlorosis"]
+        },
+        {
+            "term": "Substrate Alkalinization",
+            "phonetic": "/ˌæl.kə.laɪ.nɪˈzeɪ.ʃən/",
+            "domain": "Soil Chemistry",
+            "definition": "An increase in root substrate pH above neutral (>7.5), causing soluble ferrous iron (Fe²⁺) to precipitate into insoluble ferric hydroxides.",
+            "investigation_context": "Primary causal driver of iron lockup in tomato crops, blocking enzymatic iron reduction despite adequate total soil iron.",
+            "diagnostic_indicator": "Substrate pH rising above 7.6 accompanied by sharp drops in bioavailable Fe²⁺.",
+            "related_nodes": ["Substrate pH", "Bioavailable Fe²⁺", "Chlorosis", "Nutrient Lockup"]
+        },
+        {
             "term": "Chlorosis",
             "phonetic": "/kləˈroʊ.sɪs/",
             "domain": "Plant Pathology",
@@ -135,6 +162,35 @@ PRELOADED_DOMAIN_TERMS = {
             "investigation_context": "Evaluates what-if counterfactual scenarios by isolating direct causal mechanisms from spurious confounding correlations.",
             "diagnostic_indicator": "Parent edge disconnection and counterfactual state recalculation.",
             "related_nodes": ["Backdoor Criterion", "Counterfactual Simulation", "Intervention"]
+        }
+    ],
+    "pediatrics": [
+        {
+            "term": "Physiological Genu Varum",
+            "phonetic": "/ˌdʒiː.njuː ˈvɛər.əm/",
+            "domain": "Pediatric Orthopedics",
+            "definition": "Symmetrical lateral bowing of the tibia and femur typically present in infants and toddlers up to 24 months of age due to intrauterine positioning.",
+            "investigation_context": "Differentiated from pathological bowing (Blount's disease or rickets) by bilateral symmetry, intercondylar distance < 3cm, and lack of sharp medial tibial beaking.",
+            "diagnostic_indicator": "Symmetrical intercondylar distance < 3 cm with smooth curve apex at the knee joint.",
+            "related_nodes": ["Intercondylar Distance", "Blount's Disease", "Tibial Torsion", "Gait Maturation"]
+        },
+        {
+            "term": "Toddler Lumbar Lordosis",
+            "phonetic": "/ˈlʌm.bər lɔːrˈdoʊ.sɪs/",
+            "domain": "Pediatric Biomechanics",
+            "definition": "Pronounced anterior curvature of the lumbar spine in toddlers, mechanically secondary to weak abdominal wall compliance and anterior pelvic tilt.",
+            "investigation_context": "Serves as an essential compensatory biomechanical mechanism maintaining gravitational plumb line alignment over the toddler's base of support.",
+            "diagnostic_indicator": "Sagittal spinal curvature ~35-42° paired with protuberant abdominal contour in standing position.",
+            "related_nodes": ["Anterior Pelvic Tilt", "Plumb Line Axis", "Abdominal Wall Compliance", "Spinal Sagittal Balance"]
+        },
+        {
+            "term": "Plumb Line Axis",
+            "phonetic": "/plʌm laɪn ˈæk.sɪs/",
+            "domain": "Biomechanical Posture Analysis",
+            "definition": "The vertical gravitational reference line descending from the external auditory meatus through the acromion, greater trochanter, and just anterior to the lateral malleolus.",
+            "investigation_context": "Quantifies whether multi-view toddler posture maintains dynamic equilibrium within the base of support without truncal collapse.",
+            "diagnostic_indicator": "Minimal horizontal deviation (<2 cm) between the plumb line vector and center of foot support.",
+            "related_nodes": ["Center of Mass", "Base of Support", "Postural Stability", "Sagittal Balance"]
         }
     ]
 }

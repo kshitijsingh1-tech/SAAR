@@ -3,7 +3,6 @@ import { DomainSelector } from './DomainSelector';
 import { ImageInspector } from './ImageInspector';
 import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { SaarFindingsPanel } from './SaarFindingsPanel';
-import { BenchmarkComparison } from './BenchmarkComparison';
 import { Layers, Activity, Eye, BarChart2 } from 'lucide-react';
 
 export function VisualAnalyticsPage({
@@ -142,15 +141,6 @@ export function VisualAnalyticsPage({
               />
             </div>
           </section>
-
-          {/* Benchmark Comparison Matrix */}
-          {investigationData && (
-            <BenchmarkComparison
-              investigationData={investigationData}
-              selectedDomain={selectedDomain}
-              selectedPreset={selectedPreset}
-            />
-          )}
         </div>
 
         {/* DIVISION 2 (RIGHT): Vision (Top) & Analysis (Bottom) */}

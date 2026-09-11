@@ -121,6 +121,8 @@ class Entity(BaseModel):
     entity_id: str = Field(default_factory=lambda: f"ENT-{str(uuid.uuid4())[:6]}")
     entity_type: str = "generic"
     name: str
+    bbox: Optional[List[float]] = Field(default=None, description="Normalized bounding box [ymin, xmin, ymax, xmax] (0 to 1000)")
+    visual_anchor: Optional[bool] = Field(default=True, description="Whether entity has direct visual grounding in image")
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -163,6 +165,8 @@ class Concept(BaseModel):
     contradicting_evidence: List[str] = Field(default_factory=list)
     confidence: float = 0.5
     unknowns: List[str] = Field(default_factory=list)
+    bbox: Optional[List[float]] = Field(default=None, description="Normalized bounding box [ymin, xmin, ymax, xmax] (0 to 1000)")
+    visual_anchor: Optional[bool] = Field(default=True, description="Whether concept has direct visual representation")
     description: Optional[str] = None
 
 
@@ -252,6 +256,42 @@ class TerminologyItem(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Temporal Snapshot Model (Daily Image Ingestion & Longitudinal Tracking)
+# ---------------------------------------------------------------------------
+
+class TemporalNodeState(BaseModel):
+    """Snapshot of a single node's state at a specific point in time."""
+    node_id: str
+    label: str
+    confidence: float = 0.0
+    status: str = "confirmed"
+    category: str = "general"
+    properties: Dict[str, Any] = Field(default_factory=dict)
+
+class TemporalEdgeState(BaseModel):
+    """Snapshot of a single edge's state at a specific point in time."""
+    source: str
+    target: str
+    relation_type: str = "affects"
+    confidence: float = 0.0
+    evidence: str = ""
+
+class TemporalSnapshot(BaseModel):
+    """A single point-in-time snapshot of investigation state (one per image/day)."""
+    day_index: int
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+    image_url: Optional[str] = None
+    image_summary: str = ""
+    vlm_provider_used: str = ""
+    node_states: List[TemporalNodeState] = Field(default_factory=list)
+    edge_states: List[TemporalEdgeState] = Field(default_factory=list)
+    overall_confidence: float = 0.0
+    delta_summary: str = ""  # Natural language diff from previous day
+    new_nodes_added: int = 0
+    nodes_confidence_changed: int = 0
+
+
+# ---------------------------------------------------------------------------
 # Investigation State Model
 # ---------------------------------------------------------------------------
 
@@ -270,7 +310,10 @@ class InvestigationState(BaseModel):
     questions: List[GeneratedQuestion] = Field(default_factory=list)
     answers: List[UserAnswer] = Field(default_factory=list)
     terminology: List[TerminologyItem] = Field(default_factory=list)
+    temporal_snapshots: List[TemporalSnapshot] = Field(default_factory=list)
+    is_longitudinal: bool = False
     iteration: int = 0
     overall_confidence: float = 0.0
     status: str = "active"  # active, concluded, insufficient_data
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+

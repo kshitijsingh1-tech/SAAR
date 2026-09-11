@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
   uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline
@@ -39,8 +39,8 @@ export default function App() {
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Chat Sessions & Messages State
-  const [sessions, setSessions] = useState([
+  // Default Initial Chat Sessions & Pre-warmed Messages
+  const DEFAULT_SESSIONS = [
     {
       id: 'session-1',
       query: 'Tomato Crop 30-Day Failure: Chlorosis & Nutrient Leaching',
@@ -53,10 +53,106 @@ export default function App() {
       domain: 'infrastructure',
       timestamp: 'Yesterday'
     }
-  ]);
-  const [activeSessionId, setActiveSessionId] = useState('session-1');
+  ];
 
-  const [messages, setMessages] = useState([]);
+  const DEFAULT_MESSAGES = {
+    'session-1': [
+      {
+        role: 'user',
+        text: 'Investigate Tomato Crop 30-Day Failure: Chlorosis & Nutrient Leaching',
+        timestamp: '10:15 AM'
+      },
+      {
+        role: 'assistant',
+        text: `### Autonomous Investigation Executed (AGRICULTURE)\n\n**Perception & Workflow**: Evaluated 4 investigation phases utilizing provider **Saar Dynamic Loop**.\n\n- **Evidence Graph**: **6 nodes** and **5 directed relationships** formulated.\n- **Graph Confidence**: **94%** (Stabilized after specialized tool execution).\n\n#### Diagnostic Verdict:\nRhizosphere alkalinization (pH > 7.6) caused by unmetered continuous drip irrigation blocked biological Fe²⁺ reduction, leading to progressive foliar chlorosis (NDRE collapsed from 0.65 to 0.18).`,
+        timestamp: '10:16 AM'
+      }
+    ],
+    'session-2': [
+      {
+        role: 'user',
+        text: 'Investigate Highway Pavement Surface Cracking & GPR Cavity Void',
+        timestamp: 'Yesterday'
+      },
+      {
+        role: 'assistant',
+        text: `### Autonomous Investigation Executed (INFRASTRUCTURE)\n\n**Perception & Workflow**: Evaluated 4 investigation phases utilizing provider **Saar Dynamic Loop**.\n\n- **Evidence Graph**: **5 nodes** and **4 directed relationships** formulated.\n- **Graph Confidence**: **91%** (Stabilized after specialized tool execution).\n\n#### Diagnostic Verdict:\nRepetitive surface water infiltration eroded sub-base aggregates, creating a 1.8m underground void verified via GPR reflection loss before asphalt fatigue shear failure.`,
+        timestamp: 'Yesterday'
+      }
+    ]
+  };
+
+  // Persistent Sessions & Messages State (Loaded from localStorage)
+  const [sessions, setSessions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('saar_chat_sessions');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn("Failed to load sessions from storage:", e);
+    }
+    return DEFAULT_SESSIONS;
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState(() => {
+    try {
+      const saved = localStorage.getItem('saar_active_session_id');
+      if (saved) return saved;
+    } catch (e) {}
+    return 'session-1';
+  });
+
+  const [allMessages, setAllMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem('saar_session_messages');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed === 'object' && parsed !== null) return parsed;
+      }
+    } catch (e) {
+      console.warn("Failed to load messages from storage:", e);
+    }
+    return DEFAULT_MESSAGES;
+  });
+
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
+
+  // Active session's message list
+  const messages = allMessages[activeSessionId] || [];
+
+  // Message updater with automatic localStorage synchronization
+  const setMessages = useCallback((updater) => {
+    setAllMessages((prevAll) => {
+      const currentList = prevAll[activeSessionId] || [];
+      const updatedList = typeof updater === 'function' ? updater(currentList) : updater;
+      const nextAll = {
+        ...prevAll,
+        [activeSessionId]: updatedList
+      };
+      try {
+        localStorage.setItem('saar_session_messages', JSON.stringify(nextAll));
+      } catch (e) {
+        console.warn("Failed to persist messages:", e);
+      }
+      return nextAll;
+    });
+  }, [activeSessionId]);
+
+  // Sync sessions list to localStorage whenever updated
+  useEffect(() => {
+    try {
+      localStorage.setItem('saar_chat_sessions', JSON.stringify(sessions));
+    } catch (e) {}
+  }, [sessions]);
+
+  // Sync activeSessionId to localStorage whenever switched
+  useEffect(() => {
+    try {
+      localStorage.setItem('saar_active_session_id', activeSessionId);
+    } catch (e) {}
+  }, [activeSessionId]);
 
   // Enforce strictly light white theme
   useEffect(() => {
@@ -88,6 +184,16 @@ export default function App() {
   // Run Autonomous Investigation Scenario from welcome card or user selection
   const handleSelectScenario = async (domain, presetId, queryText) => {
     setSelectedDomain(domain);
+
+    // Update active session query if new session
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId && (s.query === 'New Scientific Investigation' || !s.query)
+          ? { ...s, query: queryText, domain }
+          : s
+      )
+    );
+
     setMessages((prev) => [
       ...prev,
       {
@@ -145,6 +251,15 @@ export default function App() {
   const handleSendMessage = async (userText, attachedFiles = []) => {
     const currentFiles = [...attachedFiles];
     const msgText = userText || (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : '');
+
+    // Update active session query if new session
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId && (s.query === 'New Scientific Investigation' || !s.query)
+          ? { ...s, query: (msgText || 'Scientific Query').slice(0, 52) }
+          : s
+      )
+    );
 
     setMessages((prev) => [
       ...prev,
@@ -324,6 +439,15 @@ export default function App() {
     setIsToolDrawerOpen(true);
   };
 
+  // Select Session from Sidebar
+  const handleSelectSession = (id) => {
+    setActiveSessionId(id);
+    const targetSession = sessions.find((s) => s.id === id);
+    if (targetSession?.domain) {
+      setSelectedDomain(targetSession.domain);
+    }
+  };
+
   // New Investigation Session
   const handleNewSession = () => {
     const newId = `session-${Date.now()}`;
@@ -335,14 +459,33 @@ export default function App() {
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newId);
-    setMessages([]);
+    setAllMessages((prevAll) => {
+      const nextAll = { ...prevAll, [newId]: [] };
+      try {
+        localStorage.setItem('saar_session_messages', JSON.stringify(nextAll));
+      } catch (e) {}
+      return nextAll;
+    });
     setIsToolDrawerOpen(false);
   };
 
   const handleDeleteSession = (sessionId) => {
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    const remaining = sessions.filter((s) => s.id !== sessionId);
+    setSessions(remaining);
+    setAllMessages((prevAll) => {
+      const nextAll = { ...prevAll };
+      delete nextAll[sessionId];
+      try {
+        localStorage.setItem('saar_session_messages', JSON.stringify(nextAll));
+      } catch (e) {}
+      return nextAll;
+    });
     if (activeSessionId === sessionId) {
-      handleNewSession();
+      if (remaining.length > 0) {
+        setActiveSessionId(remaining[0].id);
+      } else {
+        handleNewSession();
+      }
     }
   };
 
@@ -630,11 +773,7 @@ export default function App() {
         onClose={() => setIsSidebarOpen(false)}
         sessions={sessions}
         activeSessionId={activeSessionId}
-        onSelectSession={(id) => {
-          setActiveSessionId(id);
-          const s = sessions.find((item) => item.id === id);
-          if (s) handleSendMessage(s.query);
-        }}
+        onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
         onDeleteSession={handleDeleteSession}
       />
@@ -694,6 +833,8 @@ export default function App() {
         onExportDossier={handleExportDossier}
         messages={messages}
         selectedDomain={selectedDomain}
+        selectedNodeId={selectedNodeId}
+        onSelectNode={setSelectedNodeId}
       />
 
       {/* 4. Help Guide Modal Drawer */}

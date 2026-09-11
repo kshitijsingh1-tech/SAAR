@@ -69,3 +69,12 @@ user_questions.md
 architecture_explained.md
 architecture*.md
 
+# Persisted investigation data (temporal daily images)
+backend/data/
+
+# Logs & Databases
+*.log
+*.sqlite
+*.sqlite3
+*.db
+.agents/

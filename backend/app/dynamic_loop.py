@@ -9,6 +9,7 @@ from .plugins.base_plugin import BaseDomainPlugin
 from .plugins.infrastructure_plugin import InfrastructurePlugin
 from .plugins.astronomy_plugin import AstronomyPlugin
 from .plugins.agriculture_plugin import AgriculturePlugin
+from .plugins.pediatrics_plugin import PediatricsPlugin
 from .vlm_service import VLMService
 
 class DynamicWorkflowOrchestrator:
@@ -16,7 +17,8 @@ class DynamicWorkflowOrchestrator:
         self.plugins: Dict[str, BaseDomainPlugin] = {
             "infrastructure": InfrastructurePlugin(),
             "astronomy": AstronomyPlugin(),
-            "agriculture": AgriculturePlugin()
+            "agriculture": AgriculturePlugin(),
+            "pediatrics": PediatricsPlugin()
         }
         self.vlm_service = VLMService()
 
@@ -29,6 +31,7 @@ class DynamicWorkflowOrchestrator:
         preset_id: Optional[str] = None,
         image_url: Optional[str] = None,
         image_data: Optional[str] = None,
+        images: Optional[List[str]] = None,
         vlm_provider: str = "auto",
         api_key: Optional[str] = None
     ) -> InvestigationResponse:
@@ -44,10 +47,15 @@ class DynamicWorkflowOrchestrator:
         # Step 1: PERCEIVE - Extract entities, properties, observations via VLM
         # ---------------------------------------------------------
         image_input = image_data or image_url
-        if not image_input and preset_id:
+        effective_images = list(images) if images else []
+
+        if preset_id:
             for p in plugin.presets:
                 if p["id"] == preset_id:
-                    image_input = p.get("image")
+                    if not image_input:
+                        image_input = p.get("image")
+                    if not effective_images and p.get("images"):
+                        effective_images = p.get("images")
                     break
 
         initial_nodes, initial_edges, vlm_summary, provider_used = self.vlm_service.analyze_image(
@@ -55,7 +63,8 @@ class DynamicWorkflowOrchestrator:
             domain=domain,
             preset_id=preset_id,
             vlm_provider=vlm_provider,
-            api_key=api_key
+            api_key=api_key,
+            images=effective_images
         )
 
         for n in initial_nodes:

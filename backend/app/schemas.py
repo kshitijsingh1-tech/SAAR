@@ -9,6 +9,8 @@ class NodeModel(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     properties: Dict[str, Any] = Field(default_factory=dict)
     status: str = Field(default="confirmed", description="confirmed, hypothesis, invalidated")
+    bbox: Optional[List[float]] = Field(default=None, description="Normalized bounding box [ymin, xmin, ymax, xmax] (0 to 1000)")
+    visual_anchor: Optional[bool] = Field(default=True, description="Whether node has direct visual physical presence in image")
 
 class EdgeModel(BaseModel):
     id: str
@@ -58,10 +60,11 @@ class BaselineComparisonModel(BaseModel):
     key_differences: List[str]
 
 class InvestigationRequest(BaseModel):
-    domain: str = "infrastructure" # infrastructure | agriculture
+    domain: str = "infrastructure" # infrastructure | agriculture | pediatrics
     preset_id: Optional[str] = "infra_damaged_road"
     image_url: Optional[str] = None
     image_data: Optional[str] = None # Base64 image payload
+    images: Optional[List[str]] = None # Multiple base64 or URL image payloads for multi-photo analysis
     vlm_provider: str = "auto" # auto | gemini | openai | ollama | synthesizer
     api_key: Optional[str] = None
 

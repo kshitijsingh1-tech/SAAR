@@ -4,7 +4,6 @@ import {
   ExternalLink, Sparkles, Send, Filter, BarChart2
 } from 'lucide-react';
 import { fetchSaarKnowledge, querySaarKnowledge } from '../api/client';
-import { PlotlyGraphViewer } from './PlotlyGraphViewer';
 
 export function DomainRAGRadar({ theme, onSendCitationToChat }) {
   const [query, setQuery] = useState('');
@@ -89,12 +88,12 @@ export function DomainRAGRadar({ theme, onSendCitationToChat }) {
       <div className="rag-header">
         <div>
           <div className="rag-eyebrow">
-            <BookOpen size={14} /> SCIENTIFIC LITERATURE RAG RADAR
+            <BookOpen size={14} /> PEER-REVIEWED SCIENTIFIC REFERENCES &amp; CITATIONS
           </div>
-          <h1 className="rag-title">Domain Evidence &amp; Literature Index</h1>
+          <h1 className="rag-title">Scientific References &amp; Evidence Grounding</h1>
           <p className="rag-subtitle">
-            Ground scientific hypotheses against peer-reviewed literature, FAO agricultural guidelines,
-            FHWA civil engineering codes, and astrophysical transit databases.
+            Ground scientific hypotheses and prove causal relationships against peer-reviewed literature, FAO agricultural guidelines,
+            FHWA civil engineering codes, and astrophysical databases.
           </p>
         </div>
       </div>
@@ -109,11 +108,11 @@ export function DomainRAGRadar({ theme, onSendCitationToChat }) {
               className="rag-input"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search literature (e.g., 'soil pH chlorosis Solanaceae', 'sub-base cavity GPR reflection', 'transit depth noise')..."
+              placeholder="Search scientific references (e.g., 'soil pH chlorosis Solanaceae', 'sub-base cavity GPR reflection', 'transit depth noise')..."
             />
           </div>
           <button type="submit" className="btn btn-primary" disabled={isSearching}>
-            {isSearching ? 'Searching...' : 'Search Index'}
+            {isSearching ? 'Searching...' : 'Search References'}
           </button>
         </form>
 
@@ -146,19 +145,7 @@ export function DomainRAGRadar({ theme, onSendCitationToChat }) {
         </div>
       </div>
 
-      {/* Plotly Literature Similarity Matrix / Radar */}
-      <div className="panel rag-chart-panel">
-        <div className="panel-title">
-          <BarChart2 size={15} />
-          <span>Plotly.js Scientific Literature Vector Similarity Matrix</span>
-        </div>
-        <PlotlyGraphViewer
-          chartType="rag"
-          ragResults={displayedResults}
-          theme={theme}
-          height={260}
-        />
-      </div>
+
 
       {/* Results List */}
       <div className="rag-results-list">
