@@ -298,25 +298,6 @@ export function ChatGPTView({
               <PanelLeft size={18} />
             </button>
           )}
-
-          {/* Domain Dropdown Pill */}
-          <div className="domain-select-dropdown">
-            <select
-              value={selectedDomain}
-              onChange={(e) => onDomainChange(e.target.value)}
-              className="domain-select"
-            >
-              <option value="agriculture">Crop Science &amp; Agronomy</option>
-              <option value="infrastructure">Civil Infrastructure</option>
-              <option value="astronomy">Astrophysics &amp; Space</option>
-            </select>
-          </div>
-
-          <div className="active-session-title">
-            {activeInvestigation?.verdict
-              ? activeInvestigation.verdict.slice(0, 48) + '...'
-              : 'Empirical Scientific Reasoning'}
-          </div>
         </div>
 
         <div className="header-right">
