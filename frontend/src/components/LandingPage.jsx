@@ -7,6 +7,7 @@ import {
   RotateCcw, Info, CheckCircle, XCircle, AlertCircle, HelpCircle,
   TrendingDown, TrendingUp, AlertTriangle, Crosshair, Clock, Atom
 } from 'lucide-react';
+import { SocialContributorsNav } from './SocialContributorsNav';
 
 export function LandingPage({
   onEnterStudio,
@@ -864,6 +865,11 @@ export function LandingPage({
               <a href="#causal-workbench">Causal DAG Engine</a>
               <a href="#saar-domains">3 Core Domains</a>
               <button type="button" onClick={() => onEnterStudio()}>Studio Console</button>
+            </div>
+
+            <div className="footer-col social-footer-col">
+              <h4>Project Contributors</h4>
+              <SocialContributorsNav variant="footer" />
             </div>
           </div>
         </div>
