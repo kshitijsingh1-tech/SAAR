@@ -7,16 +7,41 @@ import {
 import { analyzeGaitVideo, analyzeGaitSample, askGaitQuestion, getGaitSampleVideoUrl } from '../api/client';
 import { MarkdownResponse } from './MarkdownResponse';
 
-export function GaitDashboard({ onRegisterToChat }) {
+export function GaitDashboard({ onRegisterToChat, initialResult = null, initialFile = null }) {
   const [childAgeMonths, setChildAgeMonths] = useState(24);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(initialFile);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState(() => {
+    if (initialFile) {
+      try {
+        return URL.createObjectURL(initialFile);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [assessmentResult, setAssessmentResult] = useState(null);
+  const [assessmentResult, setAssessmentResult] = useState(initialResult);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('profile'); // 'profile', 'curves', 'cycles', 'qa'
   const [selectedCurveJoint, setSelectedCurveJoint] = useState('knee'); // 'knee', 'hip', 'ankle', 'trunk'
   const [hoveredTime, setHoveredTime] = useState(null);
+
+  // Synchronize when initialResult or initialFile props change
+  React.useEffect(() => {
+    if (initialResult) {
+      setAssessmentResult(initialResult);
+    }
+  }, [initialResult]);
+
+  React.useEffect(() => {
+    if (initialFile) {
+      setSelectedFile(initialFile);
+      try {
+        setVideoPreviewUrl(URL.createObjectURL(initialFile));
+      } catch (e) { }
+    }
+  }, [initialFile]);
 
   // In-context Q&A state
   const [userQuestion, setUserQuestion] = useState('');
@@ -350,7 +375,7 @@ export function GaitDashboard({ onRegisterToChat }) {
       {/* Results Dashboard */}
       {assessmentResult && !isProcessing && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
+
           {/* Quality Assessment Banner */}
           <div style={{
             background: isRejected ? '#fef2f2' : (isHighQuality ? '#f0fdf4' : (isMediumQuality ? '#fefce8' : '#f8fafc')),
@@ -555,7 +580,7 @@ export function GaitDashboard({ onRegisterToChat }) {
                         {p.explanation}
                       </div>
                     </div>
-                    
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                       <div style={{ flex: 1, height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
                         <div style={{
@@ -725,7 +750,7 @@ export function GaitDashboard({ onRegisterToChat }) {
           {/* TAB 1: GAIT PROFILE (Section 14) */}
           {activeTab === 'profile' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
+
               {/* Category 1: Rhythm & Walking Pace */}
               <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>

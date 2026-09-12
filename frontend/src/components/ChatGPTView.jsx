@@ -5,7 +5,8 @@ import {
   BookOpen, ChevronDown, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
-  Crosshair, BookA, Image as ImageIcon, Film, Sun, Moon, Zap
+  Crosshair, BookA, Image as ImageIcon, Film, Sun, Moon, Zap,
+  MessageSquare, Sprout, Construction, Orbit, Activity
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -642,59 +643,90 @@ export function ChatGPTView({
                     {/* In-Chat Tool Invocation Badges */}
                     {msg.role === 'assistant' && msg.report && (
                       <div className="chat-tool-badges-row">
-                        <button
-                          className="tool-invoke-badge badge-graph"
-                          onClick={() => onOpenTool('grounded')}
-                        >
-                          <Crosshair size={14} className="text-primary" />
-                          <span>Grounded Split Graph</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
+                        {selectedDomain === 'pediatrics' ? (
+                          <>
+                            <button
+                              className="tool-invoke-badge badge-camera"
+                              onClick={() => onOpenTool('gait')}
+                            >
+                              <Film size={14} className="text-cyan" />
+                              <span>Video Analysis</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
+                            <button
+                              className="tool-invoke-badge badge-camera"
+                              onClick={() => onOpenTool('camera')}
+                            >
+                              <Camera size={14} className="text-rose" />
+                              <span>Visual Evidence Monitor</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
+                            <button
+                              className="tool-invoke-badge badge-rag"
+                              onClick={() => onOpenTool('rag')}
+                            >
+                              <BookOpen size={14} className="text-purple" />
+                              <span>Scientific References</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className="tool-invoke-badge badge-graph"
+                              onClick={() => onOpenTool('grounded')}
+                            >
+                              <Crosshair size={14} className="text-primary" />
+                              <span>Grounded Split Graph</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
 
-                        <button
-                          className="tool-invoke-badge badge-graph"
-                          onClick={() => onOpenTool('graph')}
-                        >
-                          <GitFork size={14} className="text-purple" />
-                          <span>Causal Knowledge Graph ({msg.report.relationships?.length || 8} Edges)</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
+                            <button
+                              className="tool-invoke-badge badge-graph"
+                              onClick={() => onOpenTool('graph')}
+                            >
+                              <GitFork size={14} className="text-purple" />
+                              <span>Causal Knowledge Graph ({msg.report.relationships?.length || 8} Edges)</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
 
-                        <button
-                          className="tool-invoke-badge badge-analytics"
-                          onClick={() => onOpenTool('analytics')}
-                        >
-                          <BarChart2 size={14} className="text-primary" />
-                          <span>Sensor Analytics {!hasSensorData ? '· Ingest' : ''}</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
+                            <button
+                              className="tool-invoke-badge badge-analytics"
+                              onClick={() => onOpenTool('analytics')}
+                            >
+                              <BarChart2 size={14} className="text-primary" />
+                              <span>Sensor Analytics {!hasSensorData ? '· Ingest' : ''}</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
 
-                        <button
-                          className="tool-invoke-badge badge-camera"
-                          onClick={() => onOpenTool('camera')}
-                        >
-                          <Camera size={14} className="text-rose" />
-                          <span>Visual Evidence Monitor</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
+                            <button
+                              className="tool-invoke-badge badge-camera"
+                              onClick={() => onOpenTool('camera')}
+                            >
+                              <Camera size={14} className="text-rose" />
+                              <span>Visual Evidence Monitor</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
 
-                        <button
-                          className="tool-invoke-badge badge-rag"
-                          onClick={() => onOpenTool('rag')}
-                        >
-                          <BookOpen size={14} className="text-purple" />
-                          <span>Scientific References</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
+                            <button
+                              className="tool-invoke-badge badge-rag"
+                              onClick={() => onOpenTool('rag')}
+                            >
+                              <BookOpen size={14} className="text-purple" />
+                              <span>Scientific References</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
 
-                        <button
-                          className="tool-invoke-badge badge-dictionary"
-                          onClick={() => onOpenTool('dictionary')}
-                        >
-                          <BookA size={14} className="text-amber" />
-                          <span>Scientific Dictionary</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
+                            <button
+                              className="tool-invoke-badge badge-dictionary"
+                              onClick={() => onOpenTool('dictionary')}
+                            >
+                              <BookA size={14} className="text-amber" />
+                              <span>Scientific Dictionary</span>
+                              <ArrowRight size={12} className="badge-arrow" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -846,6 +878,7 @@ export function ChatGPTView({
           activeTool={activeTool}
           isDrawerOpen={isToolDrawerOpen}
           floating={true}
+          selectedDomain={selectedDomain}
         />
       </div>
 

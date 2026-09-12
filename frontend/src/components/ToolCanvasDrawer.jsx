@@ -37,7 +37,8 @@ export function ToolCanvasDrawer({
   onSelectNode,
   hasSensorData = true,
   onUploadSensorData = null,
-  onLoadSampleDataset = null
+  onLoadSampleDataset = null,
+  customVideoFile = null
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(() => {
@@ -118,15 +119,22 @@ export function ToolCanvasDrawer({
   if (!isOpen) return null;
 
   // Operational tools strictly for active scientific investigations
-  const toolsMeta = [
-    { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} /> },
-    { id: 'gait', label: 'Toddler Gait Analysis', icon: <Activity size={15} /> },
-    { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} /> },
+  // During movement/pediatric video analysis, hide irrelevant generic tools (sensor analytics, generic graph controls)
+  const isMovementAnalysis = selectedDomain === 'pediatrics' || activeTool === 'gait';
+
+  const allToolsMeta = [
+    { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} />, hideInMovement: true },
+    { id: 'gait', label: 'Video Analysis', icon: <Activity size={15} /> },
+    { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} />, hideInMovement: true },
     { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
-    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-    { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
-    { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
+    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null, hideInMovement: true },
+    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'Scientific References', icon: <BookOpen size={15} /> },
+    { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} />, hideInMovement: true }
   ];
+
+  const toolsMeta = isMovementAnalysis
+    ? allToolsMeta.filter((t) => !t.hideInMovement)
+    : allToolsMeta;
 
   const currentToolMeta = toolsMeta.find((t) => t.id === activeTool) || toolsMeta[0];
 
@@ -435,10 +443,14 @@ export function ToolCanvasDrawer({
           </div>
         )}
 
-        {/* Tool: ToddleAI Gait Analysis (GaitDashboard.jsx) */}
+        {/* Tool: Video Analysis (GaitDashboard.jsx) */}
         {activeTool === 'gait' && (
           <div className="tool-body-pane custom-pane-scrollbar" style={{ overflowY: 'auto', height: '100%' }}>
-            <GaitDashboard onRegisterToChat={onSendToChat} />
+            <GaitDashboard
+              onRegisterToChat={onSendToChat}
+              initialResult={saarData}
+              initialFile={customVideoFile}
+            />
           </div>
         )}
 
