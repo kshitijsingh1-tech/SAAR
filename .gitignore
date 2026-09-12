@@ -66,6 +66,7 @@ test_*.py
 tests/
 test_data/
 user_questions.md
+list_groq_models.py
 
 # Persisted investigation data (temporal daily images)
 backend/data/
