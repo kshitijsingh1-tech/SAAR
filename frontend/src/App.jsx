@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
-  uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline
+  uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline,
+  analyzeGaitVideo
 } from './api/client';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ChatGPTView } from './components/ChatGPTView';
@@ -46,18 +47,24 @@ export default function App() {
       id: 'session-1',
       query: 'Tomato Crop 30-Day Failure: Chlorosis & Nutrient Leaching',
       domain: 'agriculture',
+      presetId: 'agri_tomato_chlorosis',
+      imageUrl: '/tomato_chlorosis_sample.jpg',
       timestamp: 'Today'
     },
     {
       id: 'session-2',
       query: 'Highway Pavement Surface Cracking & GPR Cavity Void',
       domain: 'infrastructure',
+      presetId: 'infra_damaged_road',
+      imageUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=1200&q=80',
       timestamp: 'Yesterday'
     },
     {
       id: 'session-3',
       query: 'Monstera adansonii: Foliar Fenestration & Plant Health',
       domain: 'agriculture',
+      presetId: 'agri_monstera_fenestration',
+      imageUrl: '/monstera_sample.png',
       timestamp: 'Just now'
     }
   ];
@@ -239,23 +246,53 @@ export default function App() {
     document.documentElement.className = 'light';
   }, []);
 
-  // Synchronize active session context (datasets, image feeds, graphs)
+  // Persistent tracking of which sessions have active sensor/tabular datasets
+  const [sessionSensorData, setSessionSensorData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('saar_session_sensor_data');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      'session-1': true,
+      'session-2': true,
+      'session-3': false
+    };
+  });
+
   useEffect(() => {
-    if (activeSessionId === 'session-3') {
-      setSelectedDomain('agriculture');
+    try {
+      localStorage.setItem('saar_session_sensor_data', JSON.stringify(sessionSensorData));
+    } catch (e) {}
+  }, [sessionSensorData]);
+
+  const hasSensorData = Boolean(
+    sessionSensorData[activeSessionId] ||
+    saarData?.perception?.features_detected ||
+    saarData?.observations_count
+  );
+
+  // Synchronize active session context dynamically from session metadata
+  useEffect(() => {
+    const session =
+      sessions.find((s) => s.id === activeSessionId) ||
+      DEFAULT_SESSIONS.find((s) => s.id === activeSessionId);
+    if (!session) return;
+
+    setSelectedDomain(session.domain || 'agriculture');
+    setCustomImageData(null);
+    setCustomImageUrl(session.imageUrl || null);
+    setCameraConnected(true);
+    setSaarData(null);
+    setInvestigationData(null);
+
+    if (session.id === 'session-3') {
       setInvestigationData(monsteraInvestigation);
-      setCustomImageUrl('/monstera_sample.png');
-      setCameraConnected(true);
-    } else if (activeSessionId === 'session-1') {
-      setSelectedDomain('agriculture');
-      setCustomImageData(null);
-      setCustomImageUrl(null);
-    } else if (activeSessionId === 'session-2') {
-      setSelectedDomain('infrastructure');
-      setCustomImageData(null);
-      setCustomImageUrl(null);
+    } else if (session.presetId) {
+      runInvestigation(session.domain, session.presetId, { vlmProvider: 'auto' })
+        .then((res) => setInvestigationData(res))
+        .catch((err) => console.warn(`Session ${session.id} investigation fetch:`, err));
     }
-  }, [activeSessionId]);
+  }, [activeSessionId, sessions]);
 
   // Initial Load: Warm up domains & baseline
   useEffect(() => {
@@ -445,14 +482,39 @@ export default function App() {
 
   // Send Message / Execute Investigation
   const handleSendMessage = async (userText, attachedFiles = []) => {
+    // If a gait result object is passed directly (e.g. from GaitDashboard registration)
+    if (userText && typeof userText === 'object' && userText.assessment_id) {
+      const gaitResult = userText;
+      let responseText = `### ToddleAI Gait Screening Executed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
+      responseText += `- **Video Processed**: \`${gaitResult.video?.filename || 'Sample Video'}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
+      responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
+      responseText += `- **Cadence**: **${gaitResult.metrics?.cadence} steps/min** (Typical: ${gaitResult.cadence_range?.low}–${gaitResult.cadence_range?.high} steps/min)\n`;
+      responseText += `- **Left-Right Step Asymmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct}%** (Typical benchmark ≤ 10%)\n`;
+      responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov}% CoV** (Developing toddler benchmark ≤ 15%)\n\n`;
+      responseText += `#### Developmental Context:\n${gaitResult.milestone_context || ''}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: responseText,
+          report: gaitResult,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+      setSaarData(gaitResult);
+      return;
+    }
+
     const currentFiles = [...attachedFiles];
-    const msgText = userText || (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : '');
+    const textStr = typeof userText === 'string' ? userText : (userText ? String(userText) : '');
+    const msgText = textStr || (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : '');
 
     // Update active session query if new session
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId && (s.query === 'New Scientific Investigation' || !s.query)
-          ? { ...s, query: (msgText || 'Scientific Query').slice(0, 52) }
+          ? { ...s, query: (String(msgText || 'Scientific Query')).slice(0, 52) }
           : s
       )
     );
@@ -464,9 +526,60 @@ export default function App() {
       if (currentFiles.length > 0) {
         const file = currentFiles[0];
         const fileName = file?.name || 'attached_file';
-        const fileType = file?.type || '';
+        const fileType = (file?.type || '').toLowerCase();
+        const isVideo = fileType.startsWith('video/') || /\.(mp4|mov|avi|webm|mkv)$/i.test(fileName);
         const isImage = fileType.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName);
         const isCsv = /\.(csv|tsv|txt|xlsx|xls)$/i.test(fileName) || fileType.includes('csv') || fileType.includes('spreadsheet') || fileType.includes('excel');
+
+        if (isVideo) {
+          try {
+            const gaitResult = await analyzeGaitVideo(file, 24);
+            setSaarData(gaitResult);
+            let responseText = `### ToddleAI Gait Screening Executed (${gaitResult.status?.toUpperCase()})\n\n`;
+            responseText += `- **Video Processed**: \`${fileName}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
+            responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
+            responseText += `- **Cadence**: **${gaitResult.metrics?.cadence} steps/min** (Typical: ${gaitResult.cadence_range?.low}–${gaitResult.cadence_range?.high} steps/min)\n`;
+            responseText += `- **Left-Right Step Asymmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct}%** (Typical benchmark ≤ 10%)\n`;
+            responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov}% CoV** (Developing toddler benchmark ≤ 15%)\n\n`;
+            responseText += `#### Developmental Context:\n${gaitResult.milestone_context}`;
+
+            if (userText && userText.trim()) {
+              try {
+                const questionReply = await askSaarQuestion(gaitResult.assessment_id || 'latest', userText.trim());
+                if (questionReply?.answer_summary) {
+                  responseText += `\n\n---\n\n### Inquiry Response: *"${userText.trim()}"*\n${questionReply.answer_summary}`;
+                }
+              } catch (qErr) {
+                console.warn("Failed to answer question alongside video upload:", qErr);
+              }
+            }
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                text: responseText,
+                report: gaitResult,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            setActiveTool('gait');
+            setIsToolDrawerOpen(true);
+            setIsProcessing(false);
+            return;
+          } catch (vErr) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                text: `**Gait Video Analysis Notice**: ${vErr.response?.data?.detail || vErr.message || 'Failed to process video.'}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            setIsProcessing(false);
+            return;
+          }
+        }
 
         if (isImage) {
           await executeImageInvestigation(file, fileName, userText);
@@ -476,6 +589,10 @@ export default function App() {
         if (isCsv) {
           const report = await uploadSaarCsv(file);
           setSaarData(report);
+          setSessionSensorData((prev) => ({
+            ...prev,
+            [activeSessionId]: true
+          }));
 
           const featuresCount = report?.perception?.features_detected ?? 'several';
           const obsCount = report?.perception?.observations_count ?? 'multiple';
@@ -595,6 +712,58 @@ export default function App() {
     setIsToolDrawerOpen(true);
   };
 
+  // In-tool direct telemetry file upload (CSV, XLSX, TSV)
+  const handleUploadSensorFile = async (file) => {
+    setIsProcessing(true);
+    try {
+      const report = await uploadSaarCsv(file);
+      setSaarData(report);
+      setSessionSensorData((prev) => ({
+        ...prev,
+        [activeSessionId]: true
+      }));
+
+      const featuresCount = report?.perception?.features_detected ?? 'several';
+      const obsCount = report?.perception?.observations_count ?? 'multiple';
+      const relCount = report?.relationships?.length ?? 0;
+      const conceptCount = report?.concepts?.length ?? 0;
+      const confPercent = Math.round((report?.confidence || 0.88) * 100);
+
+      const responseText = `**Dataset Ingested & Analyzed**: \`${file.name}\`\n\n- **Telemetry Variables**: Extracted ${featuresCount} features across ${obsCount} observations.\n- **Causal Dependencies**: Discovered ${relCount} statistical edges and formulated ${conceptCount} concepts.\n- **Belief Confidence**: **${confPercent}%** (Topological uncertainty: ${100 - confPercent}%).\n\n### Diagnostic Essence:\n${report?.summary || report?.conclusion || 'Sensor telemetry synchronized across temporal intervals.'}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: responseText,
+          report,
+          openQuestions: Array.isArray(report?.open_questions) ? report.open_questions : [],
+          terminology: report?.terminology || [],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+
+      setActiveTool('analytics');
+      setIsToolDrawerOpen(true);
+      return report;
+    } catch (err) {
+      console.error("Failed to upload sensor CSV:", err);
+      throw err;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Load sample telemetry baseline for the active domain
+  const handleLoadSampleDataset = (domainOverride) => {
+    setSessionSensorData((prev) => ({
+      ...prev,
+      [activeSessionId]: true
+    }));
+    setActiveTool('analytics');
+    setIsToolDrawerOpen(true);
+  };
+
   // Select Session from Sidebar
   const handleSelectSession = (id) => {
     setActiveSessionId(id);
@@ -615,6 +784,10 @@ export default function App() {
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newId);
+    setSessionSensorData((prev) => ({
+      ...prev,
+      [newId]: false
+    }));
     setAllMessages((prevAll) => {
       const nextAll = { ...prevAll, [newId]: [] };
       try {
@@ -956,6 +1129,7 @@ export default function App() {
           onOpenHelp={() => setIsHelpOpen(true)}
           onExportChat={handleExportChat}
           theme={theme}
+          hasSensorData={hasSensorData}
         />
       </main>
 
@@ -965,6 +1139,7 @@ export default function App() {
         onClose={() => setIsToolDrawerOpen(false)}
         activeTool={activeTool}
         onSelectTool={setActiveTool}
+        activeSessionId={activeSessionId}
         activeInvestigation={saarData || investigationData}
         investigationData={investigationData}
         saarData={saarData}
@@ -1021,6 +1196,9 @@ export default function App() {
         selectedDomain={selectedDomain}
         selectedNodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
+        hasSensorData={hasSensorData}
+        onUploadSensorData={handleUploadSensorFile}
+        onLoadSampleDataset={handleLoadSampleDataset}
       />
 
       {/* 4. Help Guide Modal Drawer */}

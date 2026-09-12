@@ -6,6 +6,7 @@ except ImportError:
     pass
 
 from fastapi import FastAPI, HTTPException, Query, Response, Request
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
 
@@ -177,6 +178,7 @@ async def saar_general_ask(payload: Dict[str, Any]):
     return res
 
 @app.post("/api/dictionary/lookup")
+@app.post("/dictionary/lookup")
 async def dictionary_lookup(payload: Dict[str, Any]):
     """On-demand scientific term lookup."""
     term = payload.get("term", "") or payload.get("word", "")
@@ -187,9 +189,10 @@ async def dictionary_lookup(payload: Dict[str, Any]):
     return await terminology_service.lookup_term_async(term, domain, context)
 
 @app.post("/api/dictionary/glossary")
+@app.post("/dictionary/glossary")
 async def dictionary_glossary_endpoint(payload: Dict[str, Any]):
     """Extract grounded terms from screen text with instantaneous domain glossary return."""
-    screen_texts = payload.get("screen_texts", [])
+    screen_texts = payload.get("screen_texts") or payload.get("texts") or []
     domain = payload.get("domain", "agriculture")
     if not isinstance(domain, str):
         domain = "agriculture"
@@ -248,6 +251,110 @@ def saar_knowledge_query(payload: Dict[str, Any]):
     top_k = payload.get("top_k", 5)
     results = rag_service.query(query, domain=domain, top_k=top_k)
     return [r.to_dict() for r in results]
+
+
+# ===================================================================
+# TODDLEAI GAIT ANALYSIS API (DEDICATED ENDPOINTS)
+# ===================================================================
+
+from .gait.pipeline import GaitAnalysisPipeline
+from .gait.schemas import CanonicalGaitResult
+
+_gait_pipeline: Optional[GaitAnalysisPipeline] = None
+_gait_assessments: Dict[str, CanonicalGaitResult] = {}
+
+
+def get_gait_pipeline() -> GaitAnalysisPipeline:
+    global _gait_pipeline
+    if _gait_pipeline is None:
+        _gait_pipeline = GaitAnalysisPipeline()
+    return _gait_pipeline
+
+
+@app.post("/api/gait/analyze")
+async def gait_analyze_video(
+    video: UploadFile = File(...),
+    child_age_months: int = Query(24, ge=6, le=120),
+    subject_id: Optional[str] = Query(None)
+):
+    """Analyze a toddler walking video using deterministic ToddleAI gait pipeline."""
+    try:
+        content = await video.read()
+        pipeline = get_gait_pipeline()
+        result = pipeline.analyze_video_bytes(
+            video_bytes=content,
+            filename=video.filename or "toddler_walking.mp4",
+            child_age_months=child_age_months
+        )
+        _gait_assessments[result.assessment_id] = result
+        try:
+            saar_engine.register_gait_investigation(result)
+        except Exception as reg_err:
+            print(f"[Main] Warning: Failed to register gait investigation: {reg_err}")
+        return result.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gait analysis failed: {str(e)}")
+
+
+@app.get("/api/gait/sample/video")
+def gait_sample_video():
+    """Stream pre-bundled sample toddler walking video."""
+    import os
+    sample_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "toddle-ai", "video", "Toddler_walking_in_blue_dress_202606280214.mp4"))
+    if not os.path.exists(sample_path):
+        raise HTTPException(status_code=404, detail="Sample video file not found.")
+    return FileResponse(sample_path, media_type="video/mp4")
+
+
+@app.get("/api/gait/sample")
+def gait_analyze_sample(child_age_months: int = Query(24, ge=6, le=120)):
+    """Run analysis on pre-bundled sample toddler walking video."""
+    import os
+    sample_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "toddle-ai", "video", "Toddler_walking_in_blue_dress_202606280214.mp4"))
+    if not os.path.exists(sample_path):
+        raise HTTPException(status_code=404, detail="Sample video not found.")
+
+    pipeline = get_gait_pipeline()
+    result = pipeline.analyze_video_file(
+        video_path=sample_path,
+        filename="Toddler_walking_in_blue_dress.mp4",
+        child_age_months=child_age_months
+    )
+    _gait_assessments[result.assessment_id] = result
+    try:
+        saar_engine.register_gait_investigation(result)
+    except Exception as reg_err:
+        print(f"[Main] Warning: Failed to register gait sample investigation: {reg_err}")
+    return result.model_dump()
+
+
+@app.get("/api/gait/assessment/{assessment_id}")
+def gait_get_assessment(assessment_id: str):
+    """Retrieve structured canonical result for a previous gait assessment."""
+    if assessment_id in _gait_assessments:
+        return _gait_assessments[assessment_id].model_dump()
+    report = saar_engine.get_report(assessment_id)
+    if "error" not in report:
+        return report
+    raise HTTPException(status_code=404, detail=f"Gait assessment '{assessment_id}' not found.")
+
+
+@app.post("/api/gait/assessment/{assessment_id}/ask")
+async def gait_ask_assessment(assessment_id: str, payload: Dict[str, str]):
+    """Ask a question regarding a specific gait assessment with grounded reasoning."""
+    question = payload.get("question", "")
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required.")
+
+    reasoning_task = asyncio.to_thread(saar_engine.answer_question, assessment_id, question)
+    terminology_task = terminology_service.extract_grounded_terms_async(question, "pediatrics")
+    res, terms = await asyncio.gather(reasoning_task, terminology_task)
+    if isinstance(res, dict) and "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+    if isinstance(res, dict):
+        res["terminology"] = terms
+    return res
+
 
 
 # ===================================================================
@@ -512,9 +619,8 @@ Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine
 
 
 # ------------------------------------------------------------------
-# Scientific Dictionary & Glossary Endpoints
+# Scientific Dictionary & Glossary Endpoints (GET compatibility)
 # ------------------------------------------------------------------
-from .services.dictionary_service import dictionary_service
 
 @app.get("/api/dictionary/lookup")
 @app.get("/dictionary/lookup")
@@ -522,30 +628,8 @@ def lookup_word_get(word: str = Query(..., description="Scientific term or word 
     """Look up a word or scientific term with definitions and diagnostic domain context."""
     if not word or not word.strip():
         raise HTTPException(status_code=400, detail="Word parameter is required.")
-    return dictionary_service.lookup_word(word.strip())
+    return terminology_service.lookup_word(word.strip())
 
-@app.post("/api/dictionary/lookup")
-@app.post("/dictionary/lookup")
-def lookup_word_post(req: Dict[str, Any]):
-    """POST lookup for a word."""
-    word = req.get("word", "")
-    if not word or not str(word).strip():
-        raise HTTPException(status_code=400, detail="Word is required in request body.")
-    return dictionary_service.lookup_word(str(word).strip())
-
-@app.post("/api/dictionary/glossary")
-@app.post("/dictionary/glossary")
-def extract_glossary(req: Dict[str, Any]):
-    """Extract difficult scientific terms from chat messages, screen text, and graph entities."""
-    texts = req.get("texts", [])
-    domain = req.get("domain", None)
-    graph_nodes = req.get("graph_nodes", [])
-    glossary = dictionary_service.extract_glossary_from_screen(
-        screen_texts=texts,
-        domain=domain,
-        graph_nodes=graph_nodes
-    )
-    return {"glossary": glossary, "count": len(glossary)}
 
 
 

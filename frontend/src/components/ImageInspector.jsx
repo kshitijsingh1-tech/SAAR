@@ -2,110 +2,80 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Eye, EyeOff, Radio, Upload, Sparkles, Link as LinkIcon,
   Camera, X, Crosshair, Target, Layers, Activity, Droplets,
-  HelpCircle, ExternalLink, Zap, Check
+  HelpCircle, ExternalLink, Zap, Check, Film, Play, Pause,
+  Sprout, RotateCcw, AlertCircle
 } from 'lucide-react';
+import { VideoTimelineScrubber } from './VideoTimelineScrubber';
+import { PlantCareCard } from './PlantCareCard';
+import { ToddlerPostureCard } from './ToddlerPostureCard';
 
-// Domain-aware color palette for visual anchors & bounding boxes
+// Clean black, white & signature blue palette for visual anchors & bounding boxes
 const ANCHOR_COLORS = [
-  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' }, // Cyan / Sky
-  { stroke: '#34d399', fill: 'rgba(52, 211, 153, 0.18)', glow: 'rgba(52, 211, 153, 0.35)', text: '#34d399', bg: 'rgba(52, 211, 153, 0.1)', border: 'rgba(52, 211, 153, 0.4)' }, // Emerald
-  { stroke: '#fbbf24', fill: 'rgba(251, 191, 36, 0.18)', glow: 'rgba(251, 191, 36, 0.35)', text: '#fbbf24', bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.4)' }, // Amber
-  { stroke: '#a78bfa', fill: 'rgba(167, 139, 250, 0.18)', glow: 'rgba(167, 139, 250, 0.35)', text: '#a78bfa', bg: 'rgba(167, 139, 250, 0.1)', border: 'rgba(167, 139, 250, 0.4)' }, // Violet
-  { stroke: '#f472b6', fill: 'rgba(244, 114, 182, 0.18)', glow: 'rgba(244, 114, 182, 0.35)', text: '#f472b6', bg: 'rgba(244, 114, 182, 0.1)', border: 'rgba(244, 114, 182, 0.4)' }, // Pink
-  { stroke: '#60a5fa', fill: 'rgba(96, 165, 250, 0.18)', glow: 'rgba(96, 165, 250, 0.35)', text: '#60a5fa', bg: 'rgba(96, 165, 250, 0.1)', border: 'rgba(96, 165, 250, 0.4)' }  // Blue
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' }
 ];
 
-// Domain-aware mapping of visual entities to analytical tools & queries
-const ENTITY_TOOL_MAPPINGS = {
-  // Agriculture & Indoor Aroid Entities
-  leaf_fenestrations_01: {
-    toolId: 'telemetry',
-    toolName: 'Foliar Margin Morphology & Fenestration Phenotyper',
-    actionLabel: 'Analyze Leaf Fenestration vs Pest Damage',
-    suggestedQuery: 'Evaluate whether these elliptical leaf perforations are natural evolutionary fenestrations (PCD) or pest defoliation.'
-  },
-  unfurling_apex_leaf_01: {
-    toolId: 'telemetry',
-    toolName: 'Photosystem II (PSII) Quantum Yield Fluorometer',
-    actionLabel: 'Evaluate Apical Shoot Vigor & PSII Yield',
-    suggestedQuery: 'Assess the photosynthetic health, metabolic turgor, and growth rate of this emergent apical leaf.'
-  },
-  pot_substrate_01: {
-    toolId: 'telemetry',
-    toolName: 'Container Substrate Drainage & Aeration Profiler',
-    actionLabel: 'Analyze Container Drainage & Root Rot Risk',
-    suggestedQuery: 'Examine the potting substrate drainage and evaluate vulnerability to Pythium root rot.'
-  },
-  fruit_01: {
-    toolId: 'telemetry',
-    toolName: 'Fruit Ripeness & Physiological Diagnostic',
-    actionLabel: 'Analyze Ripeness & Translocation in Chat',
-    suggestedQuery: 'Analyze the fruit ripening physiology, Brix sugar accumulation, and blossom-end rot risk for this cluster.'
-  },
-  leaf_chlorosis_01: {
-    toolId: 'telemetry',
-    toolName: 'Multispectral Foliar SPAD Diagnostic',
-    actionLabel: 'Run SPAD Chlorophyll & NDRE Diagnostic',
-    suggestedQuery: 'Explain the interveinal leaf chlorosis pattern and whether it indicates iron deficiency or nitrogen burn.'
-  },
-  soil_moisture_sensor_01: {
-    toolId: 'telemetry',
-    toolName: 'Root-Zone Oxygenation & ATP Pump Simulator',
-    actionLabel: 'Simulate Root Zone Hypoxia & ATP Depletion',
-    suggestedQuery: 'How does prolonged 48% VWC soil saturation impair root nutrient uptake?'
-  },
-  irrigation_emitter_01: {
-    toolId: 'telemetry',
-    toolName: 'Irrigation Drainage & Darcy Flow Simulator',
-    actionLabel: 'Simulate Irrigation Drainage & Percolation',
-    suggestedQuery: 'What is the optimal drip emitter pulse regime to prevent root waterlogging?'
-  },
+// Generic semantic mapping of visual entities to analytical tools & queries
+const getDynamicToolMapping = (node) => {
+  if (!node) return null;
+  const category = String(node.category || '').toLowerCase();
+  const label = String(node.label || node.id || '').toLowerCase();
 
-  // Civil Infrastructure Entities
-  road_01: {
-    toolId: 'telemetry',
-    toolName: 'Ground Penetrating Radar (GPR) Void Analyzer',
-    actionLabel: 'Scan for Subterranean Void Cavity',
-    suggestedQuery: 'Assess the structural collapse risk and subterranean void cavity probability beneath this road crack.'
-  },
-  drain_01: {
-    toolId: 'telemetry',
-    toolName: 'Hydrological Drainage Flow Simulator',
-    actionLabel: 'Simulate Storm Drain Inflow & Blockage',
-    suggestedQuery: 'What is the hydraulic inflow reduction caused by debris clogging this storm drain grate?'
-  },
-  water_01: {
-    toolId: 'telemetry',
-    toolName: 'Pavement Sub-Base Erosion & Load Risk Calculator',
-    actionLabel: 'Calculate Sub-Base Erosion & Load Risk',
-    suggestedQuery: 'How does standing water saturation accelerate asphalt fatigue and subgrade failure?'
-  },
-
-  // Pediatrics / Toddler Entities
-  node_lumbar_lordosis: {
-    toolId: 'telemetry',
-    toolName: 'LLM Biomechanical Postural & Spinal Alignment Analyzer',
-    actionLabel: 'Analyze Plumb Line Gravitational Axis',
-    suggestedQuery: 'Is this toddler lumbar lordosis (~38.5°) compensatory to abdominal wall compliance or pathological hyperlordosis?'
-  },
-  node_knee_bowing: {
-    toolId: 'telemetry',
-    toolName: 'LLM Pediatric Orthopedic Differential Diagnostician',
-    actionLabel: 'Run Symmetrical Genu Varum vs Blount’s Differential',
-    suggestedQuery: 'Differentiate this symmetrical toddler knee bowing (2.2cm gap) from early rickets or Blount’s disease.'
-  },
-  node_protuberant_abdomen: {
-    toolId: 'telemetry',
-    toolName: 'LLM Biomechanical Postural & Spinal Alignment Analyzer',
-    actionLabel: 'Evaluate Abdominal Wall Compliance',
-    suggestedQuery: 'How does developing rectus abdominis muscle tone contribute to toddler anterior pelvic tilt?'
-  },
-  node_wide_base_support: {
-    toolId: 'telemetry',
-    toolName: 'LLM WHO Milestone & Anthropometric Ratio Evaluator',
-    actionLabel: 'Check WHO Motor Milestone Concordance',
-    suggestedQuery: 'Does this wide-base stance and flexible flatfoot align with WHO percentiles for independent walking?'
+  if (category.includes('patholog') || label.includes('chloros') || label.includes('lesion') || label.includes('burn') || label.includes('stain')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Diagnostic Spectral & Pathology Analyzer',
+      actionLabel: 'Analyze Foliar/Tissue Pathology',
+      suggestedQuery: `Analyze the pathology, discoloration patterns, and diagnostic indicators associated with ${node.label || node.id}.`
+    };
   }
+
+  if (category.includes('morpholog') || label.includes('fenestrat') || label.includes('apex') || label.includes('shoot') || label.includes('leaf') || label.includes('margin')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Morphological & Phenotyping Profiler',
+      actionLabel: 'Analyze Structural Morphology',
+      suggestedQuery: `Examine the anatomical structure and developmental vigor of ${node.label || node.id}.`
+    };
+  }
+
+  if (category.includes('infrastruct') || category.includes('structur') || category.includes('obstacle') || label.includes('road') || label.includes('crack') || label.includes('pipe') || label.includes('drain') || label.includes('emitter')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Structural Integrity & Fluid Dynamics Analyzer',
+      actionLabel: 'Inspect Structural Entity',
+      suggestedQuery: `Assess the failure risk, load fatigue, and environmental exposure affecting ${node.label || node.id}.`
+    };
+  }
+
+  if (category.includes('biomechan') || category.includes('orthoped') || category.includes('postur') || category.includes('motor') || label.includes('lordosis') || label.includes('gait') || label.includes('stance') || label.includes('bowing')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Biomechanical & Kinematic Alignment Evaluator',
+      actionLabel: 'Evaluate Postural Alignment',
+      suggestedQuery: `Evaluate the biomechanical angles, weight distribution, and developmental alignment of ${node.label || node.id}.`
+    };
+  }
+
+  if (category.includes('measure') || category.includes('telemetry') || label.includes('sensor') || label.includes('probe') || label.includes('meter')) {
+    return {
+      toolId: 'telemetry',
+      toolName: 'Telemetry & Environmental Sensor Profiler',
+      actionLabel: 'Analyze Sensor Telemetry',
+      suggestedQuery: `Evaluate the sensor telemetry, threshold exceedances, and environmental trends for ${node.label || node.id}.`
+    };
+  }
+
+  return {
+    toolId: 'telemetry',
+    toolName: 'Diagnostic Simulation Tool',
+    actionLabel: 'Inspect Regional Evidence',
+    suggestedQuery: `Analyze the scientific implications and causal factors associated with ${node.label || node.id}.`
+  };
 };
 
 export const ImageInspector = ({
@@ -133,26 +103,204 @@ export const ImageInspector = ({
   const [visibleBoxIds, setVisibleBoxIds] = useState(() => new Set());
   const [hoveredBoxId, setHoveredBoxId] = useState(null);
   const [activeHudNode, setActiveHudNode] = useState(null);
+  const [activeSpecialistTab, setActiveSpecialistTab] = useState('anchors'); // 'anchors' | 'plantCare' | 'toddlerPosture'
   const fileInputRef = useRef(null);
+
+  // ------------------------------------------------------------------
+  // Multimodal Video Playback & Timeline State (Workstream 4)
+  // ------------------------------------------------------------------
+  const [mediaMode, setMediaMode] = useState('image'); // 'image' | 'video'
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(12.0);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [activeKeyframeIndex, setActiveKeyframeIndex] = useState(0);
+  const [customVideoUrl, setCustomVideoUrl] = useState(null);
+  const videoRef = useRef(null);
+
+  const isPediatrics = presetId?.startsWith('toddler') || preset?.domain === 'pediatrics';
+  const isAgriculture = presetId?.startsWith('agri') || preset?.domain === 'agriculture' || presetId === 'session-3';
+
+  // Pre-configured temporal keyframe streams for video analysis demonstrations
+  const temporalKeyframes = useMemo(() => {
+    if (isPediatrics) {
+      return [
+        {
+          timestamp: 0.0,
+          label: 'Initial Stance & Plumb Axis',
+          category: 'biomechanics',
+          confidence: 0.96,
+          nodes: [
+            { id: 'toddler_spine', label: 'Spinal Lumbar Curve (~38.5°)', bbox: [320, 290, 610, 520], confidence: 0.94, category: 'biomechanics', properties: { lordosis_deg: 38.5, status: 'physiologic' } },
+            { id: 'toddler_stance', label: 'Base of Support (22.4 cm)', bbox: [810, 260, 970, 740], confidence: 0.92, category: 'motor', properties: { stance: 'broad', balance: 'compensated' } }
+          ]
+        },
+        {
+          timestamp: 3.2,
+          label: 'Gait Initiation & Stance Phase',
+          category: 'gait',
+          confidence: 0.94,
+          nodes: [
+            { id: 'knee_bowing', label: 'Symmetrical Genu Varum (2.2 cm)', bbox: [600, 310, 860, 670], confidence: 0.93, category: 'orthopedic', properties: { symmetry: 'high', gap_cm: 2.2 } },
+            { id: 'flatfoot_pad', label: 'Flexible Plantar Fat Pad', bbox: [830, 360, 980, 710], confidence: 0.89, category: 'motor', properties: { arch: 'physiologic fat pad' } }
+          ]
+        },
+        {
+          timestamp: 6.8,
+          label: 'High-Guard Upper Limb Balance',
+          category: 'motor',
+          confidence: 0.95,
+          nodes: [
+            { id: 'toddler_arms', label: 'Bilateral High-Guard Balance', bbox: [240, 220, 490, 770], confidence: 0.95, category: 'motor', properties: { guard_posture: 'high-guard', stability: 'seeking' } },
+            { id: 'anterior_pelvis', label: 'Anterior Pelvic Tilt (~16°)', bbox: [460, 320, 670, 630], confidence: 0.91, category: 'biomechanics', properties: { tilt_deg: 16.2 } }
+          ]
+        },
+        {
+          timestamp: 10.2,
+          label: 'Weight Transfer & Terminal Stance',
+          category: 'biomechanics',
+          confidence: 0.92,
+          nodes: [
+            { id: 'dynamic_cop', label: 'Dynamic Center of Pressure', bbox: [770, 300, 960, 690], confidence: 0.90, category: 'biomechanics', properties: { trajectory: 'anterior-medial' } },
+            { id: 'toddler_spine', label: 'Spinal Alignment (Compensated)', bbox: [330, 290, 610, 520], confidence: 0.93, category: 'biomechanics', properties: { plumb_shift: '5.8 mm' } }
+          ]
+        }
+      ];
+    }
+
+    // Default agriculture foliar chlorosis and fenestration temporal keyframes
+    return [
+      {
+        timestamp: 0.0,
+        label: 'Canopy Overview & Apical Shoot',
+        category: 'morphology',
+        confidence: 0.97,
+        nodes: [
+          { id: 'apical_leaf', label: 'Emergent Juvenile Apical Shoot', bbox: [120, 350, 490, 690], confidence: 0.96, category: 'vegetative_vigor', properties: { turgor: 'high', meristem: 'active expansion' } },
+          { id: 'leaf_fenestrations_01', label: 'Fenestrated Leaf Margin (PCD)', bbox: [260, 150, 720, 530], confidence: 0.97, category: 'morphology', properties: { mechanism: 'PCD apoptosis', pest_damage: 'None' } }
+        ]
+      },
+      {
+        timestamp: 3.5,
+        label: 'Mid-Canopy Chlorosis Diagnostic',
+        category: 'pathology',
+        confidence: 0.95,
+        nodes: [
+          { id: 'chlorotic_zone', label: 'Interveinal Foliar Chlorosis', bbox: [210, 250, 630, 750], confidence: 0.96, category: 'pathology', properties: { pattern: 'interveinal yellowing', severity: 'moderate' } },
+          { id: 'root_zone_emitter', label: 'Drip Emitter (Visible Saturation)', bbox: [700, 490, 920, 840], confidence: 0.94, category: 'infrastructure', properties: { type: 'drip emitter', status: 'soil visibly saturated' } }
+        ]
+      },
+      {
+        timestamp: 7.2,
+        label: 'Petiole Turgor & Abaxial Stomata',
+        category: 'physiology',
+        confidence: 0.93,
+        nodes: [
+          { id: 'petiole_turgor', label: 'Petiole Angle Assessment', bbox: [390, 360, 760, 630], confidence: 0.93, category: 'physiology', properties: { posture: 'upright', turgor: 'adequate' } },
+          { id: 'fruit_01', label: 'Apical Fruit Truss', bbox: [430, 100, 640, 340], confidence: 0.94, category: 'developmental', properties: { color: 'green/immature', cluster: 'apical' } }
+        ]
+      },
+      {
+        timestamp: 10.5,
+        label: 'Root Substrate Aeration Diagnostic',
+        category: 'substrate',
+        confidence: 0.94,
+        nodes: [
+          { id: 'soil_drainage', label: 'Bark-Perlite Substrate', bbox: [580, 320, 970, 810], confidence: 0.92, category: 'substrate', properties: { texture: 'coarse chunky', drainage: 'visible perlite' } }
+        ]
+      }
+    ];
+  }, [isPediatrics]);
+
+  // Compute active keyframe based on videoCurrentTime
+  const activeKeyframe = useMemo(() => {
+    if (!temporalKeyframes || temporalKeyframes.length === 0) return null;
+    let selected = temporalKeyframes[0];
+    let selectedIdx = 0;
+    for (let i = 0; i < temporalKeyframes.length; i++) {
+      if (videoCurrentTime >= temporalKeyframes[i].timestamp) {
+        selected = temporalKeyframes[i];
+        selectedIdx = i;
+      }
+    }
+    return { ...selected, index: selectedIdx };
+  }, [videoCurrentTime, temporalKeyframes]);
+
+  // Handle play/pause simulation or HTML5 video synchronization
+  useEffect(() => {
+    let interval = null;
+    if (isVideoPlaying) {
+      interval = setInterval(() => {
+        setVideoCurrentTime((prev) => {
+          if (prev >= videoDuration) {
+            setIsVideoPlaying(false);
+            return 0;
+          }
+          return Number((prev + 0.1).toFixed(1));
+        });
+      }, 100);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isVideoPlaying, videoDuration]);
+
+  // Sync HTML5 video element if loaded
+  const handleVideoTimeUpdate = () => {
+    if (videoRef.current) {
+      setVideoCurrentTime(videoRef.current.currentTime);
+      if (videoRef.current.duration && !isNaN(videoRef.current.duration)) {
+        setVideoDuration(videoRef.current.duration);
+      }
+    }
+  };
+
+  const handlePlayToggle = () => {
+    if (videoRef.current) {
+      if (isVideoPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(() => {});
+      }
+    }
+    setIsVideoPlaying(!isVideoPlaying);
+  };
+
+  const handleSeek = (newTime) => {
+    setVideoCurrentTime(newTime);
+    if (videoRef.current) {
+      videoRef.current.currentTime = newTime;
+    }
+  };
+
+  const handleSelectKeyframe = (index, kf) => {
+    setActiveKeyframeIndex(index);
+    handleSeek(kf.timestamp);
+  };
 
   const displayImage =
     customImageData ||
     customImageUrl ||
     preset?.image ||
-    (presetId === 'agri_monstera_fenestration' || presetId === 'session-3' || preset?.id === 'agri_monstera_fenestration'
-      ? '/monstera_sample.png'
-      : presetId === 'infra_damaged_road'
-      ? 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=1200&q=80'
-      : presetId === 'astro_stellar_spectrum'
-      ? 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1200&q=80'
-      : presetId?.startsWith('toddler')
-      ? 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&w=1200&q=80'
-      : '/monstera_sample.png');
+    null;
 
-  // Unified upload dispatcher
-  const handleUpload = (imgDataOrFile, url) => {
-    if (onImageUploaded) onImageUploaded(imgDataOrFile, url);
-    if (imgDataOrFile && onUploadCustom) onUploadCustom(imgDataOrFile);
+  // Unified upload dispatcher (supports both photos and video clips)
+  const handleUpload = (fileDataOrFile, url) => {
+    if (fileDataOrFile instanceof File) {
+      const isVideo = fileDataOrFile.type.startsWith('video/') || /\.(mp4|mov|webm|avi|mkv)$/i.test(fileDataOrFile.name);
+      if (isVideo) {
+        const objectUrl = URL.createObjectURL(fileDataOrFile);
+        setCustomVideoUrl(objectUrl);
+        setMediaMode('video');
+        return;
+      }
+    }
+    if (url && (url.endsWith('.mp4') || url.endsWith('.webm') || url.includes('video'))) {
+      setCustomVideoUrl(url);
+      setMediaMode('video');
+      return;
+    }
+    if (onImageUploaded) onImageUploaded(fileDataOrFile, url);
+    if (fileDataOrFile && onUploadCustom) onUploadCustom(fileDataOrFile);
     if (url && onPasteUrl) onPasteUrl(url);
   };
 
@@ -171,30 +319,25 @@ export const ImageInspector = ({
     }
   };
 
-  // Helper to retrieve or synthesize tool mapping for any node ID
+  // Dynamic tool mapping for any grounded node
   const getToolMapping = (nodeId) => {
-    if (ENTITY_TOOL_MAPPINGS[nodeId]) {
-      return ENTITY_TOOL_MAPPINGS[nodeId];
-    }
-    const cleanId = String(nodeId || '').toLowerCase();
-    for (const [key, mapping] of Object.entries(ENTITY_TOOL_MAPPINGS)) {
-      if (cleanId.includes(key) || key.includes(cleanId)) {
-        return mapping;
-      }
-    }
-    return {
-      toolId: 'telemetry',
-      toolName: 'Diagnostic Simulation Tool',
-      actionLabel: 'Inspect Regional Evidence',
-      suggestedQuery: `Analyze the scientific implications and causal factors associated with ${nodeId}.`
-    };
+    const nodeObj = (groundedNodes || []).find((n) => n.id === nodeId) || { id: nodeId, label: nodeId };
+    return getDynamicToolMapping(nodeObj);
   };
 
-  // Extract or synthesize grounded nodes with normalized bounding boxes [ymin, xmin, ymax, xmax] (0 to 1000)
+  // Extract and normalize grounded nodes strictly from the active dataset payload
   const groundedNodes = useMemo(() => {
+    // If in video mode, dynamically ground nodes to the active temporal keyframe
+    if (mediaMode === 'video' && activeKeyframe && activeKeyframe.nodes) {
+      return activeKeyframe.nodes.map((n) => ({
+        ...n,
+        bbox: n.bbox
+      }));
+    }
+
     const rawList = Array.isArray(nodes) ? nodes : [];
-    const valid = rawList
-      .filter((n) => n.bbox && Array.isArray(n.bbox) && n.bbox.length === 4)
+    return rawList
+      .filter((n) => n && n.bbox && Array.isArray(n.bbox) && n.bbox.length === 4)
       .map((n) => {
         let [ymin, xmin, ymax, xmax] = n.bbox.map(Number);
         if (isNaN(ymin) || isNaN(xmin) || isNaN(ymax) || isNaN(xmax)) return null;
@@ -220,11 +363,11 @@ export const ImageInspector = ({
         if (ymax < ymin) ymax = ymin + ymax;
         if (xmax < xmin) xmax = xmin + xmax;
 
-        // Ensure reasonable minimum dimensions and bounds (at least 60px size in 1000px coordinate space)
-        ymin = Math.max(0, Math.min(940, ymin));
-        xmin = Math.max(0, Math.min(940, xmin));
-        ymax = Math.max(ymin + 60, Math.min(1000, ymax));
-        xmax = Math.max(xmin + 60, Math.min(1000, xmax));
+        // Ensure reasonable bounds within 1000x1000 coordinate space
+        ymin = Math.max(0, Math.min(960, ymin));
+        xmin = Math.max(0, Math.min(960, xmin));
+        ymax = Math.max(ymin + 40, Math.min(1000, ymax));
+        xmax = Math.max(xmin + 40, Math.min(1000, xmax));
 
         return {
           ...n,
@@ -232,55 +375,7 @@ export const ImageInspector = ({
         };
       })
       .filter(Boolean);
-
-    if (valid.length > 0) {
-      return valid;
-    }
-
-    // High-fidelity fallback grounding coordinates based on active preset / domain
-    if (presetId === 'infra_damaged_road' || preset?.id === 'infra_damaged_road') {
-      return [
-        { id: 'road_01', label: 'Longitudinal Surface Crack', bbox: [310, 190, 780, 520], confidence: 0.96, category: 'structural', properties: { aperture_mm: 18, length_m: 4.5 } },
-        { id: 'water_01', label: 'Accumulated Ponding Water', bbox: [440, 470, 880, 860], confidence: 0.93, category: 'environment', properties: { area_m2: 12.5, depth_cm: 4.2 } },
-        { id: 'drain_01', label: 'Storm Water Drain Grate', bbox: [120, 670, 410, 940], confidence: 0.98, category: 'infrastructure', properties: { blockage_pct: 88, flow: 'restricted' } },
-        { id: 'debris_01', label: 'Organic & Solid Debris', bbox: [150, 640, 370, 890], confidence: 0.91, category: 'obstacle', properties: { type: 'silt & leaves' } }
-      ];
-    }
-
-    if (presetId === 'astro_stellar_spectrum' || preset?.id === 'astro_stellar_spectrum') {
-      return [
-        { id: 'spectrum_01', label: 'Stellar Absorption Spectrum', bbox: [140, 80, 460, 920], confidence: 0.99, category: 'spectroscopy', properties: { resolution: 'R=45000' } },
-        { id: 'shift_01', label: 'Doppler Line Shift (Δλ)', bbox: [250, 460, 390, 570], confidence: 0.92, category: 'measurement', properties: { shift_angstrom: 0.187 } },
-        { id: 'time_series_01', label: 'Photometric Light Curve Dip', bbox: [560, 110, 890, 890], confidence: 0.88, category: 'photometry', properties: { depth_pct: 0.84 } }
-      ];
-    }
-
-    if (presetId?.startsWith('toddler') || preset?.domain === 'pediatrics') {
-      return [
-        { id: 'node_lumbar_lordosis', label: 'Accentuated Lumbar Curvature (~38°)', bbox: [340, 280, 620, 520], confidence: 0.94, category: 'biomechanics', properties: { lordosis_deg: 38.5, balance: 'compensated' } },
-        { id: 'node_protuberant_abdomen', label: 'Protuberant Abdominal Contour', bbox: [380, 480, 590, 720], confidence: 0.96, category: 'anatomy', properties: { wall_tone: 'developing', visceral_shift: 'anterior' } },
-        { id: 'node_knee_bowing', label: 'Symmetrical Genu Varum (2.2cm gap)', bbox: [640, 310, 890, 680], confidence: 0.92, category: 'orthopedic', properties: { symmetry: 'high', gap_cm: 2.2 } },
-        { id: 'node_wide_base_support', label: 'Wide-Base Stance & Medial Fat Pad', bbox: [820, 260, 970, 740], confidence: 0.91, category: 'motor', properties: { stance: 'broad', arch: 'physiologic fat pad' } }
-      ];
-    }
-
-    if (presetId === 'agri_monstera_fenestration' || presetId === 'session-3' || preset?.id === 'agri_monstera_fenestration') {
-      return [
-        { id: 'leaf_fenestrations_01', label: 'Elliptical Leaf Fenestrations (PCD)', bbox: [90, 300, 430, 590], confidence: 0.96, category: 'morphology', properties: { mechanism: 'Programmed Cell Death (PCD)', pest_damage: 'None' } },
-        { id: 'unfurling_apex_leaf_01', label: 'Emergent Juvenile Apical Shoot', bbox: [310, 520, 750, 610], confidence: 0.95, category: 'vegetative_vigor', properties: { turgor: 'high', meristem: 'active expansion' } },
-        { id: 'foliar_canopy_01', label: 'Dense Fenestrated Foliage Canopy', bbox: [30, 540, 480, 890], confidence: 0.93, category: 'anatomy', properties: { chlorophyll: 'optimal', fv_fm: '0.81' } },
-        { id: 'root_substrate_01', label: 'Coarse Aerated Pot Substrate', bbox: [480, 450, 980, 720], confidence: 0.92, category: 'substrate', properties: { aeration: 'high', pythium_risk: 'low' } }
-      ];
-    }
-
-    // Default agriculture foliar chlorosis grounding with tomato fruit
-    return [
-      { id: 'leaf_chlorosis_01', label: 'Interveinal Foliar Chlorosis', bbox: [180, 240, 680, 760], confidence: 0.96, category: 'pathology', properties: { pattern: 'interveinal yellowing', severity: 'acute' } },
-      { id: 'fruit_01', label: 'Tomato Fruit Truss (Apical Cluster)', bbox: [440, 110, 640, 340], confidence: 0.95, category: 'developmental', properties: { brix_sugar: '3.8°Bx', rot_risk: 'elevated' } },
-      { id: 'irrigation_emitter_01', label: 'Continuous Drip Line Emitter', bbox: [670, 70, 870, 420], confidence: 0.98, category: 'infrastructure', properties: { flow_l_hr: 2.8, pulse: 'unregulated' } },
-      { id: 'soil_moisture_sensor_01', label: 'Root Zone Moisture Sensor (48% VWC)', bbox: [720, 520, 910, 830], confidence: 0.94, category: 'measurement', properties: { vwc_pct: 48.2, status: 'waterlogged' } }
-    ];
-  }, [nodes, presetId, preset]);
+  }, [nodes, mediaMode, activeKeyframe]);
 
   // Synchronize visibleBoxIds when groundedNodes change (default: reveal all grounded anchors)
   useEffect(() => {
@@ -306,24 +401,23 @@ export const ImageInspector = ({
           next.add(match.id);
           return next;
         });
+        setActiveHudNode(match);
       }
     }
   }, [selectedNodeId, groundedNodes]);
 
-  // Toggle single anchor rectangle visibility on/off
-  const toggleBoxVisibility = (nodeId) => {
+  const toggleBoxVisibility = (boxId) => {
     setVisibleBoxIds((prev) => {
       const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
+      if (next.has(boxId)) {
+        next.delete(boxId);
       } else {
-        next.add(nodeId);
+        next.add(boxId);
       }
       return next;
     });
   };
 
-  // Bulk actions: Show All or Hide All rectangles
   const showAllBoxes = () => {
     setVisibleBoxIds(new Set(groundedNodes.map((n) => n.id)));
   };
@@ -334,45 +428,75 @@ export const ImageInspector = ({
 
   return (
     <div
-      className="glass-panel"
+      className="image-inspector-root custom-pane-scrollbar"
       style={{
-        padding: '0.9rem',
-        marginBottom: '1.5rem',
         display: 'flex',
         flexDirection: 'column',
-        position: 'relative',
-        borderRadius: '12px',
-        overflow: 'visible',
-        flexShrink: 0
+        width: '100%',
+        minHeight: '100%',
+        boxSizing: 'border-box'
       }}
     >
-      {/* 1. Sleek Compact Header */}
+      {/* 1. Header Toolbar with Multimodal Mode Switcher */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <div style={{
             width: '28px',
             height: '28px',
             borderRadius: '6px',
-            background: 'rgba(56, 189, 248, 0.12)',
+            background: 'rgba(56, 189, 248, 0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <Camera size={15} color="var(--primary)" />
+            {mediaMode === 'video' ? (
+              <Film size={15} color="var(--primary)" />
+            ) : (
+              <Camera size={15} color="var(--primary)" />
+            )}
           </div>
           <div>
-            <span style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)' }}>Visual Evidence Grounding</span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>({groundedNodes.length} anchors)</span>
+            <span style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)' }}>
+              {mediaMode === 'video' ? 'Temporal Video Grounding Engine' : 'Visual Evidence Grounding'}
+            </span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
+              ({groundedNodes.length} active anchors)
+            </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          {/* Quick upload button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+          {/* Video mode indicator + reset (only visible when a video is loaded) */}
+          {mediaMode === 'video' && (
+            <button
+              type="button"
+              onClick={() => { setMediaMode('image'); setCustomVideoUrl(null); setIsVideoPlaying(false); setVideoCurrentTime(0); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '0.22rem 0.5rem',
+                borderRadius: '6px',
+                background: 'rgba(56, 189, 248, 0.12)',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
+                color: 'var(--primary)',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              title="Exit video mode and return to photo inspection"
+            >
+              <Camera size={11} />
+              <span>Back to Photo</span>
+            </button>
+          )}
+
+          {/* Quick upload button (Accepts images and video clips — mode auto-detects) */}
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept="image/*"
+            accept="image/*,video/*"
             style={{ display: 'none' }}
           />
           <button
@@ -390,7 +514,7 @@ export const ImageInspector = ({
               cursor: 'pointer',
               fontWeight: 500
             }}
-            title="Upload specimen photo"
+            title="Upload specimen photo or video clip"
           >
             <Upload size={12} />
             <span>Upload</span>
@@ -412,7 +536,7 @@ export const ImageInspector = ({
               cursor: 'pointer',
               fontWeight: 500
             }}
-            title="Load image from URL"
+            title="Load media from URL"
           >
             <LinkIcon size={12} />
             <span>URL</span>
@@ -461,7 +585,7 @@ export const ImageInspector = ({
             type="url"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="Paste direct image URL (https://...)"
+            placeholder="Paste direct image or video URL (https://...)"
             style={{
               flex: 1,
               padding: '0.3rem 0.55rem',
@@ -478,7 +602,7 @@ export const ImageInspector = ({
         </form>
       )}
 
-      {/* 2. Visual Evidence Container */}
+      {/* 2. Visual Evidence Container (Photo or Video Player) */}
       <div style={{
         position: 'relative',
         width: '100%',
@@ -494,8 +618,56 @@ export const ImageInspector = ({
         justifyContent: 'center',
         boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
       }}>
-        {/* Base Image */}
-        {displayImage ? (
+        {/* Media Rendering: Video or Image */}
+        {mediaMode === 'video' ? (
+          customVideoUrl ? (
+            <video
+              ref={videoRef}
+              src={customVideoUrl}
+              onTimeUpdate={handleVideoTimeUpdate}
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : (
+            // Animated simulated video canvas using active frame backdrop
+            <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+              <img
+                src={displayImage}
+                alt="Temporal Video Keyframe"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  filter: isVideoPlaying ? 'brightness(1.05)' : 'brightness(0.95)',
+                  transition: 'filter 0.3s ease'
+                }}
+              />
+              {/* Scanline / Live Video HUD Overlay */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(0, 0, 0, 0.7)',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.66rem',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.3)'
+                }}
+              >
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isVideoPlaying ? '#38bdf8' : 'var(--text-muted)', boxShadow: isVideoPlaying ? '0 0 6px #38bdf8' : 'none' }} />
+                <span>{isVideoPlaying ? 'PLAYING' : 'PAUSED'}</span>
+                <span>•</span>
+                <span>{videoCurrentTime.toFixed(1)}s / {videoDuration.toFixed(1)}s</span>
+              </div>
+            </div>
+          )
+        ) : displayImage ? (
           <img
             src={displayImage}
             alt="Visual Evidence"
@@ -518,8 +690,8 @@ export const ImageInspector = ({
           </div>
         )}
 
-        {/* SVG Bounding Boxes Overlay - Multi-box rendering based on visibleBoxIds */}
-        {displayImage && groundedNodes.length > 0 && (
+        {/* SVG Bounding Boxes Overlay - Multi-box rendering based on visibleBoxIds & Video Keyframe */}
+        {(displayImage || customVideoUrl) && groundedNodes.length > 0 && (
           <svg
             viewBox="0 0 1000 1000"
             preserveAspectRatio="none"
@@ -648,14 +820,31 @@ export const ImageInspector = ({
           zIndex: 10,
           pointerEvents: 'none'
         }}>
-          <span style={{ fontWeight: 500, opacity: 0.9 }}>{preset?.title || "Visual Evidence"}</span>
-          <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--emerald)' : 'var(--text-muted)' }}>
+          <span style={{ fontWeight: 500, opacity: 0.9 }}>
+            {mediaMode === 'video' ? `Keyframe @ ${videoCurrentTime.toFixed(1)}s: ${activeKeyframe?.label || 'Continuous Track'}` : preset?.title || "Visual Evidence"}
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>
             {visibleBoxIds.size} of {groundedNodes.length} Rectangles Active
           </span>
         </div>
       </div>
 
-      {/* 3. Dedicated Inspector Card (Rendered cleanly below the photo, leaving image 100% visible) */}
+      {/* 3. Interactive Video Timeline Scrubber (Rendered when in Video Mode) */}
+      {mediaMode === 'video' && (
+        <VideoTimelineScrubber
+          currentTime={videoCurrentTime}
+          duration={videoDuration}
+          isPlaying={isVideoPlaying}
+          onPlayToggle={handlePlayToggle}
+          onSeek={handleSeek}
+          keyframes={temporalKeyframes}
+          activeKeyframeIndex={activeKeyframe?.index || 0}
+          onSelectKeyframe={handleSelectKeyframe}
+          fps={2.0}
+        />
+      )}
+
+      {/* 4. Dedicated Inspector Card (Rendered cleanly below the media container) */}
       {activeHudNode && (
         <div
           className="animate-fade-in"
@@ -692,7 +881,7 @@ export const ImageInspector = ({
                     {activeHudNode.category || 'entity'}
                   </span>
                   <span>•</span>
-                  <span style={{ color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
                     {Math.round((activeHudNode.confidence || 0.9) * 100)}% Confidence
                   </span>
                 </div>
@@ -797,16 +986,107 @@ export const ImageInspector = ({
                 gap: '4px'
               }}
             >
-              <Layers size={12} color="var(--emerald)" />
+              <Layers size={12} color="var(--primary)" />
               <span>Glossary</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* 4. Interactive Visual Labels & Anchors Directory */}
-      {groundedNodes.length > 0 && (
-        <div style={{ marginTop: '0.85rem' }}>
+      {/* 5. Domain Specialist Navigation Tabs */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        marginTop: '0.85rem',
+        borderBottom: '1px solid var(--border-color)',
+        paddingBottom: '0.4rem'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveSpecialistTab('anchors')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '0.35rem 0.7rem',
+            borderRadius: '6px',
+            background: activeSpecialistTab === 'anchors' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+            border: activeSpecialistTab === 'anchors' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+            color: activeSpecialistTab === 'anchors' ? 'var(--primary)' : 'var(--text-muted)',
+            fontSize: '0.74rem',
+            fontWeight: activeSpecialistTab === 'anchors' ? 700 : 500,
+            cursor: 'pointer'
+          }}
+        >
+          <Target size={13} />
+          <span>Visual Anchors ({groundedNodes.length})</span>
+        </button>
+
+        {isAgriculture && (
+          <button
+            type="button"
+            onClick={() => setActiveSpecialistTab('plantCare')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '0.35rem 0.7rem',
+              borderRadius: '6px',
+              background: activeSpecialistTab === 'plantCare' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+              border: activeSpecialistTab === 'plantCare' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+              color: activeSpecialistTab === 'plantCare' ? 'var(--primary)' : 'var(--text-muted)',
+              fontSize: '0.74rem',
+              fontWeight: activeSpecialistTab === 'plantCare' ? 700 : 500,
+              cursor: 'pointer'
+            }}
+          >
+            <Sprout size={13} />
+            <span>Botanical Care & Treatment Plan</span>
+          </button>
+        )}
+
+        {isPediatrics && (
+          <button
+            type="button"
+            onClick={() => setActiveSpecialistTab('toddlerPosture')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '0.35rem 0.7rem',
+              borderRadius: '6px',
+              background: activeSpecialistTab === 'toddlerPosture' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+              border: activeSpecialistTab === 'toddlerPosture' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+              color: activeSpecialistTab === 'toddlerPosture' ? 'var(--primary)' : 'var(--text-muted)',
+              fontSize: '0.74rem',
+              fontWeight: activeSpecialistTab === 'toddlerPosture' ? 700 : 500,
+              cursor: 'pointer'
+            }}
+          >
+            <Activity size={13} />
+            <span>Toddler Posture & Screening</span>
+          </button>
+        )}
+      </div>
+
+      {/* 6. Active Tab Pane Content */}
+      {activeSpecialistTab === 'plantCare' && isAgriculture && (
+        <PlantCareCard
+          presetId={presetId}
+          onAskAgronomist={(q) => onAskQuery && onAskQuery(q)}
+        />
+      )}
+
+      {activeSpecialistTab === 'toddlerPosture' && isPediatrics && (
+        <ToddlerPostureCard
+          presetId={presetId}
+          onAskSpecialist={(q) => onAskQuery && onAskQuery(q)}
+        />
+      )}
+
+      {activeSpecialistTab === 'anchors' && groundedNodes.length > 0 && (
+        <div style={{ marginTop: '0.65rem' }}>
           {/* Section Header with Bulk Actions & Guidance */}
           <div style={{
             display: 'flex',
@@ -818,19 +1098,18 @@ export const ImageInspector = ({
             padding: '0 0.1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Target size={14} color="var(--primary)" />
-              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-main)' }}>
-                Visual Anchors & Regional Labels
+              <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                Regional Bounding Box Directory
               </span>
               <span style={{
                 fontSize: '0.68rem',
                 fontFamily: 'var(--font-mono)',
                 padding: '0.12rem 0.45rem',
                 borderRadius: '10px',
-                background: visibleBoxIds.size > 0 ? 'rgba(52, 211, 153, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-                color: visibleBoxIds.size > 0 ? 'var(--emerald)' : 'var(--text-muted)',
+                background: visibleBoxIds.size > 0 ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)',
                 fontWeight: 600,
-                border: visibleBoxIds.size > 0 ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid var(--border-color)'
+                border: visibleBoxIds.size > 0 ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid var(--border-color)'
               }}>
                 {visibleBoxIds.size} of {groundedNodes.length} visible
               </span>
@@ -854,7 +1133,7 @@ export const ImageInspector = ({
                   fontWeight: 500,
                   cursor: 'pointer'
                 }}
-                title="Display all bounding boxes on the image"
+                title="Display all bounding boxes on the media canvas"
               >
                 <Eye size={12} />
                 <span>Show All</span>
@@ -869,9 +1148,9 @@ export const ImageInspector = ({
                   gap: '4px',
                   padding: '0.22rem 0.55rem',
                   borderRadius: '6px',
-                  background: visibleBoxIds.size === 0 ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-dark)',
+                  background: visibleBoxIds.size === 0 ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-dark)',
                   border: '1px solid var(--border-color)',
-                  color: visibleBoxIds.size === 0 ? '#ef4444' : 'var(--text-muted)',
+                  color: visibleBoxIds.size === 0 ? 'var(--text-main)' : 'var(--text-muted)',
                   fontSize: '0.7rem',
                   fontWeight: 500,
                   cursor: 'pointer'
@@ -885,7 +1164,7 @@ export const ImageInspector = ({
           </div>
 
           <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
-            Click any label card to toggle its rectangle on/off on the photo. Multiple rectangles can be viewed simultaneously.
+            Click any label card to toggle its rectangle on/off on the canvas. Multiple rectangles can be viewed simultaneously.
           </div>
 
           {/* Cards Grid */}
@@ -895,19 +1174,31 @@ export const ImageInspector = ({
             gap: '0.6rem',
             paddingBottom: '2.5rem'
           }}>
-            {groundedNodes.map((node, idx) => {
-              const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
-              const isVisible = visibleBoxIds.has(node.id);
-              const isSelected =
-                (selectedNodeId &&
-                  (node.id === selectedNodeId ||
-                    node.id.toLowerCase() === selectedNodeId.toLowerCase() ||
-                    node.label?.toLowerCase().includes(selectedNodeId.toLowerCase()))) ||
-                (activeHudNode && activeHudNode.id === node.id);
-              const isHovered = hoveredBoxId === node.id;
-              const mapping = getToolMapping(node.id);
+            {groundedNodes.length === 0 ? (
+              <div style={{
+                gridColumn: '1 / -1',
+                padding: '1.5rem',
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                background: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '8px',
+                border: '1px dashed var(--border-color)',
+                fontSize: '0.78rem'
+              }}>
+                <Crosshair size={24} style={{ opacity: 0.4, margin: '0 auto 0.5rem auto' }} />
+                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>No visual bounding boxes detected</div>
+                <div style={{ fontSize: '0.72rem', opacity: 0.7 }}>
+                  Visual anchors appear when an image is analyzed by the perception layer.
+                </div>
+              </div>
+            ) : (
+              groundedNodes.map((node, idx) => {
+                const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
+                const isVisible = visibleBoxIds.has(node.id);
+                const isHovered = hoveredBoxId === node.id;
+                const mapping = getToolMapping(node.id);
 
-              return (
+                return (
                 <div
                   key={node.id}
                   onClick={() => {
@@ -1021,7 +1312,7 @@ export const ImageInspector = ({
                         {node.category || 'feature'}
                       </span>
                       <span style={{
-                        color: 'var(--emerald)',
+                        color: 'var(--primary)',
                         fontFamily: 'var(--font-mono)',
                         fontWeight: 600
                       }}>
@@ -1055,7 +1346,7 @@ export const ImageInspector = ({
                     </div>
                   )}
 
-                  {/* Card Action Buttons (Quick launcher for tools & chat) */}
+                  {/* Card Action Buttons */}
                   <div
                     style={{
                       display: 'flex',
@@ -1136,15 +1427,17 @@ export const ImageInspector = ({
                       }}
                       title="Open Glossary Definition"
                     >
-                      <Layers size={11} color="var(--emerald)" />
+                      <Layers size={11} color="var(--primary)" />
                     </button>
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       )}
     </div>
   );
 };
+
+export default ImageInspector;

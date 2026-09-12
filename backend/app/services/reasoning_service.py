@@ -138,6 +138,90 @@ class ReasoningService:
         self._investigations[inv_id] = state
         return state
 
+    def register_gait_investigation(self, gait_result: Any) -> InvestigationState:
+        """Register a deterministic ToddleAI gait assessment into SAAR reasoning store."""
+        inv_id = getattr(gait_result, "assessment_id", f"gait_{uuid.uuid4().hex[:8]}")
+        metrics = getattr(gait_result, "metrics", None)
+        quality = getattr(gait_result, "quality", None)
+        cadence_range = getattr(gait_result, "cadence_range", None)
+        age_months = getattr(gait_result, "child_age_months", 24)
+
+        features = [
+            Feature(name="cadence", data_type="float", semantic_role=SemanticRole.TARGET),
+            Feature(name="left_mean_step_time", data_type="float", semantic_role=SemanticRole.STATE),
+            Feature(name="right_mean_step_time", data_type="float", semantic_role=SemanticRole.STATE),
+            Feature(name="step_time_asymmetry_pct", data_type="float", semantic_role=SemanticRole.TARGET),
+            Feature(name="step_time_cov", data_type="float", semantic_role=SemanticRole.TARGET),
+            Feature(name="usable_step_count", data_type="int", semantic_role=SemanticRole.STATE)
+        ]
+
+        observations = []
+        if metrics:
+            observations.extend([
+                Observation(feature_name="cadence", value=metrics.cadence, unit="steps/min", confidence=0.95),
+                Observation(feature_name="left_mean_step_time", value=metrics.left_mean_step_time, unit="s", confidence=0.90),
+                Observation(feature_name="right_mean_step_time", value=metrics.right_mean_step_time, unit="s", confidence=0.90),
+                Observation(feature_name="step_time_asymmetry_pct", value=metrics.step_time_asymmetry_pct, unit="%", confidence=0.95),
+                Observation(feature_name="step_time_cov", value=metrics.step_time_cov, unit="%", confidence=0.92),
+                Observation(feature_name="usable_step_count", value=metrics.usable_step_count, confidence=0.98),
+            ])
+
+        concepts = [
+            Concept(
+                concept_id="c_gait_cadence",
+                name=f"Cadence ({metrics.cadence if metrics else 0.0:.0f} steps/min)",
+                description=f"Age reference ({age_months}m): {cadence_range.low:.0f}–{cadence_range.high:.0f} steps/min" if cadence_range else "Cadence",
+                category="kinematics",
+                confidence=0.95,
+                status=ConceptStatus.SUPPORTED
+            ),
+            Concept(
+                concept_id="c_gait_symmetry",
+                name=f"Temporal Symmetry ({metrics.step_time_asymmetry_pct if metrics else 0.0:.0f}% diff)",
+                description="Left vs Right step timing balance (benchmark <= 10%)",
+                category="symmetry",
+                confidence=0.90,
+                status=ConceptStatus.SUPPORTED if (metrics and metrics.step_time_asymmetry_pct <= 10.0) else ConceptStatus.CANDIDATE
+            ),
+            Concept(
+                concept_id="c_gait_variability",
+                name=f"Step Rhythm Variation ({metrics.step_time_cov if metrics else 0.0:.0f}% CoV)",
+                description="Stride-to-stride temporal consistency (developing toddler benchmark <= 15%)",
+                category="rhythm",
+                confidence=0.88,
+                status=ConceptStatus.SUPPORTED
+            )
+        ]
+
+        evidence = [
+            Evidence(
+                observation=f"Cadence = {metrics.cadence:.1f} steps/min" if metrics else "",
+                description=f"Deterministic heel strike timing across {metrics.usable_step_count if metrics else 0} steps.",
+                evidence_type=EvidenceType.OBSERVATION,
+                impact="supports",
+                weight=0.95
+            )
+        ]
+
+        conf_val = 0.90 if (quality and getattr(quality, "confidence", "") == "HIGH") else (
+            0.75 if (quality and getattr(quality, "confidence", "") == "MEDIUM") else 0.55
+        )
+
+        state = InvestigationState(
+            investigation_id=inv_id,
+            dataset_id="gait",
+            features=features,
+            observations=observations,
+            concepts=concepts,
+            relationships=[],
+            evidence=evidence,
+            overall_confidence=conf_val,
+            iteration=1,
+            status="active"
+        )
+        self._investigations[inv_id] = state
+        return state
+
     # ------------------------------------------------------------------
     # Phase 2: Iterative Update (User provides answers)
     # ------------------------------------------------------------------
@@ -323,7 +407,36 @@ class ReasoningService:
 
         dataset_context_text = "\n".join(dataset_inspection_lines)
 
-        ai_prompt = f"""You are SAAR (सार), an autonomous scientific reasoning engine. Answer the user's question accurately by synthesizing scientific domain knowledge, causal graph reasoning, and empirical dataset observations.
+        if state.dataset_id == "gait":
+            gait_obs_map = {o.feature_name: o.value for o in state.observations}
+            ai_prompt = f"""You are SAAR (सार), an autonomous scientific reasoning engine analyzing a Toddler Gait Screening assessment. Answer the user's question accurately by synthesizing developmental biomechanics, age reference norms, and empirical measured gait values.
+
+User Question:
+"{question}"
+
+GAIT ANALYSIS CONTEXT (Deterministic ToddleAI Measurements):
+- Cadence: {gait_obs_map.get('cadence', 'N/A')} steps/min
+- Left Mean Step Time: {gait_obs_map.get('left_mean_step_time', 'N/A')} s
+- Right Mean Step Time: {gait_obs_map.get('right_mean_step_time', 'N/A')} s
+- Left-Right Step-Time Asymmetry: {gait_obs_map.get('step_time_asymmetry_pct', 'N/A')}% (Typical threshold <= 10%)
+- Step-Time Variability (CoV): {gait_obs_map.get('step_time_cov', 'N/A')}% (Typical threshold <= 15%)
+- Usable Steps Detected: {gait_obs_map.get('usable_step_count', 'N/A')}
+- Assessment Confidence: {state.overall_confidence * 100:.0f}%
+
+Domain Literature Knowledge (Pediatric Gait RAG):
+{chr(10).join([f"- [{r.domain}] {r.content[:200]}..." for r in rag_results[:2]])}
+
+MANDATORY MEDICAL SAFETY & REASONING GUIDELINES:
+1. **Measured Facts First**: Always use the actual measured metrics above. Never fabricate or extrapolate unmeasured gait values.
+2. **Non-Diagnostic Framing**: Use observational and developmental terms (e.g., 'movement screening', 'temporal symmetry', 'step rhythm variability', 'age-appropriate reference range'). NEVER state or infer a medical diagnosis (e.g. do NOT say 'the child has cerebral palsy' or 'abnormal pathology'). Emphasize that screening observations provide objective context for pediatric healthcare professionals.
+3. **Structured Explanation**:
+   - **Executive Summary**: 1-2 direct sentences answering the question with exact measured values.
+   - **Gait Evidence Matrix**: A markdown table with parameters, measured values, reference benchmarks, and observational notes.
+   - **Key Developmental Takeaways**: Exactly 2 crisp bullet points.
+   - **Bottom Line**: `**Bottom line:** <1 sentence non-diagnostic takeaway>`.
+"""
+        else:
+            ai_prompt = f"""You are SAAR (सार), an autonomous scientific reasoning engine. Answer the user's question accurately by synthesizing scientific domain knowledge, causal graph reasoning, and empirical dataset observations.
 
 User Question:
 "{question}"

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Wrench, GitFork, BarChart2, BookOpen, Camera,
-  BookA, X, Crosshair
+  BookA, X, Crosshair, Activity
 } from 'lucide-react';
 
 export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating = false }) {
@@ -9,13 +9,15 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
   const containerRef = useRef(null);
 
   // Operational Scientific Tools:
-  // 1. Grounded Split Graph (Image-to-Graph Grounding)
-  // 2. Causal Knowledge Graph (NetworkX / Cytoscape)
-  // 3. Photo Evidence Monitor (ImageInspector)
-  // 4. Telemetry Analytics (PlotlyGraphViewer / AnalyticsService)
-  // 5. Multi-Domain Literature RAG (DomainRAGRadar / RAGKnowledgeService)
-  // 6. Scientific Dictionary (ScientificDictionaryDrawer / TerminologyService)
   const tools = [
+    {
+      id: 'gait',
+      label: 'Toddler Gait Analysis',
+      tooltip: 'Deterministic 33-point MediaPipe Pose Kinematics & Toddler Gait Screening',
+      icon: <Activity size={17} />,
+      gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+      glow: 'rgba(6, 182, 212, 0.45)'
+    },
     {
       id: 'grounded',
       label: 'Grounded Split Graph',

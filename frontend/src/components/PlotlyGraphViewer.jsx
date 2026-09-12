@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js-dist-min';
 import {
   TrendingUp, BarChart2, Activity, GitFork, AlertTriangle,
   Calendar, Layers, Sparkles, CheckCircle2, Sliders, ArrowRight,
-  BookA, BookOpen, Info, X, MessageSquare, HelpCircle, ChevronRight
+  BookA, BookOpen, Info, X, MessageSquare, HelpCircle, ChevronRight,
+  UploadCloud, FileSpreadsheet, Database, RefreshCw
 } from 'lucide-react';
 
 const Plot = createPlotlyComponent(Plotly);
@@ -18,10 +19,17 @@ export function PlotlyGraphViewer({
   theme = 'light',
   height = 420,
   onSelectTool = null,
-  onSendToChat = null
+  onSendToChat = null,
+  hasSensorData = true,
+  onUploadSensorData = null,
+  onLoadSampleDataset = null
 }) {
   const [activeTab, setActiveTab] = useState('timeline'); // 'timeline' | 'scatter' | 'heatmap'
   const [selectedKpiId, setSelectedKpiId] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isIngesting, setIsIngesting] = useState(false);
+  const [uploadFeedback, setUploadFeedback] = useState(null);
+  const fileInputRef = useRef(null);
   const isDark = theme === 'dark';
 
   // Theme tokens
@@ -449,6 +457,385 @@ export function PlotlyGraphViewer({
     return { traces, layout };
   }, [sensorSuite, paperColor, textColor]);
 
+  const handleFileSelect = async (file) => {
+    if (!file) return;
+    if (onUploadSensorData) {
+      setIsIngesting(true);
+      setUploadFeedback(null);
+      try {
+        await onUploadSensorData(file);
+        setUploadFeedback({ success: true, name: file.name });
+      } catch (err) {
+        setUploadFeedback({ success: false, error: err.message || 'Failed to ingest file' });
+      } finally {
+        setIsIngesting(false);
+      }
+    }
+  };
+
+  // Guided Empty State: When no sensor telemetry or tabular document has been entered
+  if (!hasSensorData) {
+    return (
+      <div className="sensor-empty-guide" style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.25rem',
+        padding: '1.75rem 1.25rem',
+        background: '#ffffff',
+        borderRadius: '12px',
+        color: '#0f172a',
+        maxWidth: '900px',
+        margin: '0 auto'
+      }}>
+        {/* Header Alert / Notice Banner */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          padding: '1.5rem 1rem',
+          background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '16px',
+            background: '#e0f2fe',
+            border: '1px solid #bae6fd',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '0.85rem'
+          }}>
+            <BarChart2 size={28} color="#0284c7" />
+          </div>
+          
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '0.2rem 0.65rem',
+            borderRadius: '999px',
+            background: '#f1f5f9',
+            border: '1px solid #e2e8f0',
+            fontSize: '0.7rem',
+            fontWeight: '600',
+            color: '#475569',
+            marginBottom: '0.6rem'
+          }}>
+            <Info size={12} color="#0284c7" />
+            <span>Visual Evidence Investigation Active</span>
+          </div>
+
+          <h3 style={{
+            fontSize: '1.18rem',
+            fontWeight: '700',
+            color: '#0f172a',
+            margin: '0 0 0.4rem 0'
+          }}>
+            No Sensor Telemetry or Tabular Data Loaded
+          </h3>
+
+          <p style={{
+            fontSize: '0.82rem',
+            color: '#64748b',
+            maxWidth: '560px',
+            lineHeight: '1.5',
+            margin: 0
+          }}>
+            This investigation is currently grounded on visual observations and morphological evidence.
+            Upload a time-series dataset or load a sample baseline to unlock multi-channel sensor analytics.
+          </p>
+
+          {uploadFeedback && (
+            <div style={{
+              marginTop: '0.75rem',
+              padding: '0.4rem 0.8rem',
+              borderRadius: '6px',
+              fontSize: '0.75rem',
+              background: uploadFeedback.success ? '#ecfdf5' : '#fff1f2',
+              color: uploadFeedback.success ? '#059669' : '#e11d48',
+              border: `1px solid ${uploadFeedback.success ? '#a7f3d0' : '#fecdd3'}`
+            }}>
+              {uploadFeedback.success ? `Successfully ingested ${uploadFeedback.name}` : uploadFeedback.error}
+            </div>
+          )}
+        </div>
+
+        {/* Action Pathway Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '1rem'
+        }}>
+          {/* Card 1: In-Tool File Uploader */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+            style={{
+              border: isDragging ? '2px dashed #0284c7' : '1.5px dashed #cbd5e1',
+              background: isDragging ? '#f0f9ff' : '#f8fafc',
+              borderRadius: '10px',
+              padding: '1.5rem 1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              transition: 'all 0.2s ease',
+              position: 'relative',
+              cursor: 'pointer'
+            }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls,.tsv,.txt"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileSelect(file);
+              }}
+            />
+
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '0.75rem',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+            }}>
+              {isIngesting ? (
+                <RefreshCw size={22} color="#0284c7" className="animate-spin" />
+              ) : (
+                <UploadCloud size={22} color="#0284c7" />
+              )}
+            </div>
+
+            <strong style={{ fontSize: '0.9rem', color: '#0f172a', marginBottom: '0.25rem' }}>
+              {isIngesting ? 'Ingesting & Analyzing Dataset...' : 'Upload Sensor Telemetry'}
+            </strong>
+
+            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.85rem 0', maxWidth: '280px' }}>
+              Drag & drop your CSV or Excel file here, or click to browse local files
+            </p>
+
+            <button
+              type="button"
+              disabled={isIngesting}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.45rem 0.95rem',
+                borderRadius: '6px',
+                background: '#0284c7',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '0.78rem',
+                fontWeight: '600',
+                cursor: isIngesting ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 2px rgba(2, 132, 199, 0.2)'
+              }}
+            >
+              <FileSpreadsheet size={14} />
+              <span>Browse CSV / XLSX</span>
+            </button>
+
+            <span style={{ fontSize: '0.67rem', color: '#94a3b8', marginTop: '0.75rem' }}>
+              Supports .csv, .xlsx, .tsv (Time series or multi-variable tabular telemetry)
+            </span>
+          </div>
+
+          {/* Card 2: Load Sample Telemetry Baseline */}
+          <div style={{
+            border: '1px solid #e2e8f0',
+            background: '#f8fafc',
+            borderRadius: '10px',
+            padding: '1.5rem 1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '0.75rem'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Database size={16} color="#0284c7" />
+                </div>
+                <div>
+                  <strong style={{ fontSize: '0.88rem', color: '#0f172a', display: 'block' }}>
+                    Load Demonstration Baseline
+                  </strong>
+                  <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                    Instant 30-Day Multi-Sensor Telemetry
+                  </span>
+                </div>
+              </div>
+
+              <p style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: '1.45', margin: '0 0 0.85rem 0' }}>
+                Explore populated sensor telemetry with 30 synchronized daily observations, bivariate cross-correlations, and anomaly markers tailored to this scientific domain.
+              </p>
+
+              <div style={{
+                padding: '0.55rem 0.75rem',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '3px',
+                marginBottom: '0.85rem'
+              }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: '700', color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {domain.includes('infra') ? 'Civil Infrastructure Telemetry' : 'Botanical Agronomy Telemetry'}
+                </span>
+                <span style={{ fontSize: '0.73rem', color: '#334155', fontWeight: '500' }}>
+                  {domain.includes('infra') 
+                    ? '4 Channels: Moisture (%), GPR Echo (dB), Crack Width (mm), Rain (mm/day)' 
+                    : '4 Channels: Soil pH, NDRE Foliar Chlorophyll, Electrical Conductivity, Transpiration'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onLoadSampleDataset) {
+                  onLoadSampleDataset(domain);
+                }
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                background: '#ffffff',
+                color: '#0284c7',
+                border: '1.5px solid #0284c7',
+                fontSize: '0.78rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f9ff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; }}
+            >
+              <Sparkles size={14} color="#0284c7" />
+              <span>Load 30-Day Sensor Baseline</span>
+            </button>
+          </div>
+        </div>
+
+        {/* What Sensor Analytics Unlocks (Educational 3-Card Row) */}
+        <div style={{
+          marginTop: '0.5rem',
+          paddingTop: '1rem',
+          borderTop: '1px solid #f1f5f9'
+        }}>
+          <div style={{
+            fontSize: '0.7rem',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: '#94a3b8',
+            marginBottom: '0.6rem'
+          }}>
+            Analytical Capabilities Unlocked with Telemetry
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '0.75rem'
+          }}>
+            <div style={{
+              padding: '0.75rem',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              display: 'flex',
+              gap: '8px'
+            }}>
+              <Activity size={16} color="#0284c7" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <strong style={{ fontSize: '0.76rem', color: '#0f172a', display: 'block', marginBottom: '2px' }}>
+                  Dual-Axis Longitudinal Scrubber
+                </strong>
+                <span style={{ fontSize: '0.68rem', color: '#64748b', lineHeight: '1.35', display: 'block' }}>
+                  Synchronized multi-channel time-series with diagnostic anomaly threshold highlights.
+                </span>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '0.75rem',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              display: 'flex',
+              gap: '8px'
+            }}>
+              <TrendingUp size={16} color="#0284c7" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <strong style={{ fontSize: '0.76rem', color: '#0f172a', display: 'block', marginBottom: '2px' }}>
+                  Bivariate Granger Regression
+                </strong>
+                <span style={{ fontSize: '0.68rem', color: '#64748b', lineHeight: '1.35', display: 'block' }}>
+                  Quantifies direct statistical coupling, non-linear hysteresis, and lead-lag drivers.
+                </span>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '0.75rem',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              display: 'flex',
+              gap: '8px'
+            }}>
+              <GitFork size={16} color="#0284c7" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <strong style={{ fontSize: '0.76rem', color: '#0f172a', display: 'block', marginBottom: '2px' }}>
+                  Pairwise Covariance Heatmap
+                </strong>
+                <span style={{ fontSize: '0.68rem', color: '#64748b', lineHeight: '1.35', display: 'block' }}>
+                  Full Pearson correlation matrix (r ∈ [-1, 1]) across all captured variables.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="sensor-analytics-dashboard" style={{
       display: 'flex',
@@ -458,6 +845,58 @@ export function PlotlyGraphViewer({
       borderRadius: '8px',
       padding: '0.5rem'
     }}>
+      {/* Telemetry Dataset Context Bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0.5rem 0.85rem',
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        borderRadius: '8px',
+        fontSize: '0.75rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a' }}>
+          <CheckCircle2 size={15} color="#0284c7" />
+          <span style={{ fontWeight: '600' }}>Active Sensor Telemetry:</span>
+          <span style={{ color: '#475569' }}>
+            {saarData?.perception?.observations_count
+              ? `${saarData.perception.observations_count} Observations · ${saarData.perception.features_detected || 4} Features`
+              : (domain.includes('infra') ? '30-Day Civil Infrastructure Sensor Array' : '30-Day Longitudinal Agronomy Sensor Array')}
+          </span>
+        </div>
+        
+        {onUploadSensorData && (
+          <label style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '0.25rem 0.65rem',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            color: '#0f172a',
+            cursor: 'pointer',
+            fontSize: '0.72rem',
+            fontWeight: '600',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0284c7'; e.currentTarget.style.color = '#0284c7'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#0f172a'; }}
+          >
+            <UploadCloud size={13} color="#0284c7" />
+            <span>Upload New CSV</span>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.tsv,.txt"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                if (e.target.files?.[0]) handleFileSelect(e.target.files[0]);
+              }}
+            />
+          </label>
+        )}
+      </div>
       {/* 1. Top Executive KPI Summary Cards (Interactive with Scientific Definitions) */}
       <div style={{
         display: 'grid',

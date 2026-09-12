@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from ..schemas import NodeModel, EdgeModel, ToolExecutionModel, BaselineComparisonModel
 
 class BaseDomainPlugin(ABC):
