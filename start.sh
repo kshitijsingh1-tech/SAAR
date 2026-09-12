@@ -17,7 +17,15 @@ echo "========================================================"
 # 1. Check Python 3
 if ! command -v python3 &> /dev/null; then
     echo "❌ Error: python3 is not installed."
-    echo "   Run: brew install python@3.11"
+    echo "   Run: brew install python@3.12"
+    exit 1
+fi
+
+PY_MAJOR=$(python3 -c 'import sys; print(sys.version_info.major)')
+PY_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
+if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 10 ]; }; then
+    echo "❌ Error: Python 3.10+ is required. Found Python $PY_MAJOR.$PY_MINOR."
+    echo "   Please upgrade Python: brew install python@3.12"
     exit 1
 fi
 
@@ -63,7 +71,7 @@ trap cleanup SIGINT SIGTERM EXIT
 
 # 5. Start Backend
 echo "⚡ [3/4] Launching FastAPI Backend on http://127.0.0.1:8001..."
-(cd backend && python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload) &
+(cd backend && ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload) &
 BACKEND_PID=$!
 
 # Wait 2 seconds for backend to bind to port
