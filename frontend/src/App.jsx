@@ -11,8 +11,18 @@ import { HelpDrawer } from './components/HelpDrawer';
 import monsteraInvestigation from './data/monsteraInvestigation.json';
 
 export default function App() {
-  // Theme State (Strictly white background with dark text)
-  const [theme, setTheme] = useState('light');
+  // Theme State (Dark / Light Mode with localStorage persistence)
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('saar_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+    } catch (e) {}
+    return 'light';
+  });
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
 
   // Sidebar & Tool Drawer Visibility
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -240,11 +250,14 @@ export default function App() {
     } catch (e) {}
   }, [activeSessionId]);
 
-  // Enforce strictly light white theme
+  // Synchronize Dark / Light Mode with document root & localStorage
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'light');
-    document.documentElement.className = 'light';
-  }, []);
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.className = theme;
+      localStorage.setItem('saar_theme', theme);
+    } catch (e) {}
+  }, [theme]);
 
   // Persistent tracking of which sessions have active sensor/tabular datasets
   const [sessionSensorData, setSessionSensorData] = useState(() => {
@@ -1105,6 +1118,7 @@ export default function App() {
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
         onDeleteSession={handleDeleteSession}
+        theme={theme}
       />
 
       {/* 2. Central ChatGPT Conversation View */}
@@ -1129,6 +1143,7 @@ export default function App() {
           onOpenHelp={() => setIsHelpOpen(true)}
           onExportChat={handleExportChat}
           theme={theme}
+          onToggleTheme={handleToggleTheme}
           hasSensorData={hasSensorData}
         />
       </main>

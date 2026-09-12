@@ -12,7 +12,8 @@ export function ChatSidebar({
   activeSessionId,
   onSelectSession,
   onNewSession,
-  onDeleteSession
+  onDeleteSession,
+  theme = 'light'
 }) {
   const [searchFilter, setSearchFilter] = useState('');
 
@@ -35,18 +36,21 @@ export function ChatSidebar({
     }
   };
 
+  const logoSrc = theme === 'dark' ? '/saar-logo-white.png' : '/saar-logo-dark.png';
+  const wordmarkSrc = theme === 'dark' ? '/saar-wordmark-white.png' : '/saar-wordmark-dark.png';
+
   return (
     <aside className="chatgpt-sidebar">
       {/* Sidebar Header */}
       <div className="sidebar-header-bar">
         <div className="brand-logo-mini">
           <img
-            src="/saar-logo-dark.png"
+            src={logoSrc}
             alt="Saar Logo"
             className="saar-brand-emblem-img"
           />
           <img
-            src="/saar-wordmark-dark.png"
+            src={wordmarkSrc}
             alt="SAAR"
             className="saar-brand-wordmark-img"
           />

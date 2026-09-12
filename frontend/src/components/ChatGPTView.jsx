@@ -5,7 +5,7 @@ import {
   BookOpen, ChevronDown, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
-  Crosshair, BookA, Image as ImageIcon, Film
+  Crosshair, BookA, Image as ImageIcon, Film, Sun, Moon
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -90,6 +90,7 @@ export function ChatGPTView({
   onOpenHelp,
   onExportChat,
   theme = 'light',
+  onToggleTheme,
   hasSensorData = true
 }) {
   const [inputText, setInputText] = useState('');
@@ -121,8 +122,8 @@ export function ChatGPTView({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const saarLogoSrc = '/saar-logo-dark.png';
-  const saarWordmarkSrc = '/saar-wordmark-dark.png';
+  const saarLogoSrc = theme === 'dark' ? '/saar-logo-white.png' : '/saar-logo-dark.png';
+  const saarWordmarkSrc = theme === 'dark' ? '/saar-wordmark-white.png' : '/saar-wordmark-dark.png';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -423,6 +424,27 @@ export function ChatGPTView({
               )}
             </div>
           )}
+
+          {/* Theme Toggle Button (Dark / Light Mode) */}
+          <button
+            type="button"
+            className="header-theme-toggle-btn"
+            onClick={onToggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun size={15} className="theme-toggle-icon sun-icon" />
+                <span>Light</span>
+              </>
+            ) : (
+              <>
+                <Moon size={15} className="theme-toggle-icon moon-icon" />
+                <span>Dark</span>
+              </>
+            )}
+          </button>
 
           <button
             className="header-guide-btn"

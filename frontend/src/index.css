@@ -5,10 +5,10 @@
    --------------------------------------------------------------------------- */
 :root {
   color-scheme: light;
-  --bg-dark: #ffffff;
+  --bg-dark: #f8fafc;
   --bg-card: #ffffff;
-  --bg-card-hover: #f8fafc;
-  --border-color: #e2e8f0;
+  --bg-card-hover: #f1f5f9;
+  --border-color: #cbd5e1;
   --border-glow: rgba(0, 0, 0, 0.08);
   
   --primary: #0284c7;
@@ -19,9 +19,9 @@
   --amber: #d97706;
   --rose: #e11d48;
   
-  --text-main: #000000;
-  --text-muted: #111827;
-  --text-dim: #374151;
+  --text-main: #0f172a;
+  --text-muted: #334155;
+  --text-dim: #64748b;
   --input-bg: #ffffff;
 
   --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -48,13 +48,36 @@ h1, h2, h3, h4, h5, h6,
   color: var(--text-main);
 }
 
-/* Light Theme Overrides */
+/* Dark Theme Tokens (Deep Obsidian Navy & High-Contrast Crisp Typography) */
+[data-theme="dark"], .dark {
+  color-scheme: dark;
+  --bg-dark: #090d16;
+  --bg-card: #0f172a;
+  --bg-card-hover: #1e293b;
+  --border-color: #334155;
+  --border-glow: rgba(56, 189, 248, 0.16);
+  
+  --primary: #38bdf8;
+  --primary-glow: rgba(56, 189, 248, 0.25);
+  --primary-bg: rgba(56, 189, 248, 0.12);
+  --purple: #c084fc;
+  --emerald: #34d399;
+  --amber: #fbbf24;
+  --rose: #fb7185;
+  
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+  --input-bg: #1e293b;
+}
+
+/* Light Theme Tokens (Crisp Clean White & Deep Slate Typography) */
 [data-theme="light"], .light {
   color-scheme: light;
-  --bg-dark: #ffffff;
+  --bg-dark: #f8fafc;
   --bg-card: #ffffff;
-  --bg-card-hover: #f8fafc;
-  --border-color: #e2e8f0;
+  --bg-card-hover: #f1f5f9;
+  --border-color: #cbd5e1;
   --border-glow: rgba(0, 0, 0, 0.08);
   
   --primary: #0284c7;
@@ -65,9 +88,9 @@ h1, h2, h3, h4, h5, h6,
   --amber: #d97706;
   --rose: #e11d48;
   
-  --text-main: #000000;
-  --text-muted: #111827;
-  --text-dim: #374151;
+  --text-main: #0f172a;
+  --text-muted: #334155;
+  --text-dim: #64748b;
   --input-bg: #ffffff;
 }
 
@@ -2576,7 +2599,7 @@ body {
   justify-content: center;
   gap: 8px;
   background: var(--primary);
-  color: #000000;
+  color: #ffffff;
   border: none;
   font-weight: 700;
   font-size: 0.85rem;
@@ -4435,13 +4458,13 @@ body {
 }
 
 .hindi-tag {
-  color: #000000;
+  color: var(--primary);
   font-size: 0.76rem;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 4px;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
+  background: var(--primary-bg);
+  border: 1px solid var(--border-color);
 }
 
 .sidebar-close-btn {
@@ -4954,6 +4977,51 @@ body {
   transform: translateY(0);
 }
 
+/* Header Theme Toggle Button */
+.header-theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.42rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.header-theme-toggle-btn .theme-toggle-icon {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.header-theme-toggle-btn .sun-icon {
+  color: #fbbf24;
+}
+
+.header-theme-toggle-btn .moon-icon {
+  color: #38bdf8;
+}
+
+.header-theme-toggle-btn:hover {
+  background: var(--input-bg);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+.header-theme-toggle-btn:hover .theme-toggle-icon {
+  transform: rotate(20deg) scale(1.15);
+}
+
+.header-theme-toggle-btn:active {
+  transform: translateY(0);
+}
+
 /* Header Export Chat Button */
 .header-export-btn {
   display: inline-flex;
@@ -5013,10 +5081,10 @@ body {
   top: calc(100% + 8px);
   right: 0;
   width: 335px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
-  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.12), 0 6px 14px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.2), 0 6px 14px -2px rgba(0, 0, 0, 0.1);
   padding: 8px 6px;
   z-index: 1000;
   animation: exportDropdownFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
@@ -5038,7 +5106,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #94a3b8;
+  color: var(--text-dim);
   padding: 4px 10px 6px 10px;
   user-select: none;
 }
@@ -5059,12 +5127,12 @@ body {
 }
 
 .export-menu-item:hover {
-  background: #f8fafc;
+  background: var(--bg-card-hover);
   transform: translateX(2px);
 }
 
 .export-menu-item:active {
-  background: #f1f5f9;
+  background: var(--input-bg);
   transform: translateX(0);
 }
 
@@ -5129,15 +5197,15 @@ body {
 .export-item-title {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-main);
   white-space: nowrap;
 }
 
 .export-badge {
   font-size: 0.63rem;
   font-weight: 700;
-  color: #15803d;
-  background: #dcfce7;
+  color: var(--emerald);
+  background: var(--primary-bg);
   padding: 2px 7px;
   border-radius: 9999px;
   letter-spacing: 0.02em;
@@ -5147,7 +5215,7 @@ body {
 
 .export-item-subtitle {
   font-size: 0.71rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin-top: 1px;
   line-height: 1.35;
   display: block;
@@ -5158,16 +5226,16 @@ body {
 
 .export-menu-divider {
   height: 1px;
-  background: #f1f5f9;
+  background: var(--border-color);
   margin: 6px 8px;
 }
 
 .export-menu-item.action-item:hover {
-  background: #f8fafc;
+  background: var(--bg-card-hover);
 }
 
 .export-menu-item.action-item:hover .export-item-title {
-  color: #0f172a;
+  color: var(--primary);
 }
 
 /* Floating "Ask Saar" Selection Popover (ChatGPT style) */
@@ -5177,11 +5245,11 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 9999px;
   padding: 4px 6px;
-  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.25), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
   animation: popoverFadeIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
@@ -5201,7 +5269,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #0f172a;
+  background: var(--primary);
   color: #ffffff;
   border: none;
   border-radius: 9999px;
@@ -5213,9 +5281,10 @@ body {
 }
 
 .ask-saar-pill-btn:hover {
-  background: #1e293b;
+  background: var(--primary);
+  opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .ask-saar-copy-btn {
@@ -5223,7 +5292,7 @@ body {
   align-items: center;
   gap: 4px;
   background: transparent;
-  color: #475569;
+  color: var(--text-muted);
   border: none;
   border-radius: 9999px;
   padding: 5px 10px;
@@ -5234,8 +5303,8 @@ body {
 }
 
 .ask-saar-copy-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--bg-card-hover);
+  color: var(--text-main);
 }
 
 /* Action Bar Ask Saar Button */
@@ -5306,12 +5375,12 @@ body {
   width: 74px;
   height: 74px;
   border-radius: 9999px;
-  background: #ffffff;
-  border: 1.5px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
   display: grid;
   place-items: center;
   margin-bottom: 1.1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .welcome-saar-logo-img {
@@ -5341,23 +5410,23 @@ body {
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 6px;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  color: #000000;
+  background: var(--primary-bg);
+  border: 1px solid var(--border-color);
+  color: var(--primary);
   font-family: var(--font-sans);
 }
 
 .welcome-heading {
   font-size: 1.8rem;
   font-weight: 800;
-  color: #000000;
+  color: var(--text-main);
   margin-bottom: 0.6rem;
   letter-spacing: -0.02em;
 }
 
 .welcome-subheading {
   font-size: 0.92rem;
-  color: #334155;
+  color: var(--text-muted);
   line-height: 1.5;
   margin-bottom: 2.25rem;
 }
@@ -5376,32 +5445,32 @@ body {
 }
 
 .prompt-card {
-  background: #ffffff;
-  border: 1.5px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
   border-radius: 12px;
   padding: 1.1rem;
   text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .prompt-card:hover {
   border-color: var(--primary);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 16px var(--primary-glow);
 }
 
 .prompt-title {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #000000;
+  color: var(--text-main);
   margin-bottom: 0.35rem;
 }
 
 .prompt-desc {
   font-size: 0.78rem;
-  color: #475569;
+  color: var(--text-muted);
   line-height: 1.45;
 }
 
@@ -5412,8 +5481,8 @@ body {
 }
 
 .chatgpt-message-row.user .message-container {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 1rem 1.25rem;
 }
@@ -5428,8 +5497,8 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 9999px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -5715,26 +5784,26 @@ body {
 .composer-capsule {
   width: 100%;
   max-width: 800px;
-  background: #ffffff;
-  border: 1.5px solid #cbd5e1;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
   border-radius: 26px;
   padding: 0.55rem 0.95rem;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
 }
 
 .composer-capsule:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 4px 24px rgba(2, 132, 199, 0.16);
+  box-shadow: 0 4px 24px var(--primary-glow);
 }
 
 .composer-action-btn {
   background: transparent;
   border: none;
-  color: #475569;
+  color: var(--text-muted);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -5745,8 +5814,8 @@ body {
 }
 
 .composer-action-btn:hover {
-  color: #000000;
-  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+  background: var(--bg-card-hover);
 }
 
 .composer-action-btn.camera-live {
@@ -5759,7 +5828,7 @@ body {
   background: transparent;
   border: none;
   outline: none;
-  color: #000000;
+  color: var(--text-main);
   font-size: 0.92rem;
   font-family: inherit;
   resize: none;
@@ -5769,7 +5838,7 @@ body {
 }
 
 .composer-input::placeholder {
-  color: #64748b;
+  color: var(--text-dim);
 }
 
 .composer-send-arrow {
@@ -5777,7 +5846,7 @@ body {
   height: 32px;
   border-radius: 9999px;
   border: none;
-  background: #0284c7;
+  background: var(--primary);
   color: #ffffff;
   display: grid;
   place-items: center;
@@ -5788,19 +5857,19 @@ body {
 
 .composer-send-arrow:hover:not(:disabled) {
   transform: scale(1.06);
-  background: #0369a1;
+  opacity: 0.92;
 }
 
 .composer-send-arrow:disabled {
   opacity: 0.35;
-  background: #94a3b8;
+  background: var(--text-dim);
   color: #ffffff;
   cursor: not-allowed;
 }
 
 .composer-footer-note {
   font-size: 0.74rem;
-  color: #475569;
+  color: var(--text-dim);
   margin-top: 0.45rem;
   text-align: center;
 }

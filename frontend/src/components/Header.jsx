@@ -133,6 +133,15 @@ export function Header({
           </button>
         )}
 
+        {/* Theme Toggle Button */}
+        <button
+          className="action-icon-btn theme-toggle-btn"
+          onClick={onToggleTheme}
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+        >
+          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
+
         <button
           className="action-icon-btn"
           onClick={onOpenHelp}
