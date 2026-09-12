@@ -22,6 +22,7 @@ export const KnowledgeGraphCanvas = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const isDark = theme === 'dark';
 
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const [hoveredEdgeId, setHoveredEdgeId] = useState(null);
@@ -372,57 +373,57 @@ export const KnowledgeGraphCanvas = ({
     switch (type) {
       case 'object':
         return {
-          headerBg: '#f0fdf4',
-          headerText: '#166534',
-          border: '#4ade80',
-          chipBg: '#dcfce7',
+          headerBg: isDark ? 'rgba(22, 101, 52, 0.4)' : '#f0fdf4',
+          headerText: isDark ? '#4ade80' : '#166534',
+          border: isDark ? '#22c55e' : '#4ade80',
+          chipBg: isDark ? 'rgba(34, 197, 94, 0.25)' : '#dcfce7',
           tag: 'PHYSICAL OBJECT',
-          badgeColor: '#16a34a'
+          badgeColor: isDark ? '#86efac' : '#16a34a'
         };
       case 'property':
         return {
-          headerBg: '#eff6ff',
-          headerText: '#1e40af',
-          border: '#60a5fa',
-          chipBg: '#dbeafe',
+          headerBg: isDark ? 'rgba(30, 64, 175, 0.4)' : '#eff6ff',
+          headerText: isDark ? '#60a5fa' : '#1e40af',
+          border: isDark ? '#3b82f6' : '#60a5fa',
+          chipBg: isDark ? 'rgba(59, 130, 246, 0.25)' : '#dbeafe',
           tag: 'SENSOR MEASUREMENT',
-          badgeColor: '#2563eb'
+          badgeColor: isDark ? '#93c5fd' : '#2563eb'
         };
       case 'observation':
         return {
-          headerBg: '#ecfeff',
-          headerText: '#0e7490',
-          border: '#22d3ee',
-          chipBg: '#cffafe',
+          headerBg: isDark ? 'rgba(14, 116, 144, 0.4)' : '#ecfeff',
+          headerText: isDark ? '#22d3ee' : '#0e7490',
+          border: isDark ? '#06b6d4' : '#22d3ee',
+          chipBg: isDark ? 'rgba(6, 182, 212, 0.25)' : '#cffafe',
           tag: 'VISUAL SYMPTOM',
-          badgeColor: '#0891b2'
+          badgeColor: isDark ? '#67e8f9' : '#0891b2'
         };
       case 'hypothesis':
         return {
-          headerBg: '#fffbeb',
-          headerText: '#92400e',
-          border: '#f59e0b',
-          chipBg: '#fef3c7',
+          headerBg: isDark ? 'rgba(146, 64, 14, 0.4)' : '#fffbeb',
+          headerText: isDark ? '#fbbf24' : '#92400e',
+          border: isDark ? '#f59e0b' : '#f59e0b',
+          chipBg: isDark ? 'rgba(245, 158, 11, 0.25)' : '#fef3c7',
           tag: 'ROOT CAUSE HYPOTHESIS',
-          badgeColor: '#d97706'
+          badgeColor: isDark ? '#fde68a' : '#d97706'
         };
       case 'tool_result':
         return {
-          headerBg: '#fdf4ff',
-          headerText: '#86198f',
-          border: '#c084fc',
-          chipBg: '#fae8ff',
+          headerBg: isDark ? 'rgba(134, 25, 143, 0.4)' : '#fdf4ff',
+          headerText: isDark ? '#c084fc' : '#86198f',
+          border: isDark ? '#a855f7' : '#c084fc',
+          chipBg: isDark ? 'rgba(168, 85, 247, 0.25)' : '#fae8ff',
           tag: 'EMPIRICAL EVIDENCE',
-          badgeColor: '#9333ea'
+          badgeColor: isDark ? '#e9d5ff' : '#9333ea'
         };
       default:
         return {
-          headerBg: '#f8fafc',
-          headerText: '#475569',
-          border: '#94a3b8',
-          chipBg: '#e2e8f0',
+          headerBg: isDark ? 'rgba(51, 65, 85, 0.5)' : '#f8fafc',
+          headerText: isDark ? '#cbd5e1' : '#475569',
+          border: isDark ? '#64748b' : '#94a3b8',
+          chipBg: isDark ? 'rgba(100, 116, 139, 0.25)' : '#e2e8f0',
           tag: 'ENTITY',
-          badgeColor: '#64748b'
+          badgeColor: isDark ? '#e2e8f0' : '#64748b'
         };
     }
   };
@@ -441,7 +442,7 @@ export const KnowledgeGraphCanvas = ({
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      background: '#ffffff',
+      background: isDark ? '#090d16' : '#ffffff',
       position: 'relative',
       borderRadius: '8px',
       overflow: 'hidden',
@@ -453,8 +454,8 @@ export const KnowledgeGraphCanvas = ({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0.55rem 1rem',
-        borderBottom: '1px solid #e2e8f0',
-        background: '#f8fafc',
+        borderBottom: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+        background: isDark ? '#0f172a' : '#f8fafc',
         zIndex: 5
       }}>
         {/* Title and Stats */}
@@ -463,28 +464,28 @@ export const KnowledgeGraphCanvas = ({
             width: '28px',
             height: '28px',
             borderRadius: '6px',
-            background: 'rgba(2, 132, 199, 0.1)',
-            color: '#0284c7',
+            background: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(2, 132, 199, 0.1)',
+            color: isDark ? '#38bdf8' : '#0284c7',
             display: 'grid',
             placeItems: 'center'
           }}>
             <GitFork size={15} />
           </div>
           <div>
-            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: isDark ? '#f8fafc' : '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span>Causal Reasoning Pipeline</span>
               <span style={{
                 fontSize: '0.68rem',
                 fontWeight: '600',
                 padding: '0.1rem 0.45rem',
                 borderRadius: '10px',
-                background: '#e0f2fe',
-                color: '#0369a1'
+                background: isDark ? 'rgba(56, 189, 248, 0.2)' : '#e0f2fe',
+                color: isDark ? '#7dd3fc' : '#0369a1'
               }}>
                 {nodes.length} nodes · {edges.length} edges
               </span>
             </div>
-            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+            <div style={{ fontSize: '0.68rem', color: isDark ? '#94a3b8' : '#64748b' }}>
               {layoutMode === 'flow' ? 'Left-to-Right Causal Flow (Inputs → Mediators → Symptoms → Diagnosis)' : 'Concentric Radial Graph'}
             </div>
           </div>
@@ -636,8 +637,8 @@ export const KnowledgeGraphCanvas = ({
           flex: 1,
           position: 'relative',
           overflow: 'hidden',
-          background: '#fafafa',
-          backgroundImage: 'radial-gradient(#e2e8f0 1px, transparent 1px)',
+          background: isDark ? '#090d16' : '#fafafa',
+          backgroundImage: isDark ? 'radial-gradient(#1e293b 1.5px, transparent 1.5px)' : 'radial-gradient(#e2e8f0 1px, transparent 1px)',
           backgroundSize: '24px 24px',
           cursor: isDragging ? 'grabbing' : 'grab'
         }}
@@ -773,7 +774,7 @@ export const KnowledgeGraphCanvas = ({
                         width="68"
                         height="18"
                         rx="9"
-                        fill="#ffffff"
+                        fill={isDark ? '#0f172a' : '#ffffff'}
                         stroke={edgeColor}
                         strokeWidth={isDirectlyActive || isHoveredEdge ? 2 : 1.5}
                         filter="url(#standard-card-shadow)"
@@ -887,7 +888,7 @@ export const KnowledgeGraphCanvas = ({
                       height={CARD_H}
                       rx="7"
                       ry="7"
-                      fill="#ffffff"
+                      fill={isDark ? '#1e293b' : '#ffffff'}
                       stroke={strokeColor}
                       strokeWidth={strokeWidth}
                       filter={cardShadow}
@@ -949,7 +950,7 @@ export const KnowledgeGraphCanvas = ({
                     <text
                       x="6"
                       y="29"
-                      fill="#0f172a"
+                      fill={isDark ? '#f8fafc' : '#0f172a'}
                       fontSize="10.5px"
                       fontFamily="Outfit, sans-serif"
                       fontWeight="600"
@@ -960,7 +961,7 @@ export const KnowledgeGraphCanvas = ({
                       <text
                         x="6"
                         y="41"
-                        fill="#334155"
+                        fill={isDark ? '#cbd5e1' : '#334155'}
                         fontSize="9.5px"
                         fontFamily="Outfit, sans-serif"
                         fontWeight="500"
@@ -1000,13 +1001,13 @@ export const KnowledgeGraphCanvas = ({
         <div style={{
           minHeight: '85px',
           maxHeight: '125px',
-          borderTop: '1px solid #cbd5e1',
-          background: '#ffffff',
+          borderTop: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
+          background: isDark ? '#0f172a' : '#ffffff',
           display: 'grid',
           gridTemplateColumns: 'minmax(140px, 1.1fr) minmax(130px, 1.1fr) minmax(140px, 1.2fr) auto',
           gap: '0.65rem',
           padding: '0.5rem 0.75rem',
-          boxShadow: '0 -4px 15px rgba(0, 0, 0, 0.04)',
+          boxShadow: isDark ? '0 -4px 15px rgba(0, 0, 0, 0.3)' : '0 -4px 15px rgba(0, 0, 0, 0.04)',
           zIndex: 10,
           alignItems: 'center',
           boxSizing: 'border-box',
@@ -1015,7 +1016,7 @@ export const KnowledgeGraphCanvas = ({
           overflowY: 'hidden'
         }}>
           {/* Column 1: Node Title, Type & Confidence */}
-          <div style={{ minWidth: 0, borderRight: '1px solid #f1f5f9', paddingRight: '0.5rem' }}>
+          <div style={{ minWidth: 0, borderRight: isDark ? '1px solid #1e293b' : '1px solid #f1f5f9', paddingRight: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
               <span style={{
                 fontSize: '0.62rem',
@@ -1038,7 +1039,7 @@ export const KnowledgeGraphCanvas = ({
               margin: '0.15rem 0',
               fontSize: '0.82rem',
               fontWeight: '700',
-              color: '#0f172a',
+              color: isDark ? '#f8fafc' : '#0f172a',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis'
@@ -1046,8 +1047,8 @@ export const KnowledgeGraphCanvas = ({
               {activeInspectedNode.label}
             </h4>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
-              <span style={{ fontSize: '0.68rem', color: '#64748b', whiteSpace: 'nowrap' }}>Confidence:</span>
-              <div style={{ height: '5px', width: '70px', minWidth: '40px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+              <span style={{ fontSize: '0.68rem', color: isDark ? '#94a3b8' : '#64748b', whiteSpace: 'nowrap' }}>Confidence:</span>
+              <div style={{ height: '5px', width: '70px', minWidth: '40px', background: isDark ? '#334155' : '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%',
                   width: `${Math.round(activeInspectedNode.confidence * 100)}%`,
@@ -1055,7 +1056,7 @@ export const KnowledgeGraphCanvas = ({
                   borderRadius: '3px'
                 }} />
               </div>
-              <strong style={{ fontSize: '0.7rem', color: '#0f172a' }}>{Math.round(activeInspectedNode.confidence * 100)}%</strong>
+              <strong style={{ fontSize: '0.7rem', color: isDark ? '#f8fafc' : '#0f172a' }}>{Math.round(activeInspectedNode.confidence * 100)}%</strong>
             </div>
           </div>
 
