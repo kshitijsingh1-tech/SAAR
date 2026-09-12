@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import {
-  Plus, MessageSquare, Search, Trash2,
-  Sprout, Construction, Orbit, PanelLeftClose,
-  Zap, Activity
+  MessageSquare, Plus, Trash2, Sprout,
+  Construction, Orbit, PanelLeftClose, Search, Activity
 } from 'lucide-react';
 
 export function ChatSidebar({
   isOpen,
-  onClose,
+  onToggle,
   sessions,
-  activeSessionId,
+  currentSessionId,
   onSelectSession,
-  onNewSession,
+  onNewChat,
   onDeleteSession,
   theme = 'light',
   onReturnToLanding
@@ -32,6 +31,8 @@ export function ChatSidebar({
         return <Construction size={13} className="text-amber" />;
       case 'astronomy':
         return <Orbit size={13} className="text-purple" />;
+      case 'sports':
+        return <Activity size={13} className="text-cyan" />;
       default:
         return <MessageSquare size={13} className="text-primary" />;
     }

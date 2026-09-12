@@ -95,6 +95,14 @@ export default function App() {
       presetId: 'agri_monstera_fenestration',
       imageUrl: '/monstera_sample.png',
       timestamp: 'Just now'
+    },
+    {
+      id: 'session-4',
+      query: 'Badminton Smash: Kinetic Chain Torque & Accuracy Analysis',
+      domain: 'sports',
+      presetId: 'sports_badminton_smash_kinetic',
+      imageUrl: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=1200&q=80',
+      timestamp: 'Active'
     }
   ];
 
@@ -181,6 +189,48 @@ export default function App() {
         ],
         report: monsteraInvestigation,
         timestamp: 'Just now'
+      }
+    ],
+    'session-4': [
+      {
+        role: 'user',
+        text: 'Analyze Badminton Overhead Smash longitudinal progression (Sessions S1-S4). Is the accuracy improvement driven by kinetic-chain timing or shot volume fatigue variation?',
+        timestamp: 'Active'
+      },
+      {
+        role: 'assistant',
+        text: `### 🏸 Autonomous Biomechanical Investigation (SPORTS KINEMATICS)
+
+**Perception & Contact-Frame Kinematics**:
+- **Peak-Velocity Impact Registered**: Evaluated multi-session sequence across 4 training sessions (S1–S4, 96 total shots).
+- **Elbow Extension at Contact**: Improved from $152.0^\\circ$ (hyperextension lockup) to $135.0^\\circ$ (compliant lever, $r = -0.998$ vs accuracy).
+- **Wrist Snap Timing Lag**: Converged from $+0.18\\text{s}$ (late pushed stroke) to $+0.03\\text{s}$ (optimal whip impact window).
+
+---
+
+### Diagnostic Verdict & Hypothesis Resolution:
+1. **H1 (Kinetic-Chain Refinement) CONFIRMED (Confidence: 76%)**: Proximal-to-distal sequencing and synchronized forearm pronation causally drive the $+25.0\\%$ accuracy gain.
+2. **H2 (Shot Volume Distortion) RULED OUT (Confidence: 8%)**: Attempt volume remained invariant at 24 shots/session across all test days.
+3. **Knee Flexion ($145^\\circ \\to 122^\\circ$) Classified as Passive Covariate**: Stance lowering does not directly drive racket precision and is ruled out as an intervention priority.`,
+        terminology: [
+          {
+            term: "Kinetic Chain Sequencing",
+            phonetic: "/kɪˈnɛt.ɪk tʃeɪn ˈsiː.kwən.sɪŋ/",
+            domain: "Sports Biomechanics & Motor Control",
+            formal_definition: "The coordinated proximal-to-distal activation of linked anatomical segments to progressively accelerate the distal end-effector to peak velocity.",
+            investigation_context: "The primary causal mechanism governing shot velocity and smash accuracy in overhead strokes.",
+            diagnostic_relevance: "Sequential peak angular velocities from pelvis to trunk, shoulder, elbow, and forearm."
+          },
+          {
+            term: "Forearm Pronation Velocity",
+            phonetic: "/ˈfɔːr.ɑːrm proʊˈneɪ.ʃən vəˈlɒs.ə.ti/",
+            domain: "Upper Extremity Kinematics",
+            formal_definition: "The rotational speed of the radius over the ulna immediately preceding and during impact.",
+            investigation_context: "Differentiates powerful whipping smashes from pushed arm strokes with flat trajectory.",
+            diagnostic_relevance: "Peak angular velocity > 1800°/s occurring within 20ms of contact frame."
+          }
+        ],
+        timestamp: 'Active'
       }
     ]
   };

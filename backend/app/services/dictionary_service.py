@@ -219,6 +219,53 @@ PRELOADED_DOMAIN_TERMS = {
             "diagnostic_indicator": "Minimal horizontal deviation (<2 cm) between the plumb line vector and center of foot support.",
             "related_nodes": ["Center of Mass", "Base of Support", "Postural Stability", "Sagittal Balance"]
         }
+    ],
+    "sports": [
+        {
+            "term": "Kinetic Chain Sequencing",
+            "phonetic": "/kɪˈnɛt.ɪk tʃeɪn ˈsiː.kwən.sɪŋ/",
+            "domain": "Sports Biomechanics & Motor Control",
+            "definition": "The coordinated proximal-to-distal activation of linked anatomical segments to progressively accelerate the distal end-effector (racket head) to peak velocity.",
+            "investigation_context": "The primary causal mechanism governing shot velocity and smash accuracy; failure in early segments forces compensatory over-rotation in downstream joints.",
+            "diagnostic_indicator": "Sequential peak angular velocities from pelvis to trunk, shoulder, elbow, and forearm.",
+            "related_nodes": ["Proximal-to-Distal Transfer", "Elbow Extension", "Shoulder Internal Rotation", "Smash Terminal Accuracy"]
+        },
+        {
+            "term": "Forearm Pronation Velocity",
+            "phonetic": "/ˈfɔːr.ɑːrm proʊˈneɪ.ʃən vəˈlɒs.ə.ti/",
+            "domain": "Upper Extremity Kinematics",
+            "definition": "The rotational speed of the radius over the ulna immediately preceding and during impact, responsible for the final burst of racket face acceleration.",
+            "investigation_context": "Differentiates powerful whipping smashes from pushed arm strokes with flat trajectory and reduced smash steepness.",
+            "diagnostic_indicator": "Peak angular velocity > 1800°/s occurring within 20ms of contact frame.",
+            "related_nodes": ["Wrist Snap Timing", "Elbow Extension", "Racket Head Velocity", "Kinetic Chain"]
+        },
+        {
+            "term": "Contact-Frame Deceleration Signature",
+            "phonetic": "/ˈkɒn.tækt freɪm diːˌsɛl.əˈreɪ.ʃən ˈsɪɡ.nə.tʃər/",
+            "domain": "Motion Kinematics & Vision Tracking",
+            "definition": "The sharp drop in racket/hand velocity immediately following shuttlecock impact, serving as a deterministic visual signature for impact moment identification.",
+            "investigation_context": "Identifies the exact video frame for computing joint angles and eliminates tracking jitter.",
+            "diagnostic_indicator": "Post-peak velocity dropping by >50% within 3 subsequent video frames.",
+            "related_nodes": ["Peak Velocity Frame", "Elbow Angle at Impact", "Temporal Registration", "Wrist Snap"]
+        },
+        {
+            "term": "Valgus Knee Angle",
+            "phonetic": "/ˈvæl.ɡəs niː ˈæŋ.ɡəl/",
+            "domain": "Lower Extremity Orthopedics & Biomechanics",
+            "definition": "Inward medial collapse of the knee joint relative to the hip and ankle during jump landing or deceleration phases.",
+            "investigation_context": "Evaluated during jump-smash landings as an indicator of joint loading and injury risk, differentiated from performance-driving stroke mechanics.",
+            "diagnostic_indicator": "Frontal plane knee angle deviating medially by >12° from anatomical neutral.",
+            "related_nodes": ["Knee Bend", "Landing Biomechanics", "Dynamic Stability", "Rule-Out Differential"]
+        },
+        {
+            "term": "Elbow Extension at Impact",
+            "phonetic": "/ˈɛl.boʊ ɪkˈstɛn.ʃən æt ˈɪm.pækt/",
+            "domain": "Overhead Stroke Kinematics",
+            "definition": "The sagittal plane angle formed by the shoulder, elbow vertex, and wrist at the precise instant of shuttle contact.",
+            "investigation_context": "Governs maximum impact height, attack angle steepness, and effective lever arm length in overhead power strokes.",
+            "diagnostic_indicator": "Contact-frame angle in the 135°-155° range for competitive players.",
+            "related_nodes": ["Kinetic Chain", "Shoulder Internal Rotation", "Smash Steepness", "Accuracy Percentage"]
+        }
     ]
 }
 

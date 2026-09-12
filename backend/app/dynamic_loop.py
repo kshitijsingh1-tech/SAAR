@@ -11,6 +11,7 @@ from .plugins.astronomy_plugin import AstronomyPlugin
 from .plugins.agriculture_plugin import AgriculturePlugin
 from .plugins.pediatrics_plugin import PediatricsPlugin
 from .plugins.gait_plugin import GaitPlugin
+from .plugins.sports_plugin import SportsPlugin
 from .vlm_service import VLMService
 
 class DynamicWorkflowOrchestrator:
@@ -20,7 +21,8 @@ class DynamicWorkflowOrchestrator:
             "astronomy": AstronomyPlugin(),
             "agriculture": AgriculturePlugin(),
             "pediatrics": PediatricsPlugin(),
-            "gait": GaitPlugin()
+            "gait": GaitPlugin(),
+            "sports": SportsPlugin()
         }
         self.vlm_service = VLMService()
 
@@ -70,6 +72,20 @@ class DynamicWorkflowOrchestrator:
             images=effective_images
         )
 
+        # If VLM fell back to synthesized mode and the plugin provides its own
+        # domain-specific perceive_initial_scene, delegate to the plugin so that
+        # domain-native nodes (e.g. biomechanical kinetic chain) are produced
+        # instead of generic infrastructure fallback nodes.
+        if "Synthesized VLM" in provider_used and preset_id and hasattr(plugin, "perceive_initial_scene"):
+            try:
+                plugin_nodes, plugin_edges = plugin.perceive_initial_scene(preset_id)
+                if plugin_nodes:
+                    initial_nodes = plugin_nodes
+                    initial_edges = plugin_edges
+                    vlm_summary = f"Domain-specific perception via {plugin.domain_name} plugin for preset '{preset_id}'."
+            except Exception as e:
+                print(f"[DynamicLoop] Plugin perceive_initial_scene fallback failed for {domain}: {e}")
+
         for n in initial_nodes:
             graph_engine.add_node(n)
         for e in initial_edges:
@@ -96,8 +112,8 @@ class DynamicWorkflowOrchestrator:
             available_tools = plugin.get_available_tools()
 
         for tool_info in available_tools:
-            tool_id = tool_info["tool_id"]
-            tool_name = tool_info["tool_name"]
+            tool_id = tool_info.get("tool_id", "unknown_tool")
+            tool_name = tool_info.get("tool_name") or tool_info.get("name", tool_id)
 
             # Step A: FIND UNKNOWNS
             uncertainty, target_hypo = graph_engine.calculate_uncertainty()

@@ -373,6 +373,7 @@ export function ScientificDictionaryDrawer({
       if (activeTab === 'agriculture') return d.includes('agri') || d.includes('plant') || d.includes('soil');
       if (activeTab === 'infrastructure') return d.includes('infra') || d.includes('civil') || d.includes('radar') || d.includes('ndt');
       if (activeTab === 'astrophysics') return d.includes('astro') || d.includes('space') || d.includes('stellar');
+      if (activeTab === 'sports') return d.includes('sport') || d.includes('biomechanic') || d.includes('kinematic') || d.includes('athletic');
       if (activeTab === 'causal') return d.includes('causal') || d.includes('bayes') || d.includes('ai') || d.includes('graph');
       return true; // 'all'
     });
@@ -487,6 +488,12 @@ export function ScientificDictionaryDrawer({
               onClick={() => setActiveTab('astrophysics')}
             >
               🪐 Astro
+            </button>
+            <button
+              className={`glossary-tab-btn ${activeTab === 'sports' ? 'active' : ''}`}
+              onClick={() => setActiveTab('sports')}
+            >
+              🏸 Sports
             </button>
             <button
               className={`glossary-tab-btn ${activeTab === 'causal' ? 'active' : ''}`}

@@ -257,16 +257,22 @@ def saar_knowledge_query(payload: Dict[str, Any]):
 # TODDLEAI GAIT ANALYSIS API (DEDICATED ENDPOINTS)
 # ===================================================================
 
-from .gait.pipeline import GaitAnalysisPipeline
-from .gait.schemas import CanonicalGaitResult
+try:
+    from .gait.pipeline import GaitAnalysisPipeline
+    from .gait.schemas import CanonicalGaitResult
+except ImportError:
+    GaitAnalysisPipeline = None
+    CanonicalGaitResult = None
 
-_gait_pipeline: Optional[GaitAnalysisPipeline] = None
-_gait_assessments: Dict[str, CanonicalGaitResult] = {}
+_gait_pipeline = None
+_gait_assessments: Dict[str, Any] = {}
 
 
-def get_gait_pipeline() -> GaitAnalysisPipeline:
+def get_gait_pipeline():
     global _gait_pipeline
     if _gait_pipeline is None:
+        if GaitAnalysisPipeline is None:
+            raise HTTPException(status_code=503, detail="Gait analysis pipeline dependencies (cv2/mediapipe) not installed.")
         _gait_pipeline = GaitAnalysisPipeline()
     return _gait_pipeline
 

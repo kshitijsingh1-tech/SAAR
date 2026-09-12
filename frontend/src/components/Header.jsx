@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Zap, MessageSquare, BarChart2, ShieldCheck, Sliders,
   BookOpen, Layers, Sun, Moon, HelpCircle, Download,
-  Sprout, Construction, Orbit
+  Sprout, Construction, Orbit, Activity
 } from 'lucide-react';
 
 export function Header({
@@ -19,7 +19,8 @@ export function Header({
   const domainIcons = {
     agriculture: <Sprout size={14} className="text-emerald" />,
     infrastructure: <Construction size={14} className="text-amber" />,
-    astronomy: <Orbit size={14} className="text-purple" />
+    astronomy: <Orbit size={14} className="text-purple" />,
+    sports: <Activity size={14} className="text-cyan" />
   };
 
   return (
@@ -62,6 +63,14 @@ export function Header({
         >
           <Orbit size={13} />
           <span>Astrophysics</span>
+        </button>
+        <button
+          className={`domain-pill-btn ${selectedDomain === 'sports' ? 'active' : ''}`}
+          onClick={() => onDomainChange('sports')}
+          title="Athletic Biomechanics & Kinetic Chain"
+        >
+          <Activity size={13} />
+          <span>Sports Biomechanics</span>
         </button>
       </div>
 

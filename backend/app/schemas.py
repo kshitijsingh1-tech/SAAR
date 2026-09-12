@@ -59,12 +59,31 @@ class BaselineComparisonModel(BaseModel):
     saar_tool_call_count: int = 3
     key_differences: List[str]
 
+class VideoSession(BaseModel):
+    session_id: str
+    timestamp: Optional[str] = None # ISO date
+    video_path: Optional[str] = None # local path or base64
+    shots_attempted: int = 24
+    shots_landed: int = 12
+    self_rated_form: Optional[float] = None # 1-10, optional
+
+class JointAngleReading(BaseModel):
+    session_id: str
+    parameter: str # e.g. "elbow_angle", "shoulder_rotation", "knee_bend", "wrist_snap_timing"
+    value: float
+    unit: str = "degrees"
+    frame_index: int = 0 # which frame this was measured at
+
 class InvestigationRequest(BaseModel):
-    domain: str = "infrastructure" # infrastructure | agriculture | pediatrics
+    domain: str = "infrastructure" # infrastructure | agriculture | pediatrics | sports | gait
     preset_id: Optional[str] = "infra_damaged_road"
+    scenario_id: Optional[str] = None
     image_url: Optional[str] = None
     image_data: Optional[str] = None # Base64 image payload
     images: Optional[List[str]] = None # Multiple base64 or URL image payloads for multi-photo analysis
+    videos: Optional[List[VideoSession]] = None # Multi-session video array for sports kinematics
+    user_query: Optional[str] = None
+    telemetry: Optional[Dict[str, Any]] = None
     vlm_provider: str = "auto" # auto | gemini | openai | ollama | synthesizer
     api_key: Optional[str] = None
 
