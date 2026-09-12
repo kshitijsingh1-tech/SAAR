@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Michroma&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ---------------------------------------------------------------------------
    Theme Tokens (Strictly Pure White Background with Very Dark Black Texts)
@@ -24,15 +24,16 @@
   --text-dim: #475569;
   --input-bg: #ffffff;
 
-  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-heading: 'Orbitron', 'Michroma', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* Futuristic Geometric Typography for all Headings matching SAAR Wordmark */
+/* Typography System: SAAR / Headings in Space Grotesk Bold, Everything else in Manrope */
 h1, h2, h3, h4, h5, h6,
-.welcome-heading,
+.landing-brand-title,
 .brand-title,
+.welcome-heading,
 .arch-title,
 .panel-title,
 .drawer-title-group h2,
@@ -40,12 +41,23 @@ h1, h2, h3, h4, h5, h6,
 .section-title,
 .modal-header h2,
 .canvas-header-left,
-.tool-pill-btn span,
-.header-guide-btn span,
-.btn-new-chat span {
+.hero-heroic-title,
+.domains-section-title {
   font-family: var(--font-heading);
-  letter-spacing: 0.05em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-main);
+}
+
+body,
+p,
+span,
+button,
+input,
+select,
+textarea,
+a {
+  font-family: var(--font-sans);
 }
 
 /* 1. Pure Dark Theme Tokens (Deep Obsidian Black, Zero Cyan Glow, Ultra-Crisp Slate/White) */
@@ -8255,37 +8267,27 @@ body {
 }
 
 /* In-Frame Deep Node Inspection Drawer */
+/* In-Frame Clean Node Inspection Strip (No Buttons, No Clutter) */
 .node-deep-inspector-drawer {
-  background: var(--bg-dark);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 1.1rem 1.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  border-radius: 12px;
+  padding: 0.75rem 1.2rem;
+  margin-top: 10px;
 }
 
-.inspector-badge-row {
+.inspector-simple-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 8px;
-}
-
-.inspector-tier-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .tier-pill {
   font-family: var(--font-heading);
   font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--primary);
   background: var(--primary-bg);
   padding: 3px 9px;
@@ -8301,104 +8303,30 @@ body {
   border-radius: 6px;
 }
 
-.inspector-formula-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.formula-lbl {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--text-dim);
-}
-
-.inspector-formula-box code {
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  color: var(--primary);
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-
-.inspector-content-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.inspector-main-info {
-  flex: 1;
-  min-width: 260px;
-}
-
-.inspector-title {
+.inspector-simple-title {
   font-family: var(--font-heading);
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 700;
   color: var(--text-main);
-  margin-bottom: 4px;
 }
 
-.inspector-desc {
+.inspector-simple-desc {
+  font-family: var(--font-sans);
   font-size: 0.82rem;
   color: var(--text-muted);
-  line-height: 1.5;
-  margin: 0;
+  flex: 1;
+  min-width: 200px;
 }
 
-.inspector-metrics-group {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.metric-box {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: var(--bg-card);
+.inspector-simple-code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--primary);
+  background: var(--bg-dark);
   border: 1px solid var(--border-color);
-  padding: 6px 12px;
-  border-radius: 10px;
-}
-
-.metric-box .metric-lbl {
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: var(--text-dim);
-}
-
-.metric-box .metric-val {
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--text-main);
-}
-
-.btn-launch-scenario-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: linear-gradient(135deg, #0284c7, #2563eb);
-  color: #ffffff;
-  border: none;
-  padding: 0.7rem 1.3rem;
-  border-radius: 12px;
-  font-size: 0.82rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.22s ease;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
-}
-
-.btn-launch-scenario-cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6);
+  padding: 3px 10px;
+  border-radius: 6px;
+  margin-left: auto;
 }
 
 /* -------------------------------------------------------------

@@ -451,17 +451,11 @@ export function LandingPage({
           <div className="hud-corner bottom-left" />
           <div className="hud-corner bottom-right" />
 
-          {/* Header & Scenario Switcher Bar */}
+          {/* Clean Header & Domain Switcher */}
           <div className="workbench-top-bar">
-            <div className="workbench-title-col">
-              <div className="luminous-card-badge">
-                <GitFork size={13} />
-                <span>DYNAMIC NETWORKX CAUSAL GRAPH WORKBENCH</span>
-              </div>
-              <h2 className="luminous-card-title">Interactive Epistemic Reasoning Topology</h2>
-            </div>
+            <h2 className="luminous-card-title">Causal Reasoning Graph</h2>
 
-            {/* Scenario Switcher Pills (ToddlerAI first, Agriculture second) */}
+            {/* Scenario Switcher Pills */}
             <div className="scenario-switcher-inline">
               {Object.values(scenarios).map((scen) => (
                 <button
@@ -477,41 +471,6 @@ export function LandingPage({
                   <span>{scen.title}</span>
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* Telemetry Indicator Strip */}
-          <div className="graph-telemetry-strip">
-            <div className="stat-pill">
-              <span className="live-pulsing-dot" />
-              <span>LIVE REASONING DAG</span>
-            </div>
-            <div className="stat-pill">
-              <span className="dim-lbl">Nodes:</span>
-              <strong>{activeScenario.nodes.length}</strong>
-            </div>
-            <div className="stat-pill">
-              <span className="dim-lbl">Edges:</span>
-              <strong>{activeScenario.edges.length}</strong>
-            </div>
-            <div className="stat-pill">
-              <span className="dim-lbl">Bayesian Confidence:</span>
-              <strong className="text-emerald">{activeScenario.stats.confidence}%</strong>
-            </div>
-            <div className="stat-pill">
-              <span className="dim-lbl">Governing Physics:</span>
-              <code>{activeScenario.equation}</code>
-            </div>
-            <div className="stat-pill ml-auto">
-              <button
-                type="button"
-                className="btn-graph-flow-toggle"
-                onClick={() => setIsFlowPlaying(!isFlowPlaying)}
-                title={isFlowPlaying ? 'Pause Laser Flow' : 'Play Laser Flow'}
-              >
-                {isFlowPlaying ? <Pause size={12} /> : <Play size={12} />}
-                <span>{isFlowPlaying ? 'Laser Stream Active' : 'Stream Paused'}</span>
-              </button>
             </div>
           </div>
 
@@ -637,46 +596,16 @@ export function LandingPage({
             })}
           </div>
 
-          {/* Deep Node Inspection & Telemetry Panel (Inside the Frame) */}
+          {/* Active Node Info Strip (Clean & focused, zero unnecessary buttons or clutter) */}
           <div className="node-deep-inspector-drawer">
-            <div className="inspector-badge-row">
-              <div className="inspector-tier-indicator">
-                <span className="tier-pill">{activeNode.tier} NODE TELEMETRY</span>
-                <span className="node-status-pill">{activeNode.status}</span>
-              </div>
-              <div className="inspector-formula-box">
-                <span className="formula-lbl">FORMULA / TENSOR:</span>
-                <code>{activeNode.formula}</code>
-              </div>
-            </div>
-
-            <div className="inspector-content-row">
-              <div className="inspector-main-info">
-                <h3 className="inspector-title">{activeNode.title}</h3>
-                <p className="inspector-desc">{activeNode.desc}</p>
-              </div>
-
-              <div className="inspector-metrics-group">
-                <div className="metric-box">
-                  <span className="metric-lbl">OBSERVED VALUE</span>
-                  <strong className="metric-val">{activeNode.value}</strong>
-                </div>
-
-                <div className="metric-box">
-                  <span className="metric-lbl">EVIDENCE GAIN</span>
-                  <strong className="metric-val text-emerald">+38.4% Belief</strong>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn-launch-scenario-cta"
-                  onClick={() => onEnterStudio(activeScenario.query, activeScenario.domain, activeScenario.presetId)}
-                >
-                  <Zap size={14} />
-                  <span>Launch in Studio</span>
-                  <ArrowRight size={14} />
-                </button>
-              </div>
+            <div className="inspector-simple-row">
+              <span className="tier-pill">{activeNode.tier}</span>
+              <span className="node-status-pill">{activeNode.status}</span>
+              <strong className="inspector-simple-title">{activeNode.title}:</strong>
+              <span className="inspector-simple-desc">{activeNode.desc}</span>
+              {activeNode.formula && (
+                <code className="inspector-simple-code">{activeNode.formula}</code>
+              )}
             </div>
           </div>
         </div>
