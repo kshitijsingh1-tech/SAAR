@@ -7,10 +7,13 @@ import {
 export function ChatSidebar({
   isOpen,
   onToggle,
-  sessions,
+  onClose = onToggle,
+  sessions = [],
   currentSessionId,
+  activeSessionId = currentSessionId,
   onSelectSession,
   onNewChat,
+  onNewSession = onNewChat,
   onDeleteSession,
   theme = 'light',
   onReturnToLanding
