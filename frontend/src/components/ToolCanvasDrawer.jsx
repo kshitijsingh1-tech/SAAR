@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Maximize2, Minimize2, BarChart2, BookOpen,
-  Camera, GitFork, BookA, Crosshair, GripVertical, Sparkles
+  Camera, GitFork, BookA, Crosshair, GripVertical, Sparkles, Activity
 } from 'lucide-react';
 import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { ImageInspector } from './ImageInspector';
 import { PlotlyGraphViewer } from './PlotlyGraphViewer';
 import { DomainRAGRadar } from './DomainRAGRadar';
 import { ScientificDictionaryDrawer } from './ScientificDictionaryDrawer';
+import { GaitDashboard } from './GaitDashboard';
 
 export function ToolCanvasDrawer({
   isOpen,
@@ -119,6 +120,7 @@ export function ToolCanvasDrawer({
   // Operational tools strictly for active scientific investigations
   const toolsMeta = [
     { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} /> },
+    { id: 'gait', label: 'Toddler Gait Analysis', icon: <Activity size={15} /> },
     { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} /> },
     { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
     { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
@@ -430,6 +432,13 @@ export function ToolCanvasDrawer({
                 if (onSendToChat) onSendToChat(citeText);
               }}
             />
+          </div>
+        )}
+
+        {/* Tool: ToddleAI Gait Analysis (GaitDashboard.jsx) */}
+        {activeTool === 'gait' && (
+          <div className="tool-body-pane custom-pane-scrollbar" style={{ overflowY: 'auto', height: '100%' }}>
+            <GaitDashboard onRegisterToChat={onSendToChat} />
           </div>
         )}
 
