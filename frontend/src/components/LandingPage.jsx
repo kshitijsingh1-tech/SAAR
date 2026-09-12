@@ -833,9 +833,10 @@ export function LandingPage({
         </div>
       </section>
 
-      {/* 6. Minimal Enterprise Footer */}
+      {/* 6. High-Tech Enterprise Footer */}
       <footer className="landing-footer">
         <div className="footer-content">
+          {/* Brand & Project Mission Column */}
           <div className="footer-brand-side">
             <div className="footer-emblem-row">
               <div className="landing-brand-emblem mini">
@@ -850,13 +851,22 @@ export function LandingPage({
             <p className="footer-tagline">
               Synthetic Auditable Autonomous Reasoner • Multi-Modal Scientific Reasoning Core.
             </p>
+
+            {/* Social Contributors Dock directly under Brand */}
+            <div className="footer-social-section">
+              <span className="footer-social-label">Project Contributors</span>
+              <SocialContributorsNav variant="footer" />
+            </div>
           </div>
 
+          {/* Navigation & Research Columns Grid */}
           <div className="footer-links-group">
             <div className="footer-col">
               <h4>Core Domains</h4>
               <button type="button" onClick={() => onEnterStudio('', 'pediatric')}>ToddlerAI Biomechanics</button>
               <button type="button" onClick={() => onEnterStudio('', 'agriculture')}>Agricultural Science</button>
+              <button type="button" onClick={() => onEnterStudio('', 'infrastructure')}>Infrastructure NDT</button>
+              <button type="button" onClick={() => onEnterStudio('', 'astronomy')}>Astronomical Spectroscopy</button>
               <button type="button" onClick={() => onEnterStudio()}>Domain 03 (Expansion Lab)</button>
             </div>
 
@@ -864,21 +874,67 @@ export function LandingPage({
               <h4>Platform</h4>
               <a href="#causal-workbench">Causal DAG Engine</a>
               <a href="#saar-domains">3 Core Domains</a>
+              <a href="#system-architecture">DAG Pipeline</a>
               <button type="button" onClick={() => onEnterStudio()}>Studio Console</button>
             </div>
 
-            <div className="footer-col social-footer-col">
-              <h4>Project Contributors</h4>
-              <SocialContributorsNav variant="footer" />
+            <div className="footer-col research-footer-col">
+              <h4>Research &amp; References</h4>
+              <a
+                href="https://jujutsu-kaisen.fandom.com/wiki/Unlimited_Void"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Unlimited Void — Jujutsu Kaisen Fandom"
+              >
+                Unlimited Void | Jujutsu Kaisen Wiki
+              </a>
+              <a
+                href="https://bayes.cs.ucla.edu/jp_home.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Causal Inference & DAGs by Judea Pearl"
+              >
+                Causal Inference &amp; DAGs (Pearl)
+              </a>
+              <a
+                href="https://developers.google.com/mediapipe/solutions/vision/pose_landmarker"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Google MediaPipe Pose Landmark Solution"
+              >
+                MediaPipe Pose (Google Research)
+              </a>
+              <a
+                href="https://pubmed.ncbi.nlm.nih.gov/7153322/"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="The Development of Mature Walking (Sutherland et al.)"
+              >
+                Pediatric Gait Biomechanics
+              </a>
+              <a
+                href="https://arxiv.org/abs/2303.08774"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Multi-Modal Perception & Epistemic Reasoning"
+              >
+                Multi-Modal Epistemic Reasoning
+              </a>
             </div>
           </div>
         </div>
 
+        {/* Footer Bottom Bar */}
         <div className="footer-bottom-bar">
-          <span>© {new Date().getFullYear()} SAAR Research Team. All rights reserved.</span>
-          <div className="system-status-indicator">
-            <span className="status-dot-pulse" />
-            <span>Epistemic Reasoning Core Online</span>
+          <div className="footer-bottom-left">
+            <span>© {new Date().getFullYear()} SAAR Research Team. All rights reserved.</span>
+          </div>
+
+          <div className="footer-bottom-right">
+            <div className="system-status-indicator">
+              <span className="status-dot-pulse" />
+              <span>Epistemic Reasoning Core Online</span>
+            </div>
           </div>
         </div>
       </footer>
