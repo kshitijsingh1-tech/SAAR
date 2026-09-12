@@ -8950,3 +8950,810 @@ body {
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
   animation: livePulseDot 2s ease-in-out infinite;
 }
+
+/* ===========================================================================
+   Chat Media Attachment Preview Popover
+   =========================================================================== */
+.media-attachment-popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  z-index: 120;
+  animation: popoverSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popoverSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.attachment-popover-card {
+  background: var(--bg-card, #1e293b);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  border-radius: 16px;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(56, 189, 248, 0.15);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.attachment-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--surface-subtle, rgba(255, 255, 255, 0.04));
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.attachment-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-main, #f8fafc);
+}
+
+.attachment-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  padding: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.attachment-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.attachment-popover-body {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  align-items: center;
+}
+
+.attachment-visual-wrapper {
+  width: 90px;
+  height: 74px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.attachment-image-frame,
+.attachment-video-frame {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attachment-img-preview,
+.attachment-video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-play-overlay-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.attachment-play-overlay-btn:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  background: var(--primary, #0284c7);
+}
+
+.attachment-duration-pill {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.attachment-doc-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.doc-extension-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.04em;
+}
+
+.attachment-meta-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-filename {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main, #f8fafc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachment-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.attachment-stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.attachment-type-tag {
+  background: var(--surface-subtle, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--primary, #38bdf8);
+}
+
+.attachment-help-text {
+  font-size: 0.74rem;
+  color: var(--text-dim, #64748b);
+  margin-top: 2px;
+}
+
+.attachment-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #ef4444;
+  margin-top: 2px;
+}
+
+.attachment-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface-subtle, rgba(255, 255, 255, 0.02));
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+}
+
+.attachment-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.attachment-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main, #f8fafc);
+}
+
+.attachment-btn-confirm {
+  background: var(--primary, #0284c7);
+  border: none;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.35);
+  transition: all 0.15s ease;
+}
+
+.attachment-btn-confirm:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.attachment-btn-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===========================================================================
+   Chat Real Camera Recorder Modal
+   =========================================================================== */
+.camera-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.camera-modal-card {
+  width: 100%;
+  max-width: 580px;
+  background: var(--bg-card, #0f172a);
+  border: 1px solid var(--border-color, rgba(56, 189, 248, 0.3));
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--surface-subtle, rgba(255, 255, 255, 0.04));
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.camera-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.camera-icon-badge {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  color: #fff;
+  padding: 8px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.camera-modal-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-main, #f8fafc);
+  margin: 0;
+}
+
+.camera-modal-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted, #94a3b8);
+  margin: 2px 0 0 0;
+}
+
+.camera-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.camera-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.camera-viewport-container {
+  width: 100%;
+  height: 340px;
+  background: #000000;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-state-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 24px;
+  color: #ffffff;
+}
+
+.camera-state-overlay.error {
+  max-width: 420px;
+}
+
+.camera-error-headline {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #f87171;
+}
+
+.camera-error-detail {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.btn-camera-retry {
+  background: #0284c7;
+  color: #fff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.camera-video-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #000000;
+}
+
+.camera-live-video,
+.camera-preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-live-overlay-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.camera-status-pill {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-green-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.rec-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulseRecording 1s ease-in-out infinite;
+}
+
+@keyframes pulseRecording {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+
+.rec-label {
+  color: #f87171;
+  letter-spacing: 0.05em;
+}
+
+.camera-timer-pill {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: monospace;
+}
+
+.camera-timer-pill.recording-timer {
+  background: rgba(220, 38, 38, 0.85);
+  border-color: #f87171;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+}
+
+.camera-guidelines-box {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  text-align: center;
+}
+
+.camera-recorded-meta-pill {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.camera-modal-footer {
+  padding: 16px 20px;
+  background: var(--surface-subtle, rgba(255, 255, 255, 0.03));
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.camera-controls-row,
+.camera-review-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn-camera-cancel {
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-camera-cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main, #f8fafc);
+}
+
+.btn-record-start {
+  background: #dc2626;
+  border: none;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4);
+  transition: all 0.15s ease;
+}
+
+.btn-record-start:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.btn-record-start:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.record-red-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.btn-record-stop {
+  background: #0f172a;
+  border: 2px solid #ef4444;
+  color: #f87171;
+  font-size: 0.88rem;
+  font-weight: 800;
+  padding: 10px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulseRecording 1.5s ease-in-out infinite;
+}
+
+.btn-camera-retake {
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  color: var(--text-main, #f8fafc);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-camera-retake:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-camera-attach {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  color: var(--text-main, #f8fafc);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-camera-attach:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-camera-use {
+  background: var(--primary, #0284c7);
+  border: none;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 9px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+  transition: all 0.15s ease;
+}
+
+.btn-camera-send-now {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 18px rgba(2, 132, 199, 0.5);
+}
+
+.btn-camera-use:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   PROJECT CONTRIBUTORS - PURE FLOATING REAL ICONS (ZERO BOX / ZERO BOUNDARY)
+   ========================================================================== */
+
+.social-contributors-bar {
+  display: inline-flex;
+  align-items: center;
+}
+
+.social-neon-icons-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Pure Floating Icon Link (Zero Outer Box, Zero Boundary Border) */
+.social-neon-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 0;
+  overflow: visible;
+}
+
+/* Dual-State Container Layers */
+.icon-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.24s ease;
+}
+
+/* 1. Default State: Real Brand Logo */
+.real-logo-state {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.real-logo-svg {
+  display: block;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.35));
+  transition: transform 0.28s ease, filter 0.28s ease;
+}
+
+/* 2. Hover State: Neon Outline Icon */
+.neon-logo-state {
+  opacity: 0;
+  transform: scale(0.85);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.lucide-neon-glyph {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   HOVER: PURE ICON GLOW (ZERO BOX / ZERO BOUNDARY)
+   -------------------------------------------------------------------------- */
+
+.social-neon-icon-btn:hover {
+  transform: translateY(-3px) scale(1.22);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.social-neon-icon-btn:hover .real-logo-state {
+  opacity: 0;
+  transform: scale(1.15);
+  pointer-events: none;
+}
+
+.social-neon-icon-btn:hover .neon-logo-state {
+  opacity: 1;
+  transform: scale(1.1);
+  pointer-events: auto;
+}
+
+/* 1. GITHUB - Neon Violet Icon Glow */
+.social-neon-icon-btn.neon-github:hover .lucide-neon-glyph {
+  color: #c084fc;
+  filter: drop-shadow(0 0 10px #c084fc) drop-shadow(0 0 24px rgba(192, 132, 252, 0.85));
+}
+
+/* 2. LINKEDIN - Neon Electric Cyan Icon Glow */
+.social-neon-icon-btn.neon-linkedin:hover .lucide-neon-glyph {
+  color: #00e5ff;
+  filter: drop-shadow(0 0 10px #00e5ff) drop-shadow(0 0 24px rgba(0, 229, 255, 0.85));
+}
+
+/* 3. INSTAGRAM - Neon Electric Magenta / Pink Icon Glow */
+.social-neon-icon-btn.neon-instagram:hover .lucide-neon-glyph {
+  color: #ff007f;
+  filter: drop-shadow(0 0 10px #ff007f) drop-shadow(0 0 24px rgba(255, 0, 127, 0.85));
+}
+
+/* 4. GMAIL - Neon Electric Crimson Red Icon Glow */
+.social-neon-icon-btn.neon-gmail:hover .lucide-neon-glyph {
+  color: #ff3344;
+  filter: drop-shadow(0 0 10px #ff3344) drop-shadow(0 0 24px rgba(255, 51, 68, 0.85));
+}
+
+/* Footer layout utilities */
+.social-footer-col {
+  min-width: 220px;
+}
+
+
+

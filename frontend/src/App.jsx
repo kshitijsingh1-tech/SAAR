@@ -593,6 +593,17 @@ export default function App() {
     const textStr = typeof userText === 'string' ? userText : (userText ? String(userText) : '');
     const msgText = textStr || (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : '');
 
+    // Always add user message to conversation history immediately
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        text: msgText,
+        files: currentFiles.map((f) => f.name),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+
     // Update active session query if new session
     setSessions((prev) =>
       prev.map((s) =>
@@ -605,7 +616,7 @@ export default function App() {
     setIsProcessing(true);
 
     try {
-      // 1. File Upload (CSV/XLSX or Image)
+      // 1. File Upload (CSV/XLSX or Image or Video)
       if (currentFiles.length > 0) {
         const file = currentFiles[0];
         const fileName = file?.name || 'attached_file';
@@ -616,6 +627,7 @@ export default function App() {
 
         if (isVideo) {
           try {
+            setSelectedDomain('pediatric');
             setCustomVideoFile(file);
             const gaitResult = await analyzeGaitVideo(file, 24);
             setSaarData(gaitResult);
