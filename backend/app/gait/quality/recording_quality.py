@@ -4,7 +4,7 @@ Recording-level quality assessment ported from ToddleAI QualityGate.
 from typing import List, Tuple
 from ..schemas import FrameQuality, FrameStatus, CaptureConfidence, CaptureAssessment
 
-MIN_GOOD_SEGMENT_FRAMES = 30
+MIN_GOOD_SEGMENT_FRAMES = 15  # ~0.5s at 30fps (appropriate for fast toddler step cycle durations)
 
 
 def longest_good_segment(frame_qualities: List[FrameQuality]) -> Tuple[int, int, int]:
@@ -47,14 +47,16 @@ def assess_recording(frame_qualities: List[FrameQuality], detected_steps: int) -
 
     total_frames = len(frame_qualities)
     good_frames = [fq for fq in frame_qualities if fq.status == FrameStatus.GOOD]
+    partial_frames = [fq for fq in frame_qualities if fq.status == FrameStatus.PARTIAL]
     good_frame_ratio = float(len(good_frames) / total_frames)
+    usable_frame_ratio = float((len(good_frames) + len(partial_frames)) / total_frames)
 
     seg_start, seg_end, seg_len = longest_good_segment(frame_qualities)
 
-    # Classification matching ToddleAI QualityGate
-    if detected_steps >= 6 and good_frame_ratio > 0.70 and seg_len >= MIN_GOOD_SEGMENT_FRAMES:
+    # Classification adapted for pediatric recording durations and side-view cross-overs
+    if detected_steps >= 6 and (good_frame_ratio > 0.60 or usable_frame_ratio > 0.80) and seg_len >= MIN_GOOD_SEGMENT_FRAMES:
         confidence = CaptureConfidence.HIGH
-    elif detected_steps >= 5 and good_frame_ratio > 0.50 and seg_len >= MIN_GOOD_SEGMENT_FRAMES:
+    elif detected_steps >= 5 and (good_frame_ratio > 0.35 or usable_frame_ratio > 0.60) and seg_len >= MIN_GOOD_SEGMENT_FRAMES:
         confidence = CaptureConfidence.MEDIUM
     elif detected_steps >= 3:
         confidence = CaptureConfidence.LOW
@@ -65,13 +67,14 @@ def assess_recording(frame_qualities: List[FrameQuality], detected_steps: int) -
 
     hidden_feet_count = sum(1 for fq in frame_qualities if not fq.both_feet_visible)
     hidden_feet_ratio = float(hidden_feet_count / total_frames)
-    if hidden_feet_ratio > 0.0:
+    if hidden_feet_ratio > 0.65:
         issues.append(f"Feet were hidden in {hidden_feet_ratio * 100:.0f}% of frames. Record from knee height.")
 
     unstable_count = sum(1 for fq in frame_qualities if not fq.camera_stable)
     unstable_ratio = float(unstable_count / total_frames)
-    if unstable_ratio > 0.10:
+    if unstable_ratio > 0.25:
         issues.append("Camera movement detected. Hold the phone still or prop it up.")
+
 
     if detected_steps < 5:
         issues.append(f"Only {detected_steps} steps detected. Record a longer walking sequence.")

@@ -89,6 +89,7 @@ class TemporalMetrics(BaseModel):
     step_time_cov: float = 0.0
     usable_step_count: int = 0
     usable_cycle_count: int = 0
+    pipeline_confidence: float = 0.0  # Composite confidence score (0.0-1.0)
 
 
 class CadenceRange(BaseModel):
@@ -128,3 +129,4 @@ class CanonicalGaitResult(BaseModel):
     observations: List[Observation] = Field(default_factory=list)
     rejection_reason: Optional[str] = None
     recommendations: List[str] = Field(default_factory=list)
+    pipeline_confidence: float = 0.0  # Top-level composite accuracy indicator (0.0-1.0)

@@ -12,7 +12,7 @@ from ..pose.landmarks import (
 )
 
 MIN_BODY_MEASUREMENT = 0.015  # Normalized minimum measurement proxy
-MAX_BODY_SCALE_SHIFT = 0.18   # Maximum torso/shoulder relative scaling shift between adjacent frames
+MAX_BODY_SCALE_SHIFT = 0.25   # Relaxed from 0.18 to tolerate more camera movement
 
 
 def is_camera_stable(current: PoseFrame, previous: PoseFrame) -> bool:
@@ -65,19 +65,23 @@ def assess_frame(current: PoseFrame, previous: Optional[PoseFrame] = None, fps: 
         left_ankle(current), right_ankle(current)
     ]
 
-    all_major_landmarks_visible = all(lm.visibility > 0.4 for lm in major_landmarks)
-    both_feet_visible = all(lm.visibility > 0.5 for lm in feet_landmarks)
-    full_body_in_frame = all(lm.visibility > 0.3 for lm in full_body_landmarks)
+    left_foot_vis = max(left_heel(current).visibility, left_ankle(current).visibility, left_foot_index(current).visibility)
+    right_foot_vis = max(right_heel(current).visibility, right_ankle(current).visibility, right_foot_index(current).visibility)
+    both_feet_visible = (left_foot_vis > 0.30 and right_foot_vis > 0.30)
+    at_least_one_foot_visible = (left_foot_vis > 0.30 or right_foot_vis > 0.30)
+
+    all_major_landmarks_visible = all(lm.visibility > 0.30 for lm in major_landmarks)
+    full_body_in_frame = all(lm.visibility > 0.20 for lm in full_body_landmarks)
     camera_stable = is_camera_stable(current, previous) if previous is not None else True
 
     visibilities = [lm.visibility for lm in current.landmarks] if current.landmarks else []
     landmark_confidence_mean = float(sum(visibilities) / len(visibilities)) if visibilities else 0.0
 
-    if not both_feet_visible or landmark_confidence_mean < 0.4:
+    if not at_least_one_foot_visible or landmark_confidence_mean < 0.25:
         status = FrameStatus.REJECTED
-    elif all_major_landmarks_visible and full_body_in_frame and camera_stable and landmark_confidence_mean > 0.6:
+    elif both_feet_visible and all_major_landmarks_visible and full_body_in_frame and camera_stable and landmark_confidence_mean > 0.45:
         status = FrameStatus.GOOD
-    elif both_feet_visible and landmark_confidence_mean > 0.4:
+    elif at_least_one_foot_visible and landmark_confidence_mean >= 0.25:
         status = FrameStatus.PARTIAL
     else:
         status = FrameStatus.REJECTED
@@ -91,3 +95,4 @@ def assess_frame(current: PoseFrame, previous: Optional[PoseFrame] = None, fps: 
         landmark_confidence_mean=landmark_confidence_mean,
         status=status
     )
+

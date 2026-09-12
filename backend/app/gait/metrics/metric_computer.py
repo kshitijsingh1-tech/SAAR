@@ -1,13 +1,19 @@
 """
-Metric calculation engine ported from ToddleAI MetricComputer.
+Metric calculation engine with confidence-weighted computation and IQR-based outlier rejection.
+
+Upgraded from the original ToddleAI port with:
+- IQR-based outlier filtering on step durations
+- Confidence-weighted mean/median computations
+- Pipeline confidence composite score
 """
 import math
-from typing import List
+from typing import List, Tuple, Optional
 from ..schemas import GaitEvent, StepMeasurement, TemporalMetrics, Side
 
-MIN_STEP_TIME_SECONDS = 0.25
+MIN_STEP_TIME_SECONDS = 0.20  # Relaxed slightly for toddler gaits
 MAX_STEP_TIME_SECONDS = 1.5
 EPSILON = 1e-6
+IQR_MULTIPLIER = 1.5  # Standard IQR fence multiplier
 
 
 def _median(values: List[float]) -> float:
@@ -33,10 +39,51 @@ def _std_dev(values: List[float], mean_val: float) -> float:
     return float(math.sqrt(variance))
 
 
-class MetricComputer:
-    """Computes cadence, step timing, left-right asymmetry, and step-time variability."""
+def _weighted_mean(values: List[float], weights: List[float]) -> float:
+    """Compute weighted mean. Falls back to simple mean if weights sum to zero."""
+    if not values:
+        return 0.0
+    weight_sum = sum(weights)
+    if weight_sum <= EPSILON:
+        return _mean(values)
+    return float(sum(v * w for v, w in zip(values, weights)) / weight_sum)
 
-    def compute_metrics(self, events: List[GaitEvent]) -> TemporalMetrics:
+
+def _iqr_filter(steps: List[StepMeasurement]) -> List[StepMeasurement]:
+    """Removes step duration outliers using IQR fencing.
+    
+    Steps with durations outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR] are excluded.
+    """
+    if len(steps) < 4:
+        return steps  # Not enough data for meaningful IQR
+    
+    durations = sorted(s.duration for s in steps)
+    n = len(durations)
+    q1_idx = n // 4
+    q3_idx = (3 * n) // 4
+    
+    q1 = durations[q1_idx]
+    q3 = durations[q3_idx]
+    iqr = q3 - q1
+    
+    if iqr <= EPSILON:
+        return steps  # All durations are essentially equal
+    
+    lower_fence = q1 - IQR_MULTIPLIER * iqr
+    upper_fence = q3 + IQR_MULTIPLIER * iqr
+    
+    return [s for s in steps if lower_fence <= s.duration <= upper_fence]
+
+
+class MetricComputer:
+    """Computes cadence, step timing, left-right asymmetry, step-time variability,
+    and pipeline confidence with outlier rejection."""
+
+    def compute_metrics(
+        self,
+        events: List[GaitEvent],
+        good_frame_ratio: float = 1.0
+    ) -> TemporalMetrics:
         if len(events) < 2:
             return self.no_data()
 
@@ -44,31 +91,55 @@ class MetricComputer:
         steps: List[StepMeasurement] = []
 
         for first, second in zip(sorted_events[:-1], sorted_events[1:]):
-            if first.side == second.side:
-                continue
-
             duration = second.time_seconds - first.time_seconds
-            if MIN_STEP_TIME_SECONDS <= duration <= MAX_STEP_TIME_SECONDS:
-                steps.append(StepMeasurement(
-                    duration=float(duration),
-                    ending_side=second.side,
-                    confidence=float(min(first.confidence, second.confidence))
-                ))
+            if first.side != second.side:
+                if MIN_STEP_TIME_SECONDS <= duration <= MAX_STEP_TIME_SECONDS:
+                    steps.append(StepMeasurement(
+                        duration=float(duration),
+                        ending_side=second.side,
+                        confidence=float(min(first.confidence, second.confidence))
+                    ))
+            else:
+                # Same-side stride cycle: contralateral foot contact was occluded
+                # A single-side stride comprises 2 steps (stride_time = 2 * step_time)
+                if (1.5 * MIN_STEP_TIME_SECONDS) <= duration <= (2.0 * MAX_STEP_TIME_SECONDS):
+                    half_duration = duration / 2.0
+                    opp_side = Side.LEFT if second.side == Side.RIGHT else Side.RIGHT
+                    inferred_conf = float(min(first.confidence, second.confidence) * 0.75)
+                    steps.append(StepMeasurement(
+                        duration=float(half_duration),
+                        ending_side=opp_side,
+                        confidence=inferred_conf
+                    ))
+                    steps.append(StepMeasurement(
+                        duration=float(half_duration),
+                        ending_side=second.side,
+                        confidence=inferred_conf
+                    ))
 
         if not steps:
             return self.no_data()
 
-        left_steps = [s for s in steps if s.ending_side == Side.LEFT]
-        right_steps = [s for s in steps if s.ending_side == Side.RIGHT]
+        # Apply IQR-based outlier rejection
+        clean_steps = _iqr_filter(steps)
+        if not clean_steps:
+            clean_steps = steps  # Fallback if IQR removed everything
 
-        durations = [s.duration for s in steps]
+        left_steps = [s for s in clean_steps if s.ending_side == Side.LEFT]
+        right_steps = [s for s in clean_steps if s.ending_side == Side.RIGHT]
+
+        durations = [s.duration for s in clean_steps]
+        confidences = [s.confidence for s in clean_steps]
         left_durations = [s.duration for s in left_steps]
         right_durations = [s.duration for s in right_steps]
+        left_confidences = [s.confidence for s in left_steps]
+        right_confidences = [s.confidence for s in right_steps]
 
+        # Use confidence-weighted means for better accuracy
         median_step_time = _median(durations)
-        mean_step_time = _mean(durations)
-        left_mean = _mean(left_durations)
-        right_mean = _mean(right_durations)
+        mean_step_time = _weighted_mean(durations, confidences)
+        left_mean = _weighted_mean(left_durations, left_confidences) if left_durations else 0.0
+        right_mean = _weighted_mean(right_durations, right_confidences) if right_durations else 0.0
 
         cadence = (60.0 / median_step_time) if median_step_time > 0.0 else 0.0
 
@@ -82,12 +153,16 @@ class MetricComputer:
 
         # CoV% = 100 * SD / |mean|
         step_time_cov = 0.0
-        if mean_step_time > 0.0 and len(steps) > 1:
+        if mean_step_time > 0.0 and len(clean_steps) > 1:
             sd = _std_dev(durations, mean_step_time)
             step_time_cov = (sd / mean_step_time) * 100.0
 
+        # Pipeline confidence: geometric mean of event confidence and frame quality
+        mean_event_confidence = _mean(confidences) if confidences else 0.0
+        pipeline_confidence = math.sqrt(mean_event_confidence * good_frame_ratio) if mean_event_confidence > 0 else 0.0
+
         return TemporalMetrics(
-            step_times=steps,
+            step_times=clean_steps,
             mean_step_time=round(mean_step_time, 4),
             median_step_time=round(median_step_time, 4),
             cadence=round(cadence, 1),
@@ -97,8 +172,9 @@ class MetricComputer:
             symmetry_ratio=round(symmetry_ratio, 3),
             step_time_asymmetry_pct=round(asymmetry_pct, 1),
             step_time_cov=round(step_time_cov, 1),
-            usable_step_count=len(steps),
-            usable_cycle_count=min(len(left_steps), len(right_steps))
+            usable_step_count=len(clean_steps),
+            usable_cycle_count=min(len(left_steps), len(right_steps)),
+            pipeline_confidence=round(pipeline_confidence, 4)
         )
 
     def no_data(self) -> TemporalMetrics:
@@ -114,5 +190,6 @@ class MetricComputer:
             step_time_asymmetry_pct=0.0,
             step_time_cov=0.0,
             usable_step_count=0,
-            usable_cycle_count=0
+            usable_cycle_count=0,
+            pipeline_confidence=0.0
         )

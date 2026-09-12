@@ -97,3 +97,7 @@ def right_foot_index(frame: PoseFrame) -> Landmark:
 
 def heel_for_side(frame: PoseFrame, side: Side) -> Landmark:
     return left_heel(frame) if side == Side.LEFT else right_heel(frame)
+
+
+def ankle_for_side(frame: PoseFrame, side: Side) -> Landmark:
+    return left_ankle(frame) if side == Side.LEFT else right_ankle(frame)

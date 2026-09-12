@@ -61,13 +61,11 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# User requested ignores: tests, user questions, and architecture
+# User requested ignores: tests and user questions
 test_*.py
 tests/
 test_data/
 user_questions.md
-architecture_explained.md
-architecture*.md
 
 # Persisted investigation data (temporal daily images)
 backend/data/

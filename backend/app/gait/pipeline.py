@@ -111,16 +111,20 @@ class GaitAnalysisPipeline:
             fq = assess_frame(frame, prev_frame, fps=metadata.fps)
             frame_qualities.append(fq)
 
-        # 2. Detect Temporal Heel-Strike Events
+        # 2. Compute good_frame_ratio early (needed by MetricComputer for pipeline_confidence)
+        good_frames = [fq for fq in frame_qualities if fq.status.value == "GOOD"]
+        good_frame_ratio = len(good_frames) / len(frame_qualities) if frame_qualities else 0.0
+
+        # 3. Detect Temporal Heel-Strike Events
         events = detect_gait_events(pose_frames, fps=metadata.fps)
 
-        # 3. Calculate Deterministic Gait Metrics
-        metrics = self.metric_computer.compute_metrics(events)
+        # 4. Calculate Deterministic Gait Metrics (with confidence weighting + outlier rejection)
+        metrics = self.metric_computer.compute_metrics(events, good_frame_ratio=good_frame_ratio)
 
-        # 4. Whole-Recording Quality Gate
+        # 5. Whole-Recording Quality Gate
         quality = assess_recording(frame_qualities, detected_steps=metrics.usable_step_count)
 
-        # 5. Generate Structured Observation Cards
+        # 6. Generate Structured Observation Cards
         observations = self.observation_engine.generate_observations(
             metrics=metrics,
             child_age_months=child_age_months,
@@ -146,5 +150,7 @@ class GaitAnalysisPipeline:
             milestone_context=milestone_context,
             observations=observations,
             rejection_reason=rejection_reason,
-            recommendations=recommendations
+            recommendations=recommendations,
+            pipeline_confidence=metrics.pipeline_confidence
         )
+
