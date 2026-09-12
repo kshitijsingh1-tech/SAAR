@@ -4710,7 +4710,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.5rem;
+  padding: 0.35rem 1.25rem;
+  min-height: 46px;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
   z-index: 10;
@@ -4719,7 +4720,15 @@ body {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+}
+
+.header-right {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
 }
 
 .sidebar-toggle-btn {
@@ -4764,6 +4773,7 @@ body {
   font-weight: 600;
   color: var(--text-muted);
 }
+
 
 /* Round Flowing Tool Rollout System */
 .flowing-tool-rollout-wrapper {
@@ -4979,15 +4989,18 @@ body {
 .header-guide-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 0.42rem 0.95rem;
+  padding: 0 0.85rem;
+  height: 32px;
+  box-sizing: border-box;
   border-radius: 9999px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -5066,11 +5079,14 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 0.42rem 0.95rem;
+  padding: 0 0.85rem;
+  height: 32px;
+  box-sizing: border-box;
   border-radius: 9999px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -7317,15 +7333,18 @@ body {
 .header-theme-dropdown-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   background: var(--bg-card);
   border: 1.5px solid var(--border-color);
   color: var(--text-main);
-  padding: 0.46rem 0.85rem;
+  padding: 0 0.85rem;
+  height: 32px;
+  box-sizing: border-box;
   border-radius: 9999px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }

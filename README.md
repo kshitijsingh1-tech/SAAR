@@ -4,7 +4,7 @@
 
 ![SAAR Logo](frontend/public/saar-logo-white.png)
 
-### **Autonomous Multi-Agent Causal Reasoning, Bayesian Belief Updating & Dynamic Scientific Discovery**
+## Autonomous Multi-Agent Causal Reasoning, Bayesian Belief Updating & Dynamic Scientific Discovery
 
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-000000.svg?style=flat-square)](https://github.com/kshitijsingh1-tech/SAAR)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://python.org)
@@ -14,7 +14,7 @@
 [![NetworkX](https://img.shields.io/badge/NetworkX-Graph_Engine-blue.svg?style=flat-square)](https://networkx.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 
-*“Deconstruct observations into essence. Traverse causal graphs. Quantify uncertainty. Prove truth.”*
+> *“Deconstruct observations into essence. Traverse causal graphs. Quantify uncertainty. Prove truth.”*
 
 </div>
 
@@ -31,7 +31,7 @@ Visual Input / Tabular Data ───▶ [ Monolithic VLM / LLM ] ───▶ S
                                                                 ↳ Static Uncertainty
 ```
 
-**SAAR** (*Synthetic Auditable Autonomous Reasoner* — *“the distilled essence, fundamental truth, or core finding”*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop**. 
+**SAAR** (*Synthetic Auditable Autonomous Reasoner* — *“the distilled essence, fundamental truth, or core finding”*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop**.
 
 Instead of jumping directly to an unverified conclusion, SAAR constructs a **dynamic causal knowledge graph**, identifies epistemic uncertainty, runs specialized domain simulators, queries the human investigator for high-information-gain observations, and conducts Bayesian belief updates until confidence satisfies a rigorous scientific threshold.
 
@@ -59,6 +59,7 @@ Instead of jumping directly to an unverified conclusion, SAAR constructs a **dyn
 ## ⚡ Key Capabilities & Architectural Pillars
 
 ### 1. Dynamic Directed Acyclic Graph (DAG) Engine
+
 - Built on top of **NetworkX** and strict **Pydantic** validation models.
 - Differentiates between:
   - **Physical Entities**: `road`, `culvert`, `tomato_foliage`, `exoplanet_host`
@@ -67,12 +68,15 @@ Instead of jumping directly to an unverified conclusion, SAAR constructs a **dyn
   - **Evidence Links**: `supports`, `contradicts`, `causes`, `mitigates`, `measures`
 
 ### 2. Bayesian Belief Updating & Uncertainty Minimization
+
 - Tracks global and node-level uncertainty metrics:
   $$\text{Uncertainty}_{\text{global}} = 1.0 - \frac{1}{|V \cup E|} \sum_{x \in V \cup E} \text{Confidence}(x)$$
 - Hypotheses compete dynamically. Confirmatory data shifts probability mass; disconfirmatory anomalies eliminate candidate nodes in real-time.
 
 ### 3. Multi-Domain Scientific Plugin Architecture
+
 SAAR ships with specialized analytical plugins engineered with domain equations:
+
 - 🌿 **Agriculture & Agronomy**:
   - Darcy’s Law soil water saturation & drainage percolation
   - Chlorophyll degradation & vegetative index tracking (NDVI/SPAD)
@@ -87,10 +91,12 @@ SAAR ships with specialized analytical plugins engineered with domain equations:
   - Planetary mass vs. brown dwarf/stellar companion evaluation
 
 ### 4. Human-in-the-Loop Inquiry Cards (Active Learning)
+
 - When topological graph entropy is high, SAAR formulates **Targeted Epistemic Inquiries**.
 - Presents interactive, one-click confirmation chips or verified field observation inputs in the chat dialogue to maximize information gain with minimal human effort.
 
 ### 5. Multi-Format Scientific Export & Dossier Generation
+
 - **Universal Export Engine**:
   - **Clean Markdown (`.md`)**: Complete question-and-answer pairs, causal graphs, and passport statistics.
   - **Structured JSON (`.json`)**: Full structural taxonomy for machine-to-machine pipelines.
@@ -99,6 +105,7 @@ SAAR ships with specialized analytical plugins engineered with domain equations:
 - **Copy QA Stream**: Single-click combined question-and-answer clipboard synthesis with context-aware `"Ask SAAR"` drill-down.
 
 ### 6. Zero-Latency Grounded Scientific Terminology (`asyncio.gather`)
+
 - Employs parallel asynchronous dispatch (`asyncio.gather`) pairing deep causal reasoning ($~1,500\text{ ms}$) with rapid grounded lexical extraction ($~200\text{ ms}$).
 - Effective perceived added latency is **0 ms**.
 - Replaces disconnected public web scrapers with contextual domain extraction powered by the same single `GROQ_API_KEY` (or offline RAG/morphological fallbacks).
@@ -164,6 +171,7 @@ cd SAAR
 ```
 
 Choose your operating system below for tailored startup commands:
+
 - [🍏 macOS Startup Guide](#-macos-startup-guide)
 - [🪟 Windows Startup Guide](#-windows-startup-guide)
 
@@ -174,6 +182,7 @@ Choose your operating system below for tailored startup commands:
 Follow either the 1-click script or manual terminal commands to start SAAR on macOS:
 
 ### Prerequisites (macOS)
+
 - **Python 3.10+** (`brew install python@3.11`)
 - **Node.js 18+** & **npm** (`brew install node`)
 
@@ -192,7 +201,7 @@ Run the included startup script from the root directory:
 
 Open two terminal tabs/windows in your terminal application (Terminal, iTerm2, or Warp):
 
-#### Terminal 1 — Backend (FastAPI on Port 8001)
+#### Terminal 1 — macOS Backend (FastAPI on Port 8001)
 
 ```bash
 cd backend
@@ -203,7 +212,7 @@ cp .env.example .env
 python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
-#### Terminal 2 — Frontend (React on Port 3000)
+#### Terminal 2 — macOS Frontend (React on Port 3000)
 
 ```bash
 cd frontend
@@ -224,6 +233,7 @@ open http://localhost:3000
 Follow these commands in **PowerShell** or **Command Prompt** to run SAAR on Windows:
 
 ### Prerequisites (Windows)
+
 - **Python 3.10+** (download from [python.org](https://www.python.org/downloads/) — *ensure "Add Python to PATH" is checked*)
 - **Node.js 18+** & **npm** (download from [nodejs.org](https://nodejs.org/))
 
@@ -231,7 +241,7 @@ Follow these commands in **PowerShell** or **Command Prompt** to run SAAR on Win
 
 Open two PowerShell windows:
 
-#### Terminal 1 — Backend (FastAPI on Port 8001)
+#### Terminal 1 — Windows Backend (FastAPI on Port 8001)
 
 ```powershell
 cd backend
@@ -246,7 +256,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 > If PowerShell displays an execution policy error when activating the virtual environment, run:  
 > `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then re-run `.\venv\Scripts\Activate.ps1`.
 
-#### Terminal 2 — Frontend (React on Port 3000)
+#### Terminal 2 — Windows Frontend (React on Port 3000)
 
 ```powershell
 cd frontend

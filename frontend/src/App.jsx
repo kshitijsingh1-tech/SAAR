@@ -61,6 +61,7 @@ export default function App() {
   // Visual Media & Camera
   const [customImageData, setCustomImageData] = useState(null);
   const [customImageUrl, setCustomImageUrl] = useState(null);
+  const [customVideoFile, setCustomVideoFile] = useState(null);
   const [cameraConnected, setCameraConnected] = useState(false);
 
   // Selected Graph Relationship for Analytics
@@ -567,7 +568,7 @@ export default function App() {
     // If a gait result object is passed directly (e.g. from GaitDashboard registration)
     if (userText && typeof userText === 'object' && userText.assessment_id) {
       const gaitResult = userText;
-      let responseText = `### ToddleAI Gait Screening Executed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
+      let responseText = `### Video Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
       responseText += `- **Video Processed**: \`${gaitResult.video?.filename || 'Sample Video'}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
       responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
       responseText += `- **Cadence**: **${gaitResult.metrics?.cadence} steps/min** (Typical: ${gaitResult.cadence_range?.low}–${gaitResult.cadence_range?.high} steps/min)\n`;
@@ -615,15 +616,16 @@ export default function App() {
 
         if (isVideo) {
           try {
+            setCustomVideoFile(file);
             const gaitResult = await analyzeGaitVideo(file, 24);
             setSaarData(gaitResult);
-            let responseText = `### ToddleAI Gait Screening Executed (${gaitResult.status?.toUpperCase()})\n\n`;
-            responseText += `- **Video Processed**: \`${fileName}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
-            responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
-            responseText += `- **Cadence**: **${gaitResult.metrics?.cadence} steps/min** (Typical: ${gaitResult.cadence_range?.low}–${gaitResult.cadence_range?.high} steps/min)\n`;
-            responseText += `- **Left-Right Step Asymmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct}%** (Typical benchmark ≤ 10%)\n`;
-            responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov}% CoV** (Developing toddler benchmark ≤ 15%)\n\n`;
-            responseText += `#### Developmental Context:\n${gaitResult.milestone_context}`;
+            let responseText = `### Video Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
+            responseText += `- **Video Processed**: \`${fileName}\` (${gaitResult.video?.fps || 24} FPS, ${gaitResult.video?.duration_seconds || 0}s)\n`;
+            responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence || 'High'} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
+            responseText += `- **Cadence**: **${gaitResult.metrics?.cadence || 0} steps/min** (Typical: ${gaitResult.cadence_range?.low || 110}–${gaitResult.cadence_range?.high || 180} steps/min)\n`;
+            responseText += `- **Left-Right Step Asymmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct || 0}%** (Typical benchmark ≤ 10%)\n`;
+            responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov || 0}% CoV** (Developing benchmark ≤ 15%)\n\n`;
+            responseText += `#### Kinematic & Functional Context:\n${gaitResult.milestone_context || 'Biomechanical kinematics and temporal movement patterns calculated.'}`;
 
             if (userText && userText.trim()) {
               try {
@@ -654,7 +656,7 @@ export default function App() {
               ...prev,
               {
                 role: 'assistant',
-                text: `**Gait Video Analysis Notice**: ${vErr.response?.data?.detail || vErr.message || 'Failed to process video.'}`,
+                text: `**Video Analysis Notice**: ${vErr.response?.data?.detail || vErr.message || 'Failed to process video.'}`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
             ]);
@@ -1274,6 +1276,7 @@ export default function App() {
         }}
         customImageData={customImageData}
         customImageUrl={customImageUrl}
+        customVideoFile={customVideoFile}
         onUploadCustomImage={(fileOrDataUrl) => {
           executeImageInvestigation(fileOrDataUrl);
         }}
