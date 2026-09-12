@@ -17,7 +17,6 @@ export const KnowledgeGraphCanvas = ({
   isExpanded = false,
   onToggleExpand
 }) => {
-  const [layoutMode, setLayoutMode] = useState('flow'); // 'flow' (Left-to-Right DAG) or 'radial'
   const [zoomLevel, setZoomLevel] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -182,92 +181,67 @@ export const KnowledgeGraphCanvas = ({
   const CARD_W = 162;
   const CARD_H = 54;
 
-  // 3. Layout Positioning Calculation
+  // 3. Layout Positioning Calculation: Detailed Causal Graph Flow
   const { nodePositions, canvasBounds } = useMemo(() => {
     const positions = {};
 
-    if (layoutMode === 'flow') {
-      // 4-Column Left-to-Right Causal Architecture:
-      // Col 0: Inputs & Baseline Telemetry (in-degree 0 or 'object')
-      // Col 1: Mediating Measurements & Tool Findings ('tool_result' or mediated 'property')
-      // Col 2: Observable Symptoms & Grounded Features ('observation')
-      // Col 3: Root Cause Hypotheses & Diagnoses ('hypothesis' or out-degree 0)
-      const cols = [[], [], [], []];
+    // 4-Column Left-to-Right Causal Architecture:
+    // Col 0: Observable Inputs & Baseline Telemetry (in-degree 0 or 'object')
+    // Col 1: Mediating Measurements & Tool Findings ('tool_result' or mediated 'property')
+    // Col 2: Observable Symptoms & Grounded Features ('observation')
+    // Col 3: Root Cause Hypotheses & Diagnoses ('hypothesis' or out-degree 0)
+    const cols = [[], [], [], []];
 
-      nodes.forEach((node) => {
-        if (node.node_type === 'hypothesis') {
-          cols[3].push(node);
-        } else if (node.node_type === 'observation') {
-          cols[2].push(node);
-        } else if (node.node_type === 'tool_result') {
-          cols[1].push(node);
-        } else if (inDegreeMap[node.id] === 0 || node.node_type === 'object') {
-          cols[0].push(node);
-        } else {
-          cols[1].push(node);
-        }
-      });
-
-      // Avoid completely empty middle columns by shifting if needed
-      if (cols[1].length === 0 && cols[0].length > 2) {
-        cols[1].push(cols[0].pop());
+    nodes.forEach((node) => {
+      if (node.node_type === 'hypothesis') {
+        cols[3].push(node);
+      } else if (node.node_type === 'observation') {
+        cols[2].push(node);
+      } else if (node.node_type === 'tool_result') {
+        cols[1].push(node);
+      } else if (inDegreeMap[node.id] === 0 || node.node_type === 'object') {
+        cols[0].push(node);
+      } else {
+        cols[1].push(node);
       }
-      if (cols[2].length === 0 && cols[1].length > 2) {
-        cols[2].push(cols[1].pop());
-      }
+    });
 
-      const activeColIndices = cols.map((col, idx) => ({ col, idx })).filter((c) => c.col.length > 0);
-      const totalActiveCols = activeColIndices.length || 1;
-
-      const startX = 40;
-      const colGap = 290;
-      const maxRows = Math.max(...cols.map((c) => c.length), 1);
-      const rowGap = 106;
-      const totalHeight = Math.max(480, maxRows * rowGap + 90);
-
-      activeColIndices.forEach(({ col }, colStep) => {
-        const x = startX + colStep * colGap;
-        const colHeight = col.length * rowGap;
-        const topOffsetY = Math.max(40, (totalHeight - colHeight) / 2);
-
-        col.forEach((node, rowIdx) => {
-          positions[node.id] = {
-            x,
-            y: topOffsetY + rowIdx * rowGap
-          };
-        });
-      });
-
-      const totalWidth = startX + totalActiveCols * colGap + 60;
-      return {
-        nodePositions: positions,
-        canvasBounds: { width: Math.max(1050, totalWidth), height: totalHeight }
-      };
-    } else {
-      // Radial Hub Layout
-      const total = nodes.length;
-      const centerX = 440;
-      const centerY = 240;
-      const radiusX = Math.min(320, 240 + total * 8);
-      const radiusY = Math.min(180, 140 + total * 6);
-
-      nodes.forEach((node, idx) => {
-        if (node.node_type === 'hypothesis' && idx === 0) {
-          positions[node.id] = { x: centerX - CARD_W / 2, y: centerY - CARD_H / 2 };
-          return;
-        }
-        const angle = (2 * Math.PI * idx) / total - Math.PI / 2;
-        const x = centerX + radiusX * Math.cos(angle) - CARD_W / 2;
-        const y = centerY + radiusY * Math.sin(angle) - CARD_H / 2;
-        positions[node.id] = { x: Math.round(x), y: Math.round(y) };
-      });
-
-      return {
-        nodePositions: positions,
-        canvasBounds: { width: 900, height: 480 }
-      };
+    // Avoid completely empty middle columns by shifting if needed
+    if (cols[1].length === 0 && cols[0].length > 2) {
+      cols[1].push(cols[0].pop());
     }
-  }, [nodes, inDegreeMap, layoutMode]);
+    if (cols[2].length === 0 && cols[1].length > 2) {
+      cols[2].push(cols[1].pop());
+    }
+
+    const activeColIndices = cols.map((col, idx) => ({ col, idx })).filter((c) => c.col.length > 0);
+    const totalActiveCols = activeColIndices.length || 1;
+
+    const startX = 40;
+    const colGap = 290;
+    const maxRows = Math.max(...cols.map((c) => c.length), 1);
+    const rowGap = 106;
+    const totalHeight = Math.max(480, maxRows * rowGap + 90);
+
+    activeColIndices.forEach(({ col }, colStep) => {
+      const x = startX + colStep * colGap;
+      const colHeight = col.length * rowGap;
+      const topOffsetY = Math.max(40, (totalHeight - colHeight) / 2);
+
+      col.forEach((node, rowIdx) => {
+        positions[node.id] = {
+          x,
+          y: topOffsetY + rowIdx * rowGap
+        };
+      });
+    });
+
+    const totalWidth = startX + totalActiveCols * colGap + 60;
+    return {
+      nodePositions: positions,
+      canvasBounds: { width: Math.max(1050, totalWidth), height: totalHeight }
+    };
+  }, [nodes, inDegreeMap]);
 
   // 4. Trace Ancestors and Descendants for Interactive Causal Highlighting
   const activeFocusId = hoveredNodeId || selectedNodeId;
@@ -363,10 +337,10 @@ export const KnowledgeGraphCanvas = ({
     }
   };
 
-  // Auto-fit on initial mount or layout switch
+  // Auto-fit on initial mount or container resize
   useEffect(() => {
     handleFitToScreen();
-  }, [layoutMode, isExpanded]);
+  }, [isExpanded]);
 
   // Helper for Node Theme
   const getNodeTheme = (type) => {
@@ -486,55 +460,28 @@ export const KnowledgeGraphCanvas = ({
               </span>
             </div>
             <div style={{ fontSize: '0.68rem', color: isDark ? '#94a3b8' : '#64748b' }}>
-              {layoutMode === 'flow' ? 'Left-to-Right Causal Flow (Inputs → Mediators → Symptoms → Diagnosis)' : 'Concentric Radial Graph'}
+              Left-to-Right Causal Flow (Inputs → Mediators → Symptoms → Diagnosis)
             </div>
           </div>
         </div>
 
-        {/* Action Controls (Layout Switcher, Zoom, Pan & Fullscreen) */}
+        {/* Action Controls (Causal Flow Badge, Zoom, Pan & Fullscreen) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {/* Layout Toggle */}
+          {/* Causal Flow Mode Badge */}
           <div style={{
             display: 'flex',
-            background: '#e2e8f0',
-            padding: '2px',
+            alignItems: 'center',
+            gap: '6px',
+            background: isDark ? 'rgba(56, 189, 248, 0.1)' : '#f0fdf4',
+            border: `1px solid ${isDark ? 'rgba(56, 189, 248, 0.25)' : '#bbf7d0'}`,
+            padding: '4px 10px',
             borderRadius: '6px',
-            gap: '2px'
+            fontSize: '0.72rem',
+            fontWeight: '600',
+            color: isDark ? '#38bdf8' : '#15803d'
           }}>
-            <button
-              style={{
-                border: 'none',
-                background: layoutMode === 'flow' ? '#ffffff' : 'transparent',
-                color: layoutMode === 'flow' ? '#0f172a' : '#64748b',
-                fontWeight: layoutMode === 'flow' ? '700' : '500',
-                padding: '0.25rem 0.55rem',
-                fontSize: '0.72rem',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                boxShadow: layoutMode === 'flow' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
-              }}
-              onClick={() => setLayoutMode('flow')}
-              title="Causal Flow (Left-to-Right Pipeline)"
-            >
-              Causal Flow
-            </button>
-            <button
-              style={{
-                border: 'none',
-                background: layoutMode === 'radial' ? '#ffffff' : 'transparent',
-                color: layoutMode === 'radial' ? '#0f172a' : '#64748b',
-                fontWeight: layoutMode === 'radial' ? '700' : '500',
-                padding: '0.25rem 0.55rem',
-                fontSize: '0.72rem',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                boxShadow: layoutMode === 'radial' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
-              }}
-              onClick={() => setLayoutMode('radial')}
-              title="Radial Graph Layout"
-            >
-              Radial Hub
-            </button>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isDark ? '#38bdf8' : '#16a34a' }} />
+            Detailed Causal Graph
           </div>
 
           {/* Zoom Controls */}
@@ -708,10 +655,10 @@ export const KnowledgeGraphCanvas = ({
                 const cp2Y = endY;
 
                 let pathD = '';
-                if (layoutMode === 'flow' && endX > startX + 20) {
+                if (endX > startX + 20) {
                   pathD = `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`;
                 } else {
-                  // Curved loop if backwards or radial
+                  // Curved loop if backwards
                   const midX = (startX + endX) / 2;
                   const midY = (startY + endY) / 2 - 25;
                   pathD = `M ${startX} ${startY} Q ${midX} ${midY}, ${endX} ${endY}`;
@@ -731,7 +678,7 @@ export const KnowledgeGraphCanvas = ({
 
                 let chipX = (startX + endX) / 2;
                 let chipY = (startY + endY) / 2;
-                if (layoutMode === 'flow' && endX > startX + 20) {
+                if (endX > startX + 20) {
                   chipX = u * u * u * startX + 3 * u * u * t * cp1X + 3 * u * t * t * cp2X + t * t * t * endX;
                   chipY = u * u * u * startY + 3 * u * u * t * cp1Y + 3 * u * t * t * cp2Y + t * t * t * endY;
                 }
@@ -981,12 +928,8 @@ export const KnowledgeGraphCanvas = ({
                     )}
 
                     {/* Connection Ports */}
-                    {layoutMode === 'flow' && (
-                      <>
-                        <circle cx="0" cy={CARD_H / 2} r="3.5" fill="#ffffff" stroke={themeStyle.border} strokeWidth="1.5" />
-                        <circle cx={CARD_W} cy={CARD_H / 2} r="3.5" fill="#ffffff" stroke={themeStyle.border} strokeWidth="1.5" />
-                      </>
-                    )}
+                    <circle cx="0" cy={CARD_H / 2} r="3.5" fill="#ffffff" stroke={themeStyle.border} strokeWidth="1.5" />
+                    <circle cx={CARD_W} cy={CARD_H / 2} r="3.5" fill="#ffffff" stroke={themeStyle.border} strokeWidth="1.5" />
                   </g>
                 );
               })}

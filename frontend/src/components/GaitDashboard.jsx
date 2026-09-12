@@ -6,13 +6,38 @@ import {
 import { analyzeGaitVideo, analyzeGaitSample, askGaitQuestion, getGaitSampleVideoUrl } from '../api/client';
 import { MarkdownResponse } from './MarkdownResponse';
 
-export function GaitDashboard({ onRegisterToChat }) {
+export function GaitDashboard({ onRegisterToChat, initialResult = null, initialFile = null }) {
   const [childAgeMonths, setChildAgeMonths] = useState(24);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(initialFile);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState(() => {
+    if (initialFile) {
+      try {
+        return URL.createObjectURL(initialFile);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [assessmentResult, setAssessmentResult] = useState(null);
+  const [assessmentResult, setAssessmentResult] = useState(initialResult);
   const [error, setError] = useState(null);
+
+  // Synchronize when initialResult or initialFile props change
+  React.useEffect(() => {
+    if (initialResult) {
+      setAssessmentResult(initialResult);
+    }
+  }, [initialResult]);
+
+  React.useEffect(() => {
+    if (initialFile) {
+      setSelectedFile(initialFile);
+      try {
+        setVideoPreviewUrl(URL.createObjectURL(initialFile));
+      } catch (e) {}
+    }
+  }, [initialFile]);
 
   // In-context Q&A state
   const [userQuestion, setUserQuestion] = useState('');
@@ -132,10 +157,10 @@ export function GaitDashboard({ onRegisterToChat }) {
               </div>
               <div>
                 <h1 style={{ fontSize: '1.4rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
-                  ToddleAI Gait Analysis Engine
+                  Video Analysis
                 </h1>
                 <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '4px 0 0 0' }}>
-                  Deterministic 33-point MediaPipe pose kinematics, cadence, symmetry, and age-referenced screening.
+                  Deterministic 33-point MediaPipe kinematics, cadence, symmetry, and temporal keyframe inspection.
                 </p>
               </div>
             </div>

@@ -4,16 +4,16 @@ import {
   BookA, X, Crosshair, Activity
 } from 'lucide-react';
 
-export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating = false }) {
+export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating = false, selectedDomain = 'agriculture' }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef(null);
 
   // Operational Scientific Tools:
-  const tools = [
+  const allTools = [
     {
       id: 'gait',
-      label: 'Toddler Gait Analysis',
-      tooltip: 'Deterministic 33-point MediaPipe Pose Kinematics & Toddler Gait Screening',
+      label: 'Video Analysis',
+      tooltip: 'Deterministic 33-point MediaPipe Pose Kinematics & Video Screening',
       icon: <Activity size={17} />,
       gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
       glow: 'rgba(6, 182, 212, 0.45)'
@@ -67,6 +67,10 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
       glow: 'rgba(245, 158, 11, 0.45)'
     }
   ];
+
+  const tools = selectedDomain === 'pediatrics'
+    ? allTools.filter((t) => ['gait', 'camera', 'rag'].includes(t.id))
+    : allTools;
 
   useEffect(() => {
     function handleClickOutside(event) {
