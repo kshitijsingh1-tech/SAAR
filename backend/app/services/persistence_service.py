@@ -1,7 +1,7 @@
 """
-Saar (सार) — JSON-on-Disk Persistence Service
-Lightweight file-based persistence for investigation states and temporal snapshots.
-No external DB dependencies — uses pathlib + json with atomic write-rename.
+Saar — JSON-on-Disk Persistence Service
+Stores and retrieves investigation results under data/investigations/.
+No external DB required.
 """
 import json
 import os

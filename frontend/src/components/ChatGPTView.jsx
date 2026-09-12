@@ -5,7 +5,7 @@ import {
   BookOpen, ChevronDown, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
-  Crosshair, BookA, Image as ImageIcon, Film, Sun, Moon
+  Crosshair, BookA, Image as ImageIcon, Film, Sun, Moon, Zap
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -89,8 +89,10 @@ export function ChatGPTView({
   isSidebarOpen,
   onOpenHelp,
   onExportChat,
-  theme = 'light',
+  theme = 'dark',
   onToggleTheme,
+  onSelectTheme,
+  onReturnToLanding,
   hasSensorData = true
 }) {
   const [inputText, setInputText] = useState('');
@@ -104,26 +106,33 @@ export function ChatGPTView({
 
   // Multi-format Export Chat Dropdown state
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
   const [activeTermModal, setActiveTermModal] = useState(null);
   const exportMenuRef = useRef(null);
+  const themeDropdownRef = useRef(null);
 
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Close export dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
         setIsExportMenuOpen(false);
+      }
+      if (themeDropdownRef.current && !themeDropdownRef.current.contains(e.target)) {
+        setIsThemeDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const saarLogoSrc = theme === 'dark' ? '/saar-logo-white.png' : '/saar-logo-dark.png';
-  const saarWordmarkSrc = theme === 'dark' ? '/saar-wordmark-white.png' : '/saar-wordmark-dark.png';
+  // Saar logo based on theme (use dark logo for light and purple-tinted white themes)
+  const isLightMode = theme === 'light' || theme === 'purple';
+  const saarLogoSrc = isLightMode ? '/saar-logo-dark.png' : '/saar-logo-white.png';
+  const saarWordmarkSrc = isLightMode ? '/saar-wordmark-dark.png' : '/saar-wordmark-white.png';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -292,13 +301,35 @@ export function ChatGPTView({
       <header className="chatgpt-header">
         <div className="header-left">
           {!isSidebarOpen && (
-            <button
-              className="sidebar-toggle-btn"
-              onClick={onToggleSidebar}
-              title="Open sidebar"
-            >
-              <PanelLeft size={18} />
-            </button>
+            <>
+              <button
+                className="sidebar-toggle-btn"
+                onClick={onToggleSidebar}
+                title="Open sidebar"
+              >
+                <PanelLeft size={18} />
+              </button>
+
+              {onReturnToLanding && (
+                <button
+                  type="button"
+                  className="header-logo-btn"
+                  onClick={onReturnToLanding}
+                  title="Return to SAAR Landing Page"
+                >
+                  <img
+                    src={saarLogoSrc}
+                    alt="Saar Logo"
+                    className="saar-header-emblem-img"
+                  />
+                  <img
+                    src={saarWordmarkSrc}
+                    alt="SAAR"
+                    className="saar-header-wordmark-img"
+                  />
+                </button>
+              )}
+            </>
           )}
         </div>
 
@@ -425,26 +456,50 @@ export function ChatGPTView({
             </div>
           )}
 
-          {/* Theme Toggle Button (Dark / Light Mode) */}
-          <button
-            type="button"
-            className="header-theme-toggle-btn"
-            onClick={onToggleTheme}
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-            aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-          >
-            {theme === 'dark' ? (
-              <>
-                <Sun size={15} className="theme-toggle-icon sun-icon" />
-                <span>Light</span>
-              </>
-            ) : (
-              <>
-                <Moon size={15} className="theme-toggle-icon moon-icon" />
-                <span>Dark</span>
-              </>
+          {/* Theme Dropdown (Light, Dark, Purple, Cyan) */}
+          <div className="header-theme-dropdown-wrapper" ref={themeDropdownRef}>
+            <button
+              type="button"
+              className="header-theme-dropdown-btn"
+              onClick={() => setIsThemeDropdownOpen((prev) => !prev)}
+              title="Change Theme Palette"
+              aria-haspopup="true"
+              aria-expanded={isThemeDropdownOpen}
+            >
+              {theme === 'light' && <Sun size={14} className="theme-current-icon" />}
+              {theme === 'dark' && <Moon size={14} className="theme-current-icon" />}
+              {theme === 'purple' && <Sparkles size={14} className="theme-current-icon text-purple" />}
+              <span className="theme-current-label">
+                {theme === 'light' ? 'Pure Light' : theme === 'dark' ? 'Pure Dark' : 'Lavender White'}
+              </span>
+              <ChevronDown size={11} className={`theme-arrow ${isThemeDropdownOpen ? 'open' : ''}`} />
+            </button>
+
+            {isThemeDropdownOpen && (
+              <div className="theme-menu-dropdown">
+                <div className="theme-menu-title">SELECT THEME</div>
+                {[
+                  { id: 'light', label: 'Pure Light', icon: <Sun size={14} />, color: '#0284c7' },
+                  { id: 'dark', label: 'Pure Dark', icon: <Moon size={14} />, color: '#818cf8' },
+                  { id: 'purple', label: 'Lavender White (Purple Tint)', icon: <Sparkles size={14} />, color: '#7e22ce' }
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`theme-menu-item ${theme === t.id ? 'active' : ''}`}
+                    onClick={() => {
+                      onSelectTheme?.(t.id);
+                      setIsThemeDropdownOpen(false);
+                    }}
+                  >
+                    <span className="theme-color-dot" style={{ backgroundColor: t.color }} />
+                    <span className="theme-item-text">{t.label}</span>
+                    {theme === t.id && <Check size={12} className="theme-item-check" />}
+                  </button>
+                ))}
+              </div>
             )}
-          </button>
+          </div>
 
           <button
             className="header-guide-btn"
@@ -463,7 +518,13 @@ export function ChatGPTView({
           {messages.length === 0 ? (
             /* Welcome / Empty State */
             <div className="chatgpt-welcome-canvas">
-              <div className="welcome-brand-mark">
+              <div
+                className={`welcome-brand-mark ${onReturnToLanding ? 'clickable' : ''}`}
+                onClick={onReturnToLanding}
+                title={onReturnToLanding ? "Return to SAAR Landing Page" : undefined}
+                role={onReturnToLanding ? "button" : undefined}
+                tabIndex={onReturnToLanding ? 0 : undefined}
+              >
                 <img
                   src={saarLogoSrc}
                   alt="Saar Logo"

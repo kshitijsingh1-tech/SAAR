@@ -541,7 +541,7 @@ async def export_chat_endpoint(request: Request):
 
   {verdict_html}
 
-  <div class="footer-note">Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine</div>
+  <div class="footer-note">Exported autonomously by SAAR — Visual Scientific Reasoning Engine</div>
 </body>
 </html>"""
 
@@ -583,7 +583,7 @@ FINAL SCIENTIFIC DIAGNOSTIC VERDICT
 
 """
         body_content += f"""================================================================================
-Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine
+Exported autonomously by SAAR — Visual Scientific Reasoning Engine
 """
 
     else: # md
@@ -619,7 +619,7 @@ Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine
 
         if verdict:
             body_content += f"## Final Scientific Diagnostic Verdict\n\n{verdict}\n\n---\n"
-        body_content += "*Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine.*\n"
+        body_content += "*Exported autonomously by SAAR — Visual Scientific Reasoning Engine.*\n"
 
     headers = {
         "Content-Disposition": f'attachment; filename="{filename}"',

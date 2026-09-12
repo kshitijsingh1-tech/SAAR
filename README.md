@@ -1,4 +1,4 @@
-# SAAR (सार) — Visual Scientific Reasoning Engine
+# SAAR — Visual Scientific Reasoning Engine
 
 <div align="center">
 
@@ -31,7 +31,7 @@ Visual Input / Tabular Data ───▶ [ Monolithic VLM / LLM ] ───▶ S
                                                                 ↳ Static Uncertainty
 ```
 
-**SAAR** (सार — Sanskrit/Hindi for *“the distilled essence, fundamental truth, or core finding”*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop**. 
+**SAAR** (*Synthetic Auditable Autonomous Reasoner* — *“the distilled essence, fundamental truth, or core finding”*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop**. 
 
 Instead of jumping directly to an unverified conclusion, SAAR constructs a **dynamic causal knowledge graph**, identifies epistemic uncertainty, runs specialized domain simulators, queries the human investigator for high-information-gain observations, and conducts Bayesian belief updates until confidence satisfies a rigorous scientific threshold.
 

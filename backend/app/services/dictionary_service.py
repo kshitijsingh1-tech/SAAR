@@ -1,5 +1,5 @@
 """
-Saar (सार) — Unified Scientific Terminology & Grounded Lexical Intelligence Service
+Saar — Unified Scientific Terminology & Grounded Lexical Intelligence Service
 Extracts and contextualizes domain-specific scientific terminology in real-time,
 grounded directly in the active investigation dataset and causal graph nodes.
 Runs asynchronously without blocking or thread pool contention.
@@ -247,7 +247,7 @@ class TerminologyService:
             clean_domain = "agriculture"
 
         # Check if we can run fast LLM extraction concurrently
-        fast_prompt = f"""You are a scientific terminology extraction engine for SAAR (सार).
+        fast_prompt = f"""You are a scientific terminology extraction engine for SAAR.
 Extract 2 to 4 domain-specific scientific or technical terms relevant to this investigation inquiry.
 
 User Inquiry: "{query}"
