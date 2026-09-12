@@ -209,3 +209,39 @@ export const analyzeVideo = async (fileOrUrl, domain = 'agriculture', options = 
   }
 };
 
+// ------------------------------------------------------------------
+// ToddleAI Pediatric Gait Analysis API
+// ------------------------------------------------------------------
+
+export const analyzeGaitVideo = async (file, childAgeMonths = 24) => {
+  const formData = new FormData();
+  formData.append('video', file);
+  const res = await axios.post(`${API_BASE_URL}/api/gait/analyze?child_age_months=${childAgeMonths}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return res.data;
+};
+
+export const analyzeGaitSample = async (childAgeMonths = 24) => {
+  const res = await axios.get(`${API_BASE_URL}/api/gait/sample`, {
+    params: { child_age_months: childAgeMonths }
+  });
+  return res.data;
+};
+
+export const getGaitSampleVideoUrl = () => {
+  return `${API_BASE_URL}/api/gait/sample/video`;
+};
+
+export const getGaitAssessment = async (assessmentId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/gait/assessment/${assessmentId}`);
+  return res.data;
+};
+
+export const askGaitQuestion = async (assessmentId, question) => {
+  const res = await axios.post(`${API_BASE_URL}/api/gait/assessment/${assessmentId}/ask`, {
+    question
+  });
+  return res.data;
+};
+
