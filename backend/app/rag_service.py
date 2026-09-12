@@ -1,5 +1,5 @@
 """
-Saar (सार) — Domain-Agnostic RAG Knowledge Base Service
+Saar — Domain-Agnostic RAG Knowledge Base Service
 Provides retrieval-augmented generation across multiple scientific domains.
 Supports built-in knowledge bases + custom user-uploaded documents.
 """

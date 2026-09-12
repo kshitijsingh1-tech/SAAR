@@ -1,5 +1,5 @@
 """
-Saar (सार) — Iterative Reasoning Service
+Saar — Iterative Reasoning Service
 Orchestrates the full SAAR loop: Perceive → Concepts → Relationships → Evidence →
 Confidence → Uncertainty → Questions → User Answers → Belief Update.
 """
@@ -409,7 +409,7 @@ class ReasoningService:
 
         if state.dataset_id == "gait":
             gait_obs_map = {o.feature_name: o.value for o in state.observations}
-            ai_prompt = f"""You are SAAR (सार), an autonomous scientific reasoning engine analyzing a Toddler Gait Screening assessment. Answer the user's question accurately by synthesizing developmental biomechanics, age reference norms, and empirical measured gait values.
+            ai_prompt = f"""You are SAAR, an autonomous scientific reasoning engine analyzing a Toddler Gait Screening assessment. Answer the user's question accurately by synthesizing developmental biomechanics, age reference norms, and empirical measured gait values.
 
 User Question:
 "{question}"
@@ -436,7 +436,7 @@ MANDATORY MEDICAL SAFETY & REASONING GUIDELINES:
    - **Bottom Line**: `**Bottom line:** <1 sentence non-diagnostic takeaway>`.
 """
         else:
-            ai_prompt = f"""You are SAAR (सार), an autonomous scientific reasoning engine. Answer the user's question accurately by synthesizing scientific domain knowledge, causal graph reasoning, and empirical dataset observations.
+            ai_prompt = f"""You are SAAR, an autonomous scientific reasoning engine. Answer the user's question accurately by synthesizing scientific domain knowledge, causal graph reasoning, and empirical dataset observations.
 
 User Question:
 "{question}"

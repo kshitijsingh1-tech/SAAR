@@ -442,7 +442,7 @@ class AgriculturePlugin(BaseDomainPlugin):
         evidence_block = "\n".join(f"  • {ev}" for ev in edge_evidence[:4]) if edge_evidence else ""
 
         prompt = (
-            "You are SAAR (सार), an elite botanical & agronomic scientific reasoning engine.\n"
+            "You are SAAR, an elite botanical & agronomic scientific reasoning engine.\n"
             "Based on the following live scene graph from a visual investigation, synthesize a comprehensive, evidence-backed scientific conclusion.\n\n"
             f"**Detected Visual Entities:**\n{obs_block}\n\n"
             f"**Competing Hypotheses Under Investigation:**\n{hyp_block}\n\n"

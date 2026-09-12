@@ -13,7 +13,8 @@ export function ChatSidebar({
   onSelectSession,
   onNewSession,
   onDeleteSession,
-  theme = 'light'
+  theme = 'light',
+  onReturnToLanding
 }) {
   const [searchFilter, setSearchFilter] = useState('');
 
@@ -43,7 +44,12 @@ export function ChatSidebar({
     <aside className="chatgpt-sidebar">
       {/* Sidebar Header */}
       <div className="sidebar-header-bar">
-        <div className="brand-logo-mini">
+        <button
+          type="button"
+          className="brand-logo-mini-btn"
+          onClick={onReturnToLanding}
+          title="Return to SAAR Landing Page"
+        >
           <img
             src={logoSrc}
             alt="Saar Logo"
@@ -54,7 +60,7 @@ export function ChatSidebar({
             alt="SAAR"
             className="saar-brand-wordmark-img"
           />
-        </div>
+        </button>
 
         <button className="sidebar-close-btn" onClick={onClose} title="Close sidebar">
           <PanelLeftClose size={17} />

@@ -8,21 +8,40 @@ import { ChatSidebar } from './components/ChatSidebar';
 import { ChatGPTView } from './components/ChatGPTView';
 import { ToolCanvasDrawer } from './components/ToolCanvasDrawer';
 import { HelpDrawer } from './components/HelpDrawer';
+import { LandingPage } from './components/LandingPage';
 import monsteraInvestigation from './data/monsteraInvestigation.json';
 
 export default function App() {
-  // Theme State (Dark / Light Mode with localStorage persistence)
+  // Theme State (Supports Pure Light, Pure Dark, and Lavender White with Purple Tint)
   const [theme, setTheme] = useState(() => {
     try {
       const saved = localStorage.getItem('saar_theme');
-      if (saved === 'dark' || saved === 'light') return saved;
+      if (['light', 'dark', 'purple'].includes(saved)) return saved;
     } catch (e) {}
-    return 'light';
+    return 'dark';
   });
 
-  const handleToggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  const handleSelectTheme = useCallback((newTheme) => {
+    setTheme(newTheme);
+    try {
+      localStorage.setItem('saar_theme', newTheme);
+    } catch (e) {}
   }, []);
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const cycle = ['dark', 'light', 'purple'];
+      const nextIdx = (cycle.indexOf(prev) + 1) % cycle.length;
+      const nextTheme = cycle[nextIdx];
+      try {
+        localStorage.setItem('saar_theme', nextTheme);
+      } catch (e) {}
+      return nextTheme;
+    });
+  }, []);
+
+  // View Mode: 'landing' (Futuristic Showcase) or 'studio' (Active Investigation Workspace)
+  const [viewMode, setViewMode] = useState('landing');
 
   // Sidebar & Tool Drawer Visibility
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -870,7 +889,7 @@ export default function App() {
       { step: 'Tool Verification', finding: 'Hydrological leaching simulation confirms excessive moisture triggered root hypoxia.' }
     ]).map((m) => `<li><strong>[${m.step || 'Step'}]</strong>: ${m.finding || m.content || m}</li>`).join('\n')}
   </ol>
-  <div class="footer">Generated autonomously by SAAR (सार) — Visual Scientific Reasoning Engine</div>
+  <div class="footer">Generated autonomously by SAAR — Visual Scientific Reasoning Engine</div>
 </body>
 </html>`;
 
@@ -938,7 +957,7 @@ export default function App() {
         txt += `${active.verdict || active.conclusion || active.summary}\n\n`;
       }
       txt += `================================================================================\n`;
-      txt += `Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine\n`;
+      txt += `Exported autonomously by SAAR — Visual Scientific Reasoning Engine\n`;
 
       navigator.clipboard.writeText(txt);
       alert("📋 Complete conversation transcript copied to your clipboard!");
@@ -1013,7 +1032,7 @@ export default function App() {
   </div>
   <div class="dialogue-thread">${turnsHtml}</div>
   ${verdictHtml}
-  <div class="footer-note">Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine</div>
+  <div class="footer-note">Exported autonomously by SAAR — Visual Scientific Reasoning Engine</div>
 </body>
 </html>`;
 
@@ -1107,6 +1126,39 @@ export default function App() {
     }, 60000);
   };
 
+  // Handle transitions between Landing Page and Studio
+  const handleEnterStudio = (initialQuery = null, domain = null, presetId = null, attachedFile = null) => {
+    if (domain) {
+      setSelectedDomain(domain);
+    }
+    setViewMode('studio');
+    if (initialQuery) {
+      if (presetId) {
+        handleSelectScenario(domain || selectedDomain, presetId, initialQuery);
+      } else if (attachedFile) {
+        handleSendMessage(initialQuery, [attachedFile]);
+      } else {
+        handleSendMessage(initialQuery);
+      }
+    }
+  };
+
+  const handleReturnToLanding = () => {
+    setViewMode('landing');
+  };
+
+  // If in Landing Mode, render the futuristic Landing Page
+  if (viewMode === 'landing') {
+    return (
+      <LandingPage
+        onEnterStudio={handleEnterStudio}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
+        onSelectTheme={handleSelectTheme}
+      />
+    );
+  }
+
   return (
     <div className={`saar-chatgpt-layout ${theme}`}>
       {/* 1. Left Collapsible History Sidebar */}
@@ -1119,6 +1171,7 @@ export default function App() {
         onNewSession={handleNewSession}
         onDeleteSession={handleDeleteSession}
         theme={theme}
+        onReturnToLanding={handleReturnToLanding}
       />
 
       {/* 2. Central ChatGPT Conversation View */}
@@ -1144,6 +1197,8 @@ export default function App() {
           onExportChat={handleExportChat}
           theme={theme}
           onToggleTheme={handleToggleTheme}
+          onSelectTheme={handleSelectTheme}
+          onReturnToLanding={handleReturnToLanding}
           hasSensorData={hasSensorData}
         />
       </main>

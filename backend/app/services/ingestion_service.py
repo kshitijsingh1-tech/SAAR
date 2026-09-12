@@ -1,5 +1,5 @@
 """
-Saar (सार) — Data Ingestion Service
+Saar — Data Ingestion Service
 Handles CSV/XLSX upload, schema detection, column profiling, and entity/feature extraction.
 Pure deterministic — NO LLM calls. Statistics only.
 """

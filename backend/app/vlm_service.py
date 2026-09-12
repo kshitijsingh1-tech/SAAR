@@ -766,7 +766,7 @@ Structure:
             for gemini_model in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
                 payload = {
-                    "contents": [{"parts": [{"text": f"You are SAAR (सार), an elite scientific reasoning engine. Synthesize an evidence-backed answer with clear markdown tables, step-by-step causal mechanisms, and bold takeaways.\n\n{prompt}"}]}],
+                    "contents": [{"parts": [{"text": f"You are SAAR, an elite scientific reasoning engine. Synthesize an evidence-backed answer with clear markdown tables, step-by-step causal mechanisms, and bold takeaways.\n\n{prompt}"}]}],
                     "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
                 }
                 try:
@@ -791,7 +791,7 @@ Structure:
                 payload = {
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": "You are SAAR (सार), an elite scientific reasoning engine. You explain complex causal mechanisms, statistical evidence, correlations, and hypotheses clearly, concisely, and with structured markdown formatting (using executive summaries, markdown tables, step-by-step causal pathways, and bold takeaways)."},
+                        {"role": "system", "content": "You are SAAR, an elite scientific reasoning engine. You explain complex causal mechanisms, statistical evidence, correlations, and hypotheses clearly, concisely, and with structured markdown formatting (using executive summaries, markdown tables, step-by-step causal pathways, and bold takeaways)."},
                         {"role": "user", "content": prompt}
                     ],
                     "temperature": max(0.1, min(1.0, temperature)),

@@ -1,5 +1,5 @@
 """
-Saar (सार) — Deterministic Analytics Service
+Saar — Deterministic Analytics Service
 Computes correlations, trends, anomalies, and intervention effects.
 Pure statistics — NO LLM calls. Math only.
 """

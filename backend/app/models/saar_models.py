@@ -1,5 +1,5 @@
 """
-Saar (सार) — Core Domain-Agnostic Data Models
+Saar — Core Domain-Agnostic Data Models
 Generic Entity, Feature, Observation, Concept, Relationship, and Evidence models.
 These are NOT tied to any specific domain (agriculture, infrastructure, etc.)
 """
