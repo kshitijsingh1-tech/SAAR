@@ -333,7 +333,7 @@ def gait_analyze_sample(child_age_months: int = Query(24, ge=6, le=120)):
     pipeline = get_gait_pipeline()
     result = pipeline.analyze_video_file(
         video_path=sample_path,
-        filename="sample_toddler_walk.mp4",
+        filename="Toddler_walking_in_blue_dress.mp4",
         child_age_months=child_age_months
     )
     _gait_assessments[result.assessment_id] = result
