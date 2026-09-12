@@ -260,9 +260,11 @@ def saar_knowledge_query(payload: Dict[str, Any]):
 try:
     from .gait.pipeline import GaitAnalysisPipeline
     from .gait.schemas import CanonicalGaitResult
-except ImportError:
+except Exception as _gait_err:
     GaitAnalysisPipeline = None
     CanonicalGaitResult = None
+    print(f"[Main] Notice: GaitAnalysisPipeline unavailable: {_gait_err}")
+
 
 _gait_pipeline = None
 _gait_assessments: Dict[str, Any] = {}
