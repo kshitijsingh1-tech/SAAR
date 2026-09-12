@@ -83,3 +83,6 @@ GEMINI.md
 
 # Temp test dumps
 test_image_response.json
+
+# MediaPipe & ML Models
+*.task

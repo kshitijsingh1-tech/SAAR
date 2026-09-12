@@ -300,8 +300,13 @@ async def gait_analyze_video(
 def gait_sample_video():
     """Stream pre-bundled sample toddler walking video."""
     import os
-    sample_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "toddle-ai", "video", "Toddler_walking_in_blue_dress_202606280214.mp4"))
-    if not os.path.exists(sample_path):
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "gait", "assets", "sample_toddler_walk.mp4")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "app", "gait", "assets", "sample_toddler_walk.mp4")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "toddle-ai", "video", "Toddler_walking_in_blue_dress_202606280214.mp4"))
+    ]
+    sample_path = next((c for c in candidates if os.path.exists(c)), None)
+    if not sample_path:
         raise HTTPException(status_code=404, detail="Sample video file not found.")
     return FileResponse(sample_path, media_type="video/mp4")
 
@@ -310,14 +315,19 @@ def gait_sample_video():
 def gait_analyze_sample(child_age_months: int = Query(24, ge=6, le=120)):
     """Run analysis on pre-bundled sample toddler walking video."""
     import os
-    sample_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "toddle-ai", "video", "Toddler_walking_in_blue_dress_202606280214.mp4"))
-    if not os.path.exists(sample_path):
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "gait", "assets", "sample_toddler_walk.mp4")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "app", "gait", "assets", "sample_toddler_walk.mp4")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "toddle-ai", "video", "Toddler_walking_in_blue_dress_202606280214.mp4"))
+    ]
+    sample_path = next((c for c in candidates if os.path.exists(c)), None)
+    if not sample_path:
         raise HTTPException(status_code=404, detail="Sample video not found.")
 
     pipeline = get_gait_pipeline()
     result = pipeline.analyze_video_file(
         video_path=sample_path,
-        filename="Toddler_walking_in_blue_dress.mp4",
+        filename="sample_toddler_walk.mp4",
         child_age_months=child_age_months
     )
     _gait_assessments[result.assessment_id] = result

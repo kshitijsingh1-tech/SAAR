@@ -17,17 +17,35 @@ class PoseEstimator:
 
     def __init__(self, model_path: Optional[str] = None):
         if not model_path:
-            # Look for model in standard locations
+            # Look for model in standard locations or auto-download
             current_dir = Path(__file__).resolve().parent
+            default_model_dir = current_dir.parent / "models"
+            default_model_path = default_model_dir / "pose_landmarker_full.task"
+            
             candidates = [
-                current_dir.parent.parent.parent.parent / "toddle-ai" / "app" / "src" / "main" / "assets" / "pose_landmarker_full.task",
+                default_model_path,
                 current_dir / "models" / "pose_landmarker_full.task",
-                Path("c:/Users/AAyush/OneDrive/Desktop/saar/toddle-ai/app/src/main/assets/pose_landmarker_full.task")
+                current_dir.parent.parent.parent / "models" / "pose_landmarker_full.task"
             ]
             for c in candidates:
                 if c.exists():
                     model_path = str(c.resolve())
                     break
+
+            if not model_path or not os.path.exists(model_path):
+                # Auto-download model from official Google MediaPipe repository
+                try:
+                    import urllib.request
+                    default_model_dir.mkdir(parents=True, exist_ok=True)
+                    model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task"
+                    urllib.request.urlretrieve(model_url, str(default_model_path))
+                    if default_model_path.exists():
+                        model_path = str(default_model_path.resolve())
+                except Exception as dl_err:
+                    raise FileNotFoundError(
+                        f"MediaPipe pose landmarker model not found and auto-download failed: {dl_err}. "
+                        f"Please ensure network access or place 'pose_landmarker_full.task' in {default_model_dir}."
+                    )
 
         if not model_path or not os.path.exists(model_path):
             raise FileNotFoundError(f"MediaPipe pose landmarker model not found at {model_path}")
