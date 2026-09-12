@@ -178,6 +178,7 @@ async def saar_general_ask(payload: Dict[str, Any]):
     return res
 
 @app.post("/api/dictionary/lookup")
+@app.post("/dictionary/lookup")
 async def dictionary_lookup(payload: Dict[str, Any]):
     """On-demand scientific term lookup."""
     term = payload.get("term", "") or payload.get("word", "")
@@ -188,9 +189,10 @@ async def dictionary_lookup(payload: Dict[str, Any]):
     return await terminology_service.lookup_term_async(term, domain, context)
 
 @app.post("/api/dictionary/glossary")
+@app.post("/dictionary/glossary")
 async def dictionary_glossary_endpoint(payload: Dict[str, Any]):
     """Extract grounded terms from screen text with instantaneous domain glossary return."""
-    screen_texts = payload.get("screen_texts", [])
+    screen_texts = payload.get("screen_texts") or payload.get("texts") or []
     domain = payload.get("domain", "agriculture")
     if not isinstance(domain, str):
         domain = "agriculture"
@@ -614,4 +616,20 @@ Exported autonomously by SAAR (सार) — Visual Scientific Reasoning Engine
         "Content-Type": media_type
     }
     return Response(content=body_content.encode("utf-8"), media_type=media_type, headers=headers)
+
+
+# ------------------------------------------------------------------
+# Scientific Dictionary & Glossary Endpoints (GET compatibility)
+# ------------------------------------------------------------------
+
+@app.get("/api/dictionary/lookup")
+@app.get("/dictionary/lookup")
+def lookup_word_get(word: str = Query(..., description="Scientific term or word to look up")):
+    """Look up a word or scientific term with definitions and diagnostic domain context."""
+    if not word or not word.strip():
+        raise HTTPException(status_code=400, detail="Word parameter is required.")
+    return terminology_service.lookup_word(word.strip())
+
+
+
 

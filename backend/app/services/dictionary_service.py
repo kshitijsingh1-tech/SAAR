@@ -383,5 +383,41 @@ Return JSON with keys: term, phonetic, domain, definition, investigation_context
             "related_nodes": ["Causal Graph", "Empirical Observation", "Bayesian Update"]
         }
 
+    def lookup_word(self, word: str, domain: str = "general") -> Dict[str, Any]:
+        """Synchronous word lookup compatibility helper."""
+        clean_term = (word or "").strip()
+        if not clean_term:
+            return {"error": "Word parameter is required."}
+
+        clean_domain = (domain or "general").lower()
+        for d_key, t_list in PRELOADED_DOMAIN_TERMS.items():
+            for item in t_list:
+                if item["term"].lower() == clean_term.lower():
+                    return item
+
+        affix_desc = None
+        for pattern, desc in SCIENTIFIC_AFFIX_MAP:
+            if re.match(pattern, clean_term.lower()):
+                affix_desc = desc
+                break
+
+        return {
+            "term": clean_term.title(),
+            "phonetic": f"/{clean_term.lower()}/",
+            "domain": clean_domain.capitalize(),
+            "definition": affix_desc or f"Scientific parameter or diagnostic entity evaluating '{clean_term}' in empirical models.",
+            "investigation_context": f"Evaluated within the SAAR causal graph.",
+            "diagnostic_indicator": "Active indicator in observational telemetry logs.",
+            "related_nodes": ["Causal Graph", "Empirical Observation"]
+        }
+
+    def extract_glossary_from_screen(self, screen_texts=None, domain=None, graph_nodes=None) -> List[Dict[str, Any]]:
+        """Synchronous screen glossary extraction compatibility helper."""
+        clean_domain = (domain or "agriculture").lower()
+        if clean_domain not in PRELOADED_DOMAIN_TERMS:
+            clean_domain = "agriculture"
+        return PRELOADED_DOMAIN_TERMS.get(clean_domain, PRELOADED_DOMAIN_TERMS["agriculture"])
+
 
 terminology_service = TerminologyService()
+dictionary_service = terminology_service
