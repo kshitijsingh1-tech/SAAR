@@ -304,7 +304,7 @@ export function LandingPage({
             </div>
             <div className="landing-brand-text">
               <span className="landing-brand-title">SAAR</span>
-              <span className="landing-brand-sub">EPISTEMIC REASONER</span>
+              <span className="landing-brand-sub">DISCOVER WHAT MATTERS</span>
             </div>
           </div>
 
@@ -390,18 +390,15 @@ export function LandingPage({
               className="hero-giant-wordmark-img"
             />
           </div>
-
-          {/* Requested Punchy Motto Under Logo */}
-          <div className="hero-motto-banner">
-            <span className="motto-text">DISCOVER WHAT MATTERS</span>
-          </div>
         </div>
 
-        {/* Minimal Hero Title */}
+        {/* Main Brand Tagline */}
         <h1 className="hero-heroic-title">
-          Visual Scientific Reasoning. <br />
-          <span className="gradient-text-glow">Beyond Black-Box Hallucination.</span>
+          <span className="gradient-text-glow">DISCOVER WHAT MATTERS</span>
         </h1>
+        <p className="hero-heroic-sub">
+          Visual Scientific Reasoning • Beyond Black-Box Hallucination
+        </p>
 
         {/* Action Buttons */}
         <div className="hero-heroic-actions">
