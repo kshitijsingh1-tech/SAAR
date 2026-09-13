@@ -605,18 +605,61 @@ MANDATORY GUIDELINES:
                 first_len = len(next(iter(channels.values())))
                 time_labels = [f"Day {i}" for i in range(first_len)]
 
+            # Dynamic extraction of milestones from ANY dataset containing stages, interventions, or images
+            ts_groups: Dict[str, Dict[str, Any]] = {}
             for o in state.observations:
-                feat_lower = o.feature_name.lower()
-                if "intervention" in feat_lower or "stage" in feat_lower:
-                    val_str = str(o.value).strip()
-                    if val_str and val_str.lower() not in ("none", "0", "false", ""):
-                        m_key = f"{o.timestamp}_{val_str}"
-                        if m_key not in seen_milestones:
-                            seen_milestones.add(m_key)
-                            milestones.append({
-                                "timestamp": o.timestamp or "",
-                                "label": val_str.replace("_", " ").title()
-                            })
+                ts = o.timestamp or ""
+                if ts not in ts_groups:
+                    ts_groups[ts] = {}
+                ts_groups[ts][o.feature_name] = o.value
+
+            palette = ['#0284c7', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4']
+            m_count = 0
+            for ts, vals in ts_groups.items():
+                img_url = None
+                stage_val = None
+                intervention_val = None
+                day_val = None
+
+                for k, v in vals.items():
+                    k_lower = k.lower()
+                    v_str = str(v).strip()
+                    if not v_str or v_str.lower() in ("none", "0", "false", "nan", "null"):
+                        continue
+                    if any(sub in k_lower for sub in ("image", "photo", "photograph", "url", "visual")) and (v_str.startswith("/") or v_str.startswith("http") or v_str.startswith("data:")):
+                        img_url = v_str
+                    elif any(sub in k_lower for sub in ("stage", "phase", "growth_stage", "development")):
+                        stage_val = v_str.replace("_", " ").title()
+                    elif any(sub in k_lower for sub in ("intervention", "milestone", "event", "action")):
+                        intervention_val = v_str.replace("_", " ").title()
+
+                # Also parse day number from timestamp (e.g. "Day 10 (2018-09-15)" -> 10.0)
+                day_match = re.search(r"Day\s*(\d+(?:\.\d+)?)", ts, re.IGNORECASE)
+                if day_match:
+                    try:
+                        day_val = float(day_match.group(1))
+                    except ValueError:
+                        day_val = float(m_count)
+                elif day_val is None:
+                    day_val = float(m_count)
+
+                if img_url or (intervention_val and intervention_val.lower() not in ("none", "0", "false")) or (stage_val and stage_val.lower() not in ("none", "normal")):
+                    m_label = intervention_val or stage_val or f"Milestone at {ts}"
+                    date_match = re.search(r"\((\d{4}-\d{2}-\d{2})\)", ts)
+                    obs_date = date_match.group(1) if date_match else ""
+
+                    milestones.append({
+                        "day": day_val,
+                        "timestamp": ts,
+                        "label": m_label,
+                        "badge": f"DAY {int(day_val)}" if day_val == int(day_val) else f"DAY {day_val}",
+                        "color": palette[m_count % len(palette)],
+                        "stage": stage_val or "Longitudinal Stage",
+                        "date": obs_date,
+                        "url": img_url,
+                        "description": f"Longitudinal observation recorded at {ts}. {f'Developmental Stage: {stage_val}.' if stage_val else ''} {f'Intervention: {intervention_val}.' if intervention_val else ''}"
+                    })
+                    m_count += 1
 
             telemetry = {
                 "title": f"Telemetry Array: {state.dataset_profile.filename or 'Uploaded Dataset'}",

@@ -7,7 +7,6 @@ import {
   BookA, BookOpen, Info, X, MessageSquare, HelpCircle, ChevronRight,
   UploadCloud, FileSpreadsheet, Database, RefreshCw, Camera, Crosshair, ExternalLink
 } from 'lucide-react';
-import { ROSE_CHIP_BUDDING_MILESTONES } from '../data/roseMilestones';
 
 const Plot = createPlotlyComponent(Plotly);
 
@@ -93,16 +92,6 @@ export function PlotlyGraphViewer({
           botanicalDetails: m.botanicalDetails || ''
         };
       });
-
-      // If active telemetry has no custom milestones, detect if this is an agricultural rose chip budding or botanical dataset
-      const isRoseDataset = domain.includes('agri') ||
-        (activeTelemetry.title && activeTelemetry.title.toLowerCase().includes('rose')) ||
-        channelKeys.some((k) => k.includes('cambial') || k.includes('callus') || k.includes('parafilm') || k.includes('scion')) ||
-        timestamps.length >= 100;
-
-      if (milestones.length === 0 && isRoseDataset) {
-        milestones = ROSE_CHIP_BUDDING_MILESTONES.map((m) => ({ ...m }));
-      }
 
       // Derive dynamic KPIs from statistical relationships
       const relationships = saarData?.relationships || activeInvestigation?.relationships || [];

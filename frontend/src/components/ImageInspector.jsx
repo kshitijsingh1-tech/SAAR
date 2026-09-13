@@ -8,7 +8,6 @@ import {
 import { VideoTimelineScrubber } from './VideoTimelineScrubber';
 import { PlantCareCard } from './PlantCareCard';
 import { ToddlerPostureCard } from './ToddlerPostureCard';
-import { ROSE_CHIP_BUDDING_MILESTONES } from '../data/roseMilestones';
 
 // Clean black, white & signature blue palette for visual anchors & bounding boxes
 const ANCHOR_COLORS = [
@@ -99,7 +98,8 @@ export const ImageInspector = ({
   onAskQuery,
   onOpenGlossary,
   domain,
-  investigationData
+  investigationData,
+  milestones: propMilestones = []
 }) => {
   const [urlInput, setUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -360,11 +360,18 @@ export const ImageInspector = ({
     preset?.image ||
     null;
 
+  const allMilestones = useMemo(() => {
+    const fromProps = Array.isArray(propMilestones) ? propMilestones : [];
+    const fromInv = investigationData?.telemetry?.milestones || investigationData?.milestones || [];
+    const raw = fromProps.length > 0 ? fromProps : fromInv;
+    return raw.filter((m) => Boolean(m && (m.url || m.image)));
+  }, [propMilestones, investigationData]);
+
   const activeMilestone = useMemo(() => {
     const currentUrl = customImageUrl || displayImage;
     if (!currentUrl || typeof currentUrl !== 'string') return null;
-    return ROSE_CHIP_BUDDING_MILESTONES.find((m) => currentUrl.includes(m.url) || currentUrl.endsWith(m.url)) || null;
-  }, [customImageUrl, displayImage]);
+    return allMilestones.find((m) => (m.url && (currentUrl.includes(m.url) || currentUrl.endsWith(m.url))) || (m.image && currentUrl.includes(m.image))) || null;
+  }, [customImageUrl, displayImage, allMilestones]);
 
   // Unified upload dispatcher (supports both photos and video clips)
   const handleUpload = (fileDataOrFile, url) => {
@@ -657,49 +664,51 @@ export const ImageInspector = ({
             <span>URL</span>
           </button>
 
-          {/* Milestone Photograph Dropdown Selector */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            background: 'var(--bg-dark)',
-            padding: '0.2rem 0.5rem',
-            borderRadius: '6px',
-            border: activeMilestone ? '1.5px solid var(--primary)' : '1px solid var(--border-color)',
-            boxShadow: activeMilestone ? '0 0 8px rgba(56, 189, 248, 0.2)' : 'none'
-          }}>
-            <Sprout size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: '0.7rem', fontWeight: '600', color: 'var(--text-muted)' }}>
-              Milestone:
-            </span>
-            <select
-              value={activeMilestone ? activeMilestone.url : ''}
-              onChange={(e) => {
-                const targetUrl = e.target.value;
-                if (targetUrl) {
-                  handleUpload(null, targetUrl);
-                }
-              }}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--text-main)',
-                fontSize: '0.72rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                outline: 'none',
-                maxWidth: '185px'
-              }}
-              title="Select authentic photographic milestone from 192-day rose chip budding journey"
-            >
-              <option value="" disabled>Select milestone photo...</option>
-              {ROSE_CHIP_BUDDING_MILESTONES.map((m, idx) => (
-                <option key={idx} value={m.url}>
-                  {m.badge}: {m.label.replace(/^Day \d+(\.\d+)?:?\s*/i, '')} ({m.date})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Dynamic Milestone Photograph Dropdown: only rendered if dataset/investigation provides milestone photos */}
+          {allMilestones.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              background: 'var(--bg-dark)',
+              padding: '0.2rem 0.5rem',
+              borderRadius: '6px',
+              border: activeMilestone ? '1.5px solid var(--primary)' : '1px solid var(--border-color)',
+              boxShadow: activeMilestone ? '0 0 8px rgba(56, 189, 248, 0.2)' : 'none'
+            }}>
+              <Sprout size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.7rem', fontWeight: '600', color: 'var(--text-muted)' }}>
+                Milestone:
+              </span>
+              <select
+                value={activeMilestone ? (activeMilestone.url || activeMilestone.image) : ''}
+                onChange={(e) => {
+                  const targetUrl = e.target.value;
+                  if (targetUrl) {
+                    handleUpload(null, targetUrl);
+                  }
+                }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-main)',
+                  fontSize: '0.72rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  maxWidth: '185px'
+                }}
+                title="Select photographic milestone from active dataset telemetry"
+              >
+                <option value="" disabled>Select milestone photo...</option>
+                {allMilestones.map((m, idx) => (
+                  <option key={idx} value={m.url || m.image}>
+                    {m.badge || `DAY ${m.day}`}: {m.label ? m.label.replace(/^Day \d+(\.\d+)?:?\s*/i, '') : `Stage ${idx + 1}`} {m.date ? `(${m.date})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Bounding Box Master Toggle */}
           <button

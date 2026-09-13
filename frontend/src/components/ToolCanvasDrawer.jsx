@@ -292,6 +292,7 @@ export function ToolCanvasDrawer({
                 onOpenGlossary={() => onSelectTool('dictionary')}
                 domain={selectedDomain}
                 investigationData={investigationData}
+                milestones={saarData?.telemetry?.milestones || investigationData?.telemetry?.milestones || investigationData?.milestones || []}
               />
             </div>
 

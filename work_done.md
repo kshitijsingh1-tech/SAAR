@@ -164,42 +164,43 @@ In [`frontend/src/App.jsx:812`](file:///d:/bytebuild/frontend/src/App.jsx#L812) 
 
 ---
 
-## 8. Authentic Photographic Milestones & Bi-Directional Visual Grounding
+## 8. Zero Hardcoding: Dynamic Dataset-Driven Milestones & Bi-Directional Visual Grounding
 - **Date Solved**: 2026-09-13
 - **Primary Files**:
-  - [`frontend/src/data/roseMilestones.js`](file:///d:/bytebuild/frontend/src/data/roseMilestones.js)
+  - [`backend/app/services/reasoning_service.py`](file:///d:/bytebuild/backend/app/services/reasoning_service.py)
+  - [`rose_chip_budding_graft_journey_sensors.csv`](file:///d:/bytebuild/rose_chip_budding_graft_journey_sensors.csv)
   - [`frontend/src/components/PlotlyGraphViewer.jsx`](file:///d:/bytebuild/frontend/src/components/PlotlyGraphViewer.jsx)
   - [`frontend/src/components/ImageInspector.jsx`](file:///d:/bytebuild/frontend/src/components/ImageInspector.jsx)
   - [`frontend/src/components/ToolCanvasDrawer.jsx`](file:///d:/bytebuild/frontend/src/components/ToolCanvasDrawer.jsx)
   - [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
   - [`backend/app/vlm_service.py`](file:///d:/bytebuild/backend/app/vlm_service.py)
 
-### Problem Description & User Goal
-1. The user provided the authentic Wikimedia Commons rose chip budding propagation series (`User: Eiku`, 2018–2019) containing 8 documented chronological photographs (Day 0 through Day 192).
-2. The user requested:
-   - On the sensor telemetry graph (`PlotlyGraphViewer.jsx`), clicking the labelled milestones on the timeline or photostrip must display those authentic photographs and botanical evidence cards.
-   - On the Image Analysis screen (`ImageInspector.jsx`), a dropdown list must allow users to switch between any milestone photograph directly on the screen without leaving the tool.
-   - Switching or inspecting milestone photos must NOT wipe or reset active CSV dataset telemetry.
+### Problem Description & User Critique
+1. The initial implementation created a static file `frontend/src/data/roseMilestones.js` containing hardcoded rose chip budding milestones and imported it directly into UI presentation components.
+2. The user rightly flagged: *"hardcoded whyy, our system might be used for other plants as well"*.
+3. Per `AGENTS.md` directive §1 ("Zero Hardcoded Scenario / Preset Logic in UI Components") and §4 ("Single Source of Truth"), hardcoding species-specific milestones in UI presentation components violates architectural invariants and prevents dynamic scaling to other plants (e.g. apple grafting, tomato trials, grapevine propagation) or non-botanical domains.
 
 ### Root Causes
-1. **Telemetry Clearing on Image Switch**: In `App.jsx`, `onPasteImageUrl` previously called `setSaarData(null)` unconditionally, discarding the 192-day CSV sensor stream when opening an image.
-2. **Missing Local Asset Resolution**: In `backend/app/vlm_service.py`, `_prepare_image_data` only handled `http://`, `https://`, and raw base64 strings, returning `None` for local relative public paths (`/rose_graft_milestones/...`).
-3. **No Milestone Photo Strip or Selector**: Neither `PlotlyGraphViewer.jsx` nor `ImageInspector.jsx` possessed UI controls to browse the 8 documented developmental photographic milestones.
+- Hardcoding static milestone dictionaries in the frontend presentation layer instead of dynamically extracting them from the uploaded dataset or backend telemetry data contract.
 
 ### Implemented Solution & Non-Regression Invariants
-1. **Curated & Downloaded High-Res Local Assets**:
-   - Downloaded all 8 authentic Wikimedia Commons images locally into `frontend/public/rose_graft_milestones/` (`day_000_just_grafted.jpg` to `day_192_union_healed_front.jpg`) to ensure zero-latency, offline-resilient loading without Wikimedia HTTP 429 rate-limiting.
-   - Created `frontend/src/data/roseMilestones.js` containing timestamps, stage tags, descriptions, and botanical telemetry correlations.
-2. **Interactive Milestone Photostrip & Preview in `PlotlyGraphViewer.jsx`**:
-   - Rendered a horizontal scrollable photostrip (`Developmental Milestones & Authentic Photographic Evidence`) with real thumbnails, day badges, and stage indicators.
-   - Clicking any milestone badge or timeline marker opens an inspection card with full photo preview, botanical details, an **"Inquire in Chat"** button, and an **"Open in Image Analysis Screen"** button.
-3. **Milestone Image Dropdown in `ImageInspector.jsx`**:
-   - Added a `Milestone:` dropdown selector directly in the Image Analysis toolbar.
-   - Selecting any milestone dynamically displays the authentic photo on screen, renders a botanical context ribbon, and triggers autonomous visual grounding.
-4. **State Isolation & Telemetry Preservation**:
-   - In `App.jsx` and `ToolCanvasDrawer.jsx`, `onPasteImageUrl` now supports `preserveTelemetry=true`, ensuring that switching or inspecting milestone photos never wipes active CSV telemetry.
-5. **Backend Local Path Support**:
-   - Updated `_prepare_image_data` in `backend/app/vlm_service.py` to resolve and read local files from `frontend/public/` when passed relative URLs, supplying raw bytes directly to Gemini, Groq, or OpenAI VLMs.
+1. **Completely Deleted Static File**:
+   - Deleted `frontend/src/data/roseMilestones.js`.
+   - Removed all static milestone imports and species-specific conditionals (`isRoseDataset`, etc.) from both `PlotlyGraphViewer.jsx` and `ImageInspector.jsx`.
+2. **Dynamic Dataset-Driven Ingestion in Backend (`reasoning_service.py`)**:
+   - In `backend/app/services/reasoning_service.py`, `get_report` now dynamically analyzes dataset observations:
+     - Detects image columns (`photograph_url`, `image`, `photo`, `visual`) and stage/intervention columns (`growth_stage`, `stage`, `phase`, `intervention`, `milestone`).
+     - Extracts milestones `{ day, timestamp, label, badge, color, stage, date, url, description }` dynamically from the active dataset rows.
+     - Works universally for ANY plant or infrastructure dataset uploaded by users.
+3. **Dataset as Empirical Source of Truth**:
+   - Added the `photograph_url` column directly into `rose_chip_budding_graft_journey_sensors.csv` mapping authentic Wikimedia Commons photographic records to their exact recording dates.
+4. **Pure Presentation Layer in UI**:
+   - [`PlotlyGraphViewer.jsx`](file:///d:/bytebuild/frontend/src/components/PlotlyGraphViewer.jsx) strictly consumes `activeTelemetry.milestones`. If milestones exist, it renders the photostrip and inspection card; if none exist, it displays an honest clean state.
+   - [`ImageInspector.jsx`](file:///d:/bytebuild/frontend/src/components/ImageInspector.jsx) dynamically receives `milestones` as a prop and only displays the `Milestone:` selector dropdown if milestone images are present in the active dataset/investigation.
+5. **State Isolation & Telemetry Preservation**:
+   - In `App.jsx` and `ToolCanvasDrawer.jsx`, `onPasteImageUrl` supports `preserveTelemetry=true`, ensuring switching milestone photographs does not erase active CSV telemetry.
+6. **Local Asset Architecture & Backend VLM Resolution**:
+   - All 8 images reside in `frontend/public/rose_graft_milestones/` for instant, offline-resilient loading. `vlm_service.py` resolves local filesystem paths to feed raw bytes directly to Gemini, Groq, or OpenAI VLMs.
 
 ---
 
