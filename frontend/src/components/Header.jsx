@@ -124,7 +124,7 @@ export function Header({
           onClick={() => onTabChange('rag')}
         >
           <BookOpen size={14} />
-          <span>Scientific References</span>
+          <span>References</span>
         </button>
 
       </nav>

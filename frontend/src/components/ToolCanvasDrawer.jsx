@@ -142,7 +142,7 @@ export function ToolCanvasDrawer({
     { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
     { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
     { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-    { id: 'rag', label: isPediatricsDomain ? 'Clinical References' : isSportsDomain ? 'Sports References' : 'Scientific References', icon: <BookOpen size={15} /> },
+    { id: 'rag', label: 'References', icon: <BookOpen size={15} /> },
     { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
   ];
 

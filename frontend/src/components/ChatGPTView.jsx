@@ -1271,7 +1271,7 @@ export function ChatGPTView({
                                 title="Open Peer-Reviewed Scientific References"
                               >
                                 <BookOpen size={12} className="text-indigo" />
-                                <span>{isPed ? "Clinical References" : "Scientific References"}</span>
+                                <span>References</span>
                                 <ArrowRight size={10} />
                               </button>
                             </>

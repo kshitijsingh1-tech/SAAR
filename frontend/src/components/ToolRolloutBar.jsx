@@ -59,8 +59,8 @@ export function ToolRolloutBar({
     },
     {
       id: 'rag',
-      label: 'Scientific References',
-      tooltip: 'Peer-Reviewed Scientific Literature & Evidence References',
+      label: 'References',
+      tooltip: 'Peer-Reviewed Literature & Evidence References',
       icon: <BookOpen size={17} />,
       gradient: 'linear-gradient(135deg, #6366f1, #4f46e5)',
       glow: 'rgba(99, 102, 241, 0.45)'
