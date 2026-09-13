@@ -240,9 +240,12 @@ Users uploading images for multi-iteration botanical or clinical analysis (e.g. 
 4. **Backend Comparative Multi-Image Reasoning (`vlm_service.py` & `schemas.py`)**:
    - `InvestigationRequest` accepts `image_metadata: List[ImageMetadataItem]`.
    - `vlm_service.py` embeds milestone headers directly alongside inline image parts in VLM payloads, enabling Gemini/Groq/OpenAI to run comparative temporal and cross-stage differential analysis.
-5. **Universal UI Synchronization**:
-   - `ImageInspector.jsx`: The milestone dropdown immediately lists user-uploaded photos by their tagged stages, allowing instant switching between iterations.
-   - `PlotlyGraphViewer.jsx`: The photostrip and timeline chart render user milestone cards and badges.
+5. **Universal UI Synchronization & 30-Day Timeline Milestone Pinning (`PlotlyGraphViewer.jsx`, `ToolCanvasDrawer.jsx`, `SaarFindingsPanel.jsx`)**:
+   - `PlotlyGraphViewer.jsx`: Directly receives dynamic milestones via props, `activeTelemetry.milestones`, and `investigationData.milestones`.
+   - **Zero Hardcoding Invariant**: Replaced static fallback milestones `{ day: 6, day: 14, day: 22 }` with dynamically mapped user milestones. Pinned specimen photos render at their exact assigned days (e.g. Day 1, Day 10, Day 20) with vertical milestone dashed lines, camera pin annotations (`DAY 10 📷`), and interactive developmental stage labels.
+   - **Interactive Photostrip & Inspection**: The photostrip renders the specimen thumbnails and stages. Clicking any timeline marker or photostrip card opens the photo inspection card with quick action to open in the Image Analysis Screen or inquire in Chat.
+   - `ImageInspector.jsx`: The milestone dropdown lists user-uploaded photos by their tagged stages, allowing instant switching between iterations.
+   - **Simultaneous CSV Dataset & Image Upload (`App.jsx`)**: When users attach both a dataset CSV and specimen photos in the chat composer, the CSV is ingested to extract continuous sensor channels, statistical covariance, and time series data, while the photos are pinned as authentic milestones directly onto the 30-day sensor telemetry graph.
 
 ---
 

@@ -14,6 +14,7 @@ export function PlotlyGraphViewer({
   chartType: initialChartType = 'timeline',
   saarData = null,
   activeInvestigation = null,
+  milestones: propsMilestones = null,
   selectedRelationship = null,
   onSelectRelationship = null,
   theme = 'light',
@@ -50,6 +51,34 @@ export function PlotlyGraphViewer({
   const sensorSuite = useMemo(() => {
     // 1. Dynamic Empirical Telemetry from Uploaded CSV / Ingested Dataset (AGENTS.md Single Source of Truth)
     const activeTelemetry = saarData?.telemetry || activeInvestigation?.telemetry;
+
+    // Dynamically retrieve user-pinned image milestones, session milestones, or telemetry milestones
+    const rawMilestones = (propsMilestones && propsMilestones.length > 0)
+      ? propsMilestones
+      : (activeTelemetry?.milestones && activeTelemetry.milestones.length > 0
+          ? activeTelemetry.milestones
+          : (activeInvestigation?.milestones && activeInvestigation.milestones.length > 0
+              ? activeInvestigation.milestones
+              : (saarData?.milestones && saarData.milestones.length > 0
+                  ? saarData.milestones
+                  : [])));
+
+    const milestonePalette = ['#0284c7', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
+    const dynamicMilestones = (rawMilestones || []).map((m, mIdx) => {
+      const dayNum = Number(m.day != null ? (isNaN(Number(String(m.day).replace(/^day\s*/i, ''))) ? mIdx * 10 : Number(String(m.day).replace(/^day\s*/i, ''))) : mIdx * 10);
+      return {
+        day: isNaN(dayNum) ? mIdx * 10 : dayNum,
+        label: m.label || m.name || m.stage || `Milestone ${mIdx + 1}`,
+        color: m.color || milestonePalette[mIdx % milestonePalette.length],
+        url: m.url || m.image || m.photograph_url || null,
+        badge: m.badge || `DAY ${isNaN(dayNum) ? mIdx * 10 : dayNum}`,
+        stage: m.stage || '',
+        date: m.date || '',
+        description: m.description || m.notes || '',
+        botanicalDetails: m.botanicalDetails || m.details || ''
+      };
+    });
+
     if (activeTelemetry && activeTelemetry.channels && Object.keys(activeTelemetry.channels).length > 0) {
       const rawChannels = activeTelemetry.channels;
       const channelKeys = Object.keys(rawChannels);
@@ -77,8 +106,8 @@ export function PlotlyGraphViewer({
         };
       });
 
-      // Extract milestones or format from activeTelemetry
-      let milestones = (activeTelemetry.milestones || []).map((m, mIdx) => {
+      // Extract milestones or format from dynamicMilestones / activeTelemetry
+      let milestones = dynamicMilestones.length > 0 ? dynamicMilestones : (activeTelemetry.milestones || []).map((m, mIdx) => {
         const colors = ['#0284c7', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6'];
         return {
           day: m.day ?? mIdx * 10,
@@ -158,7 +187,7 @@ export function PlotlyGraphViewer({
           { id: 'crack', name: 'Surface Crack Width (mm)', unit: 'mm', data: crackWidth, color: '#f43f5e', yaxis: 'y2' },
           { id: 'rain', name: 'Precipitation Rainfall (mm/day)', unit: 'mm', data: rain, color: '#10b981', yaxis: 'y2' }
         ],
-        milestones: [
+        milestones: dynamicMilestones.length > 0 ? dynamicMilestones : [
           { day: 7, label: 'Heavy Infiltration Storm', color: '#10b981' },
           { day: 15, label: 'Subsurface 1.8m Void Formed', color: '#f59e0b' },
           { day: 22, label: 'Pavement Shear Crack Failure', color: '#f43f5e' }
@@ -239,7 +268,7 @@ export function PlotlyGraphViewer({
         { id: 'ph', name: 'Substrate pH (Alkalinity)', unit: 'pH', data: substratePh, color: '#f59e0b', yaxis: 'y2' },
         { id: 'ndre', name: 'Foliar Chlorosis Index (NDRE)', unit: 'NDRE', data: chlorosisNDRE, color: '#f43f5e', yaxis: 'y' }
       ],
-      milestones: [
+      milestones: dynamicMilestones.length > 0 ? dynamicMilestones : [
         { day: 6, label: 'Continuous Drip Discharge Begins', color: '#0284c7' },
         { day: 14, label: 'Root Zone Anoxia (DO < 0.8 mg/L)', color: '#f59e0b' },
         { day: 22, label: 'Severe Foliar Chlorosis Observed', color: '#f43f5e' }
@@ -372,14 +401,24 @@ export function PlotlyGraphViewer({
 
     const getTargetX = (m) => {
       if (!sensorSuite.days || sensorSuite.days.length === 0) return 0;
-      if (typeof m.day === 'number') {
-        const floored = Math.floor(m.day);
+      const targetDayNum = Number(m.day);
+      if (!isNaN(targetDayNum)) {
+        const floored = Math.floor(targetDayNum);
+        const dayMatch = sensorSuite.days.find((d) => {
+          const s = String(d).toLowerCase();
+          return s.startsWith(`day ${floored} `) || s === `day ${floored}` || s.includes(`day ${floored} (`) || s.includes(`(${floored})`);
+        });
+        if (dayMatch) return dayMatch;
+
         if (floored >= 0 && floored < sensorSuite.days.length) {
           return sensorSuite.days[floored];
         }
-        const match = sensorSuite.days.find((d) => String(d).toLowerCase().startsWith(`day ${floored}`));
-        if (match) return match;
-      } else if (m.day) {
+      }
+      if (m.date) {
+        const dateMatch = sensorSuite.days.find((d) => String(d).includes(m.date));
+        if (dateMatch) return dateMatch;
+      }
+      if (m.day != null) {
         const match = sensorSuite.days.find((d) => String(d).toLowerCase().includes(String(m.day).toLowerCase()));
         if (match) return match;
       }
@@ -404,17 +443,18 @@ export function PlotlyGraphViewer({
     const annotations = sensorSuite.milestones.map((m, idx) => {
       const targetX = getTargetX(m);
       const isAlt = idx % 2 === 1;
+      const stageSnippet = m.stage ? `<br><span style="font-size:8px;font-weight:400">${m.stage.slice(0, 16)}</span>` : '';
       return {
         x: targetX,
-        y: isAlt ? 0.84 : 0.94,
+        y: isAlt ? 0.82 : 0.94,
         yref: 'paper',
-        text: `<b>${m.badge || 'DAY ' + Math.floor(m.day)}</b> 📷`,
+        text: `<b>${m.badge || 'DAY ' + Math.floor(m.day)}</b>${stageSnippet} 📷`,
         showarrow: true,
         arrowhead: 2,
         arrowsize: 1,
         arrowcolor: m.color,
         ax: 0,
-        ay: isAlt ? -16 : -28,
+        ay: isAlt ? -18 : -30,
         font: { size: 9, color: m.color, family: 'Outfit, sans-serif' },
         bgcolor: isDark ? '#0f172a' : '#ffffff',
         bordercolor: m.color,

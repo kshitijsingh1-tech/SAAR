@@ -504,7 +504,7 @@ export default function App() {
 
   // Unified Autonomous Image Investigation Pipeline
   // Unified Autonomous Image Investigation Pipeline (Supports single image, multi-image sequences & metadata milestones)
-  const executeImageInvestigation = async (fileOrDataUrl, rawFileName, optionalUserText, alreadyAddedUserMsg = false) => {
+  const executeImageInvestigation = async (fileOrDataUrl, rawFileName, optionalUserText, alreadyAddedUserMsg = false, csvReport = null) => {
     const fileList = Array.isArray(fileOrDataUrl) ? fileOrDataUrl : [fileOrDataUrl];
     const base64DataList = [];
     const metaList = [];
@@ -603,7 +603,7 @@ export default function App() {
               videoFile: null,
               domain: targetDomain,
               telemetryData: {
-                ...(s.telemetryData || {}),
+                ...(csvReport?.telemetry || s.telemetryData || {}),
                 milestones: mergedMilestones
               }
             }
@@ -650,17 +650,32 @@ export default function App() {
         vlmProvider: 'auto'
       });
 
+      const baseTelemetry = csvReport?.telemetry || saarData?.telemetry || res?.telemetry || {};
+      const csvMilestones = baseTelemetry.milestones || [];
+      const allMilestones = [...mergedMilestones];
+      for (const cm of csvMilestones) {
+        if (!allMilestones.some((m) => m.url === cm.url || (m.day === cm.day && m.label === cm.label))) {
+          allMilestones.push(cm);
+        }
+      }
+      allMilestones.sort((a, b) => (Number(a.day) || 0) - (Number(b.day) || 0));
+
       if (!res.telemetry) res.telemetry = {};
-      res.telemetry.milestones = mergedMilestones;
+      res.telemetry = {
+        ...baseTelemetry,
+        milestones: allMilestones
+      };
 
       setInvestigationData(res);
       setSaarData((prev) => ({
         ...(prev || {}),
+        ...(csvReport || {}),
         ...res,
         telemetry: {
           ...(prev?.telemetry || {}),
+          ...baseTelemetry,
           ...(res?.telemetry || {}),
-          milestones: mergedMilestones
+          milestones: allMilestones
         }
       }));
 
@@ -671,6 +686,16 @@ export default function App() {
       );
 
       let reply = res.conclusion || 'Scientific visual analysis completed successfully.';
+
+      if (csvReport) {
+        const featCount = csvReport?.perception?.features_detected ?? (csvReport?.telemetry?.columnCount || 'several');
+        const obsCount = csvReport?.perception?.observations_count ?? (csvReport?.telemetry?.rowCount || 'multiple');
+        const relCount = csvReport?.relationships?.length ?? 0;
+        reply = `### Ingested Dataset & Grounded Visual Investigation\n\n` +
+          `- **Telemetry Stream**: Successfully parsed ${featCount} continuous sensor channels across ${obsCount} observations with ${relCount} discovered statistical relationships.\n` +
+          `- **Visual Grounding**: Grounded ${nodeCount} spatial entities from specimen photos and pinned ${allMilestones.length} milestones onto the 30-day sensor telemetry graph.\n\n---\n\n` +
+          reply;
+      }
 
       if (optionalUserText && optionalUserText.trim()) {
         try {
@@ -899,24 +924,39 @@ export default function App() {
           return ft.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fn);
         });
 
+        const csvFilesToProcess = currentFiles.filter((f) => {
+          const fn = f?.name || '';
+          const ft = (f?.type || '').toLowerCase();
+          return /\.(csv|tsv|txt|xlsx|xls)$/i.test(fn) || ft.includes('csv') || ft.includes('spreadsheet') || ft.includes('excel');
+        });
+
+        let csvReport = null;
+        if (csvFilesToProcess.length > 0) {
+          try {
+            csvReport = await uploadSaarCsv(csvFilesToProcess[0]);
+            setSaarData(csvReport);
+            setSessionSensorData((prev) => ({
+              ...prev,
+              [activeSessionId]: true
+            }));
+          } catch (csvErr) {
+            console.warn("CSV upload error:", csvErr);
+          }
+        }
+
         if (imageFilesToProcess.length > 0) {
           await executeImageInvestigation(
             imageFilesToProcess.length === 1 ? imageFilesToProcess[0] : imageFilesToProcess,
             imageFilesToProcess.map((f) => f.name).join(', '),
             userText,
-            true
+            true,
+            csvReport
           );
           return;
         }
 
-        if (isCsv) {
-          const report = await uploadSaarCsv(file);
-          setSaarData(report);
-          setSessionSensorData((prev) => ({
-            ...prev,
-            [activeSessionId]: true
-          }));
-
+        if (csvReport) {
+          const report = csvReport;
           const featuresCount = report?.perception?.features_detected ?? (report?.telemetry?.columnCount || 'several');
           const obsCount = report?.perception?.observations_count ?? (report?.telemetry?.rowCount || 'multiple');
           const relCount = report?.relationships?.length ?? 0;
@@ -927,7 +967,7 @@ export default function App() {
             title: `Thought for ${(Math.random() * 0.4 + 1.8).toFixed(1)}s`,
             summary: `Ingested ${featuresCount} telemetry variables · Discovered ${relCount} causal edges · Confidence ${confPercent}%`,
             steps: [
-              `Telemetry Ingestion: Successfully processed dataset \`${fileName}\``,
+              `Telemetry Ingestion: Successfully processed dataset \`${csvFilesToProcess[0].name}\``,
               `Feature Extraction: Parsed ${featuresCount} continuous variables across ${obsCount} observations`,
               `Causal Topology: Computed empirical covariance discovering ${relCount} dependency edges`,
               `Belief Updating: Formulated ${conceptCount} grounded concepts with ${confPercent}% confidence`,
@@ -935,7 +975,7 @@ export default function App() {
             ]
           };
 
-          let responseText = report?.summary || report?.conclusion || `I have ingested and analyzed \`${fileName}\`. Longitudinal trends, cross-correlations, and causal relationships are mapped in the **Sensor Telemetry** and **Causal Graph** tools.`;
+          let responseText = report?.summary || report?.conclusion || `I have ingested and analyzed \`${csvFilesToProcess[0].name}\`. Longitudinal trends, cross-correlations, and causal relationships are mapped in the **Sensor Telemetry** and **Causal Graph** tools.`;
 
           if (userText && userText.trim()) {
             try {

@@ -370,6 +370,7 @@ export function ToolCanvasDrawer({
               <PlotlyGraphViewer
                 saarData={saarData || investigationData}
                 activeInvestigation={saarData || investigationData}
+                milestones={saarData?.telemetry?.milestones || investigationData?.telemetry?.milestones || investigationData?.milestones || []}
                 selectedRelationship={selectedRelationship}
                 chartType={selectedChartType || 'histogram'}
                 theme={theme}
