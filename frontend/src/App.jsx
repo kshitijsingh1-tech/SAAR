@@ -619,11 +619,16 @@ export default function App() {
       setActiveTool('grounded');
       setIsToolDrawerOpen(true);
     } catch (err) {
+      const isNetworkError = err.message?.includes('Network Error') || !err.response;
+      const errorDetail = isNetworkError
+        ? `Could not reach the backend server at http://127.0.0.1:8001. Please make sure the FastAPI backend is running (python -m uvicorn app.main:app --host 127.0.0.1 --port 8001).`
+        : (err.response?.data?.detail || err.message || 'Failed to complete VLM analysis pipeline.');
+
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          text: `**Visual Analysis Error**: ${err.message || 'Failed to complete VLM analysis pipeline.'}`,
+          text: `**Visual Analysis Error**: ${errorDetail}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
