@@ -31,25 +31,25 @@ class VideoClassifierService:
             return frame_or_frames[0] if len(frame_or_frames) > 0 else None
         return frame_or_frames
 
-    def extract_single_keyframe(self, video_bytes: bytes) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
+    def extract_keyframes(self, video_bytes: bytes, max_frames: int = 2) -> Tuple[List[np.ndarray], Dict[str, Any]]:
         """
-        Extracts strictly 1 representative BGR keyframe from video bytes.
-        Samples at ~25% duration where court geometry and subject gait are clearly visible.
+        Extracts 1 or 2 representative BGR keyframes across video duration (e.g. at 20% and 60%).
+        Provides high-signal temporal visual evidence to the vision LLM for domain detection.
         """
         if not video_bytes or len(video_bytes) == 0:
-            return None, {"duration_s": 0.0, "fps": 0.0, "frame_count": 0}
+            return [], {"duration_s": 0.0, "fps": 0.0, "frame_count": 0}
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             tmp.write(video_bytes)
             tmp_path = tmp.name
 
-        frame = None
+        frames = []
         metadata = {"duration_s": 0.0, "fps": 30.0, "frame_count": 0}
 
         try:
             cap = cv2.VideoCapture(tmp_path)
             if not cap.isOpened():
-                return None, metadata
+                return [], metadata
 
             fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
@@ -59,29 +59,36 @@ class VideoClassifierService:
                     ret, fr = cap.read()
                     if not ret:
                         break
-                    if count >= 10:
-                        frame = fr
-                        break
+                    if count in [5, 20]:
+                        frames.append(fr)
+                        if len(frames) >= max_frames:
+                            break
                     count += 1
                 metadata["frame_count"] = max(count, 1)
                 metadata["duration_s"] = round(count / (fps or 30.0), 2)
-                return frame, metadata
+                return frames, metadata
 
             metadata["fps"] = round(fps, 2)
             metadata["frame_count"] = total_frames
             metadata["duration_s"] = round(total_frames / fps, 2)
 
-            # Sample strictly 1 frame at 25% of the video duration
-            target_idx = max(0, min(int(total_frames * 0.25), total_frames - 1))
-            cap.set(cv2.CAP_PROP_POS_FRAMES, target_idx)
-            ret, fr = cap.read()
-            if ret and fr is not None:
-                frame = fr
-            else:
+            # Sample keyframes at 20% and 60% of duration
+            target_indices = [
+                max(0, min(int(total_frames * 0.20), total_frames - 1)),
+                max(0, min(int(total_frames * 0.60), total_frames - 1))
+            ] if max_frames >= 2 and total_frames >= 2 else [max(0, min(int(total_frames * 0.25), total_frames - 1))]
+
+            for idx in target_indices:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                ret, fr = cap.read()
+                if ret and fr is not None:
+                    frames.append(fr)
+
+            if not frames:
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 ret, fr = cap.read()
                 if ret and fr is not None:
-                    frame = fr
+                    frames.append(fr)
 
             cap.release()
         except Exception as e:
@@ -93,12 +100,12 @@ class VideoClassifierService:
             except Exception:
                 pass
 
-        return frame, metadata
+        return frames, metadata
 
-    def extract_keyframes(self, video_bytes: bytes, num_frames: int = 1) -> Tuple[List[np.ndarray], Dict[str, Any]]:
-        """Backwards-compatible wrapper returning a list containing the 1 extracted keyframe."""
-        frame, meta = self.extract_single_keyframe(video_bytes)
-        return ([frame] if frame is not None else []), meta
+    def extract_single_keyframe(self, video_bytes: bytes) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
+        """Extracts strictly the primary representative keyframe."""
+        frames, meta = self.extract_keyframes(video_bytes, max_frames=1)
+        return (frames[0] if len(frames) > 0 else None), meta
 
     def probe_court_color(self, frame_input: Any) -> Dict[str, Any]:
         """
@@ -238,24 +245,30 @@ class VideoClassifierService:
 
     def probe_vlm_semantics(self, frame_input: Any, user_context: str = "") -> Optional[Dict[str, Any]]:
         """
-        Queries fast VLM (Gemini) on 1 single keyframe to classify whether it depicts
-        badminton athletic rally vs. toddler developmental gait.
+        Queries fast Vision LLM (Gemini / Groq) on 1 or 2 keyframes to classify whether the video depicts
+        a sports activity (e.g. badminton match/rally) vs. toddler developmental gait.
         """
-        frame = self._normalize_frame(frame_input)
-        if frame is None or frame.size == 0:
+        frames = frame_input if isinstance(frame_input, list) else [frame_input]
+        frames = [f for f in frames if f is not None and getattr(f, 'size', 0) > 0]
+        if not frames:
             return None
 
-        success, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-        if not success:
+        # Encode up to 2 frames as base64 JPEG
+        b64_images = []
+        for fr in frames[:2]:
+            success, buffer = cv2.imencode(".jpg", fr, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if success:
+                b64_images.append(base64.b64encode(buffer).decode("utf-8"))
+
+        if not b64_images:
             return None
-        b64_image = base64.b64encode(buffer).decode("utf-8")
 
         prompt = (
-            "You are an expert computer vision video domain classifier analyzing 1 single keyframe from an uploaded video.\n"
-            "Carefully examine the visual evidence to determine if this video depicts:\n"
-            "1. 'badminton': A real badminton sports match or rally. Requires visible badminton equipment (racket, shuttlecock, net) OR marked badminton court with athletic players.\n"
-            "2. 'toddler_gait': Pediatric walking or developmental gait analysis. Includes toddlers, infants, children, persons walking indoors (living room, domestic wooden/carpet/tile floor, clinic room), walking gait animations, or movement screening.\n\n"
-            f"Context hint from upload: '{user_context}'\n\n"
+            f"You are an expert computer vision video domain classifier analyzing {len(b64_images)} representative keyframe(s) from an uploaded video.\n"
+            "Carefully examine the visual evidence across the frame(s) to determine if this video depicts:\n"
+            "1. 'badminton': A real sports match, athletic drill, or badminton rally. Requires visible sports/badminton equipment (racket, shuttlecock, net) OR marked sports court with athletic players.\n"
+            "2. 'toddler_gait': Pediatric walking, developmental movement, or orthopedic gait analysis. Includes toddlers, infants, children, persons walking indoors (living room, domestic floor/carpet, clinic room), walking gait animations, or toddler movement screening.\n\n"
+            f"Context hint from user: '{user_context}'\n\n"
             "Return valid JSON ONLY matching:\n"
             "{\n"
             '  "classification": "badminton" | "toddler_gait",\n'
@@ -274,20 +287,16 @@ class VideoClassifierService:
         for g_key in gemini_keys:
             for model_name in ["gemini-flash-lite-latest", "gemini-flash-latest"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={g_key}"
-                payload = {
-                    "contents": [
-                        {
-                            "parts": [
-                                {"text": prompt},
-                                {
-                                    "inlineData": {
-                                        "mimeType": "image/jpeg",
-                                        "data": b64_image
-                                    }
-                                }
-                            ]
+                parts = [{"text": prompt}]
+                for b64_img in b64_images:
+                    parts.append({
+                        "inlineData": {
+                            "mimeType": "image/jpeg",
+                            "data": b64_img
                         }
-                    ],
+                    })
+                payload = {
+                    "contents": [{"parts": parts}],
                     "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1}
                 }
                 try:
@@ -312,15 +321,16 @@ class VideoClassifierService:
 
         for gr_key in groq_keys:
             url = "https://api.groq.com/openai/v1/chat/completions"
+            messages_content = [{"type": "text", "text": prompt}]
+            for b64_img in b64_images:
+                messages_content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_img}"}})
+
             payload = {
                 "model": "llama-3.2-11b-vision-preview",
                 "messages": [
                     {
                         "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}}
-                        ]
+                        "content": messages_content
                     }
                 ],
                 "response_format": {"type": "json_object"},
@@ -358,9 +368,9 @@ class VideoClassifierService:
         """
         combined_text = f"{filename} {user_context}".lower()
 
-        # Step 1: Extract strictly 1 representative keyframe
-        frame, meta = self.extract_single_keyframe(video_bytes)
-        if frame is None:
+        # Step 1: Extract 1 or 2 representative keyframes across video duration
+        frames, meta = self.extract_keyframes(video_bytes, max_frames=2)
+        if not frames:
             return {
                 "domain": "pediatrics",
                 "tool": "gait",
@@ -373,13 +383,15 @@ class VideoClassifierService:
                 "suggested_actions": ["Upload valid video file in MP4/MOV format"]
             }
 
-        # Step 2: Computer Vision Probes on 1 single frame
-        color_res = self.probe_court_color(frame)
-        court_res = self.probe_court_lines(frame, has_court_color=color_res.get("has_court_color", False))
-        stature_res = self.probe_anatomical_stature(frame)
+        primary_frame = frames[0]
 
-        # Step 3: Fast VLM Perception Probe on 1 single frame
-        vlm_res = self.probe_vlm_semantics(frame, user_context)
+        # Step 2: Computer Vision Probes on primary frame
+        color_res = self.probe_court_color(primary_frame)
+        court_res = self.probe_court_lines(primary_frame, has_court_color=color_res.get("has_court_color", False))
+        stature_res = self.probe_anatomical_stature(primary_frame)
+
+        # Step 3: Fast VLM Perception Probe on 1-2 keyframes
+        vlm_res = self.probe_vlm_semantics(frames, user_context)
 
         # Step 4: Decision Hierarchy on 1 Frame
         # 4a. Direct VLM Semantic Authority (Ground Truth Vision Model)
