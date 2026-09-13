@@ -275,7 +275,7 @@ class BadmintonSpeedAnalyzer:
         """
         is_calibrated = bool(court_calibration and court_calibration.is_calibrated)
         racket_usable = bool(racket_summary and racket_summary.is_usable)
-        shuttle_usable = bool(shuttle_summary and shuttle_summary.is_usable)
+        shuttle_usable = bool(shuttle_summary and (shuttle_summary.is_usable or shuttle_summary.verified_frames_count >= 3))
 
         # ------------------------------------------------------------------
         # 1. Gather all tracked points across the entire clip
