@@ -11,6 +11,14 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
   // Operational Scientific Tools:
   const allTools = [
     {
+      id: 'badminton',
+      label: 'Badminton Biomechanics',
+      tooltip: 'Athletic Video Analysis, Stroke Kinematics, Court Heatmap & Evidence Graph',
+      icon: <Activity size={17} />,
+      gradient: 'linear-gradient(135deg, #10b981, #059669)',
+      glow: 'rgba(16, 185, 129, 0.45)'
+    },
+    {
       id: 'grounded',
       label: 'Image Analysis (Query & Graph)',
       tooltip: 'Visual image perception alongside query-grounded causal graph',
@@ -69,13 +77,12 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     ? allTools
         .filter((t) => ['gait', 'rag'].includes(t.id))
         .map((t) => (t.id === 'rag' ? { ...t, label: 'Clinical References' } : t))
-    : isSports && activeTool === 'gait'
+    : isSports
     ? allTools
-        .filter((t) => ['gait', 'rag'].includes(t.id))
-        .map((t) => (t.id === 'gait' ? { ...t, label: 'Video Analysis (Sports & Motion)' } : t))
+        .filter((t) => ['badminton', 'graph', 'analytics', 'rag', 'dictionary'].includes(t.id))
     : isAgri
-    ? allTools.filter((t) => t.id !== 'gait')
-    : allTools.filter((t) => t.id !== 'gait');
+    ? allTools.filter((t) => t.id !== 'gait' && t.id !== 'badminton')
+    : allTools.filter((t) => t.id !== 'gait' && t.id !== 'badminton');
 
   useEffect(() => {
     function handleClickOutside(event) {

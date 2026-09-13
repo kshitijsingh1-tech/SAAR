@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export const fetchDomains = async () => {
   const res = await axios.get(`${API_BASE_URL}/domains`);
@@ -34,9 +34,7 @@ export const fetchBaseline = async (domain, presetId) => {
 export const uploadSaarCsv = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await axios.post(`${API_BASE_URL}/api/saar/upload`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+  const res = await axios.post(`${API_BASE_URL}/api/saar/upload`, formData);
   return res.data;
 };
 
@@ -138,9 +136,7 @@ export const analyzeVideo = async (fileOrUrl, domain = 'agriculture', options = 
       formData.append('file', fileOrUrl);
       formData.append('domain', domain);
       formData.append('sample_fps', String(options.sampleFps || 2.0));
-      const res = await axios.post(`${API_BASE_URL}/api/video/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const res = await axios.post(`${API_BASE_URL}/api/video/upload`, formData);
       return res.data;
     }
   } catch (err) {
@@ -164,9 +160,7 @@ export const analyzeVideo = async (fileOrUrl, domain = 'agriculture', options = 
 export const analyzeGaitVideo = async (file, childAgeMonths = 24) => {
   const formData = new FormData();
   formData.append('video', file);
-  const res = await axios.post(`${API_BASE_URL}/api/gait/analyze?child_age_months=${childAgeMonths}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+  const res = await axios.post(`${API_BASE_URL}/api/gait/analyze?child_age_months=${childAgeMonths}`, formData);
   return res.data;
 };
 
@@ -192,4 +186,137 @@ export const askGaitQuestion = async (assessmentId, question) => {
   });
   return res.data;
 };
+
+// ------------------------------------------------------------------
+// Badminton Biomechanics Video Analysis API
+// ------------------------------------------------------------------
+
+export const analyzeBadmintonVideo = async (file, metadata = {}) => {
+  const formData = new FormData();
+  formData.append('video', file);
+  const params = new URLSearchParams();
+  if (metadata.age) params.append('player_age', metadata.age);
+  if (metadata.body_weight_kg) params.append('body_weight_kg', metadata.body_weight_kg);
+  if (metadata.session_duration_min) params.append('session_duration_min', metadata.session_duration_min);
+  if (metadata.skill_level) params.append('skill_level', metadata.skill_level);
+  if (metadata.match_type) params.append('match_type', metadata.match_type);
+  const paramStr = params.toString() ? `?${params.toString()}` : '';
+
+  const res = await axios.post(`${API_BASE_URL}/api/sports/badminton/analyze${paramStr}`, formData);
+  return res.data;
+};
+
+export const analyzeBadmintonSample = async () => {
+  const res = await axios.get(`${API_BASE_URL}/api/sports/badminton/sample`);
+  return res.data;
+};
+
+export const getBadmintonSampleVideoUrl = () => {
+  return `${API_BASE_URL}/api/sports/badminton/sample/video`;
+};
+
+export const getBadmintonRecordingGuidance = async () => {
+  const res = await axios.get(`${API_BASE_URL}/api/sports/badminton/recording-guidance`);
+  return res.data;
+};
+
+export const getBadmintonAnalysis = async (analysisId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/sports/badminton/analysis/${analysisId}`);
+  return res.data;
+};
+
+export const askBadmintonQuestion = async (analysisId, question) => {
+  const res = await axios.post(`${API_BASE_URL}/api/sports/badminton/analysis/${analysisId}/ask`, {
+    question
+  });
+  return res.data;
+};
+
+// ------------------------------------------------------------------
+// Badminton v1 Asynchronous Processing API (Section 28)
+// ------------------------------------------------------------------
+
+export const uploadBadmintonVideoV1 = async (file, metadata = {}) => {
+  const formData = new FormData();
+  formData.append('video', file);
+  const params = new URLSearchParams();
+  if (metadata.age) params.append('player_age', metadata.age);
+  if (metadata.body_weight_kg) params.append('body_weight_kg', metadata.body_weight_kg);
+  if (metadata.session_duration_min) params.append('session_duration_min', metadata.session_duration_min);
+  if (metadata.skill_level) params.append('skill_level', metadata.skill_level);
+  if (metadata.match_type) params.append('match_type', metadata.match_type);
+  const paramStr = params.toString() ? `?${params.toString()}` : '';
+
+  const res = await axios.post(`${API_BASE_URL}/api/v1/videos/upload${paramStr}`, formData);
+  return res.data;
+};
+
+export const startBadmintonAnalysisV1 = async (jobId) => {
+  const res = await axios.post(`${API_BASE_URL}/api/v1/analysis/start`, { job_id: jobId });
+  return res.data;
+};
+
+export const getBadmintonJobProgressV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/progress`);
+  return res.data;
+};
+
+export const getBadmintonJobReportV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/report`);
+  return res.data;
+};
+
+export const getBadmintonCourtV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/court`);
+  return res.data;
+};
+
+export const calibrateBadmintonCourtV1 = async (jobId, cornersPixel, courtMode = 'doubles') => {
+  const res = await axios.post(`${API_BASE_URL}/api/v1/analysis/${jobId}/court/calibrate`, {
+    corners_pixel: cornersPixel,
+    court_mode: courtMode
+  });
+  return res.data;
+};
+
+export const getBadmintonRalliesV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/rallies`);
+  return res.data;
+};
+
+export const getBadmintonShotsV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/shots`);
+  return res.data;
+};
+
+export const getBadmintonMovementV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/movement`);
+  return res.data;
+};
+
+export const getBadmintonCoverageV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/coverage`);
+  return res.data;
+};
+
+export const getBadmintonPoseV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/pose`);
+  return res.data;
+};
+
+export const getBadmintonSpeedV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/speed`);
+  return res.data;
+};
+
+export const getBadmintonEnergyV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/energy`);
+  return res.data;
+};
+
+export const getBadmintonRecommendationsV1 = async (jobId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/v1/analysis/${jobId}/recommendations`);
+  return res.data;
+};
+
 
