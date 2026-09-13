@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from .base_plugin import BaseDomainPlugin
 from ..schemas import NodeModel, EdgeModel, ToolExecutionModel, BaselineComparisonModel
 from ..vlm_service import VLMService
