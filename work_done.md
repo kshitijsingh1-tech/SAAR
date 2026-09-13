@@ -220,15 +220,18 @@ In [`frontend/src/App.jsx:812`](file:///d:/bytebuild/frontend/src/App.jsx#L812) 
 Users uploading images for multi-iteration botanical or clinical analysis (e.g. Day 1 incision photo, Day 15 callus photo, Day 30 vegetative shoot photo) had no mechanism to annotate or label images with metadata. Images were treated as anonymous, unlabelled blobs. Furthermore, when users uploaded new photos across subsequent conversation iterations, the system lacked a mechanism to accumulate and sequence them chronologically into active investigation milestones.
 
 ### Implemented Solution & Non-Regression Invariants
-1. **Interactive Image Metadata Tagging Modal (`ChatGPTView.jsx`)**:
-   - Thumbnail previews for all attached image files in the chat composer.
-   - Interactive `🏷️ Tag` button on each image pill, opening a glassmorphic metadata modal configuring:
+1. **Interactive Image Metadata Tagging Modal & Click-to-Tag Ergonomics (`ChatGPTView.jsx`)**:
+   - Thumbnail previews for all attached image files in the chat composer across paste, drag-and-drop, and file selector uploads.
+   - **Click-to-Tag Interaction**: Users click directly anywhere on the image pill/thumbnail to open the glassmorphic metadata modal (eliminating clutter from separate tag buttons).
+   - Dismiss button `[X]` utilizes event stopping (`e.stopPropagation()`) so card dismissal does not trigger metadata editing.
+   - Configurable metadata parameters:
      - **Milestone Day #**: (e.g. `1`, `10`, `30`).
      - **Developmental Stage / Action**: (e.g. `Scion Bud Attached`, `Callus Bridge`, `First Foliar Expansion`).
      - **Camera Perspective / Angle**: (`Lateral (Side View)`, `Apical (Top View)`, `Macro Cut Surface`, `Sagittal`, `Frontal`, `Substrate/Root Zone`).
      - **Clinical / Empirical Notes**: (e.g. `Parafilm wrap intact, 95% sub-tape RH`).
      - **Stage Quick Chips**: Instant presets for rapid tagging.
    - Colored badge chips (`DAY 1`, `DAY 15`) and stage labels displayed directly on attachment pills in real time.
+   - If an image is untagged, a subtle prompt (`🏷️ Click to add metadata`) invites metadata specification.
 2. **Batch Auto-Sequence Helper**:
    - When $\ge 2$ images are attached simultaneously, an auto-sequence bar allows one-click assignment of sequential days (`Day 1, Day 10, Day 20...`) across all attached frames.
 3. **Multi-Iteration Accumulation Protocol (`App.jsx`)**:

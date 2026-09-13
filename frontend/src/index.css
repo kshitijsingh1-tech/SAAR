@@ -5851,6 +5851,18 @@ body {
   border-color: rgba(2, 132, 199, 0.6);
 }
 
+.context-pill-card.clickable-image-pill {
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.context-pill-card.clickable-image-pill:hover {
+  background: #272438;
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.18);
+  transform: translateY(-1px);
+}
+
 .card-icon-wrapper {
   display: flex;
   align-items: center;

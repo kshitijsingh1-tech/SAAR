@@ -525,7 +525,7 @@ export function ChatGPTView({
             const fileObj = new File([blob], filename, {
               type: blob.type || (filename.endsWith('.csv') ? 'text/csv' : 'application/octet-stream')
             });
-            setAttachedFiles((prev) => [...prev, fileObj]);
+            setAttachedFiles((prev) => [...prev, ...enrichFilesWithPreviews([fileObj])]);
             return;
           }
         } catch (fetchErr) {
@@ -589,7 +589,7 @@ export function ChatGPTView({
     e.stopPropagation();
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const droppedFiles = Array.from(e.dataTransfer.files);
-      setAttachedFiles((prev) => [...prev, ...droppedFiles]);
+      setAttachedFiles((prev) => [...prev, ...enrichFilesWithPreviews(droppedFiles)]);
     }
   };
 
@@ -1151,7 +1151,7 @@ export function ChatGPTView({
           <MediaAttachmentPreview
             file={pendingFile}
             onConfirm={() => {
-              setAttachedFiles((prev) => [...prev, pendingFile]);
+              setAttachedFiles((prev) => [...prev, ...enrichFilesWithPreviews([pendingFile])]);
               setPendingFile(null);
               if (fileInputRef.current) fileInputRef.current.value = '';
             }}
@@ -1251,8 +1251,27 @@ export function ChatGPTView({
               const meta = getFileCardMeta(file);
               const isImg = meta.kind === 'image';
               const saarMeta = file._saarMeta;
+
+              // Ensure preview URL is generated for any image file
+              let preview = file._previewUrl;
+              if (isImg && !preview && typeof URL !== 'undefined' && URL.createObjectURL) {
+                try {
+                  preview = URL.createObjectURL(file);
+                  file._previewUrl = preview;
+                } catch (e) {}
+              }
+
               return (
-                <div key={idx} className={`context-pill-card file-card file-card-${meta.kind}`} style={{ maxWidth: isImg ? '420px' : '360px' }}>
+                <div
+                  key={idx}
+                  className={`context-pill-card file-card file-card-${meta.kind} ${isImg ? 'clickable-image-pill' : ''}`}
+                  style={{
+                    maxWidth: isImg ? '420px' : '360px',
+                    cursor: isImg ? 'pointer' : 'default',
+                  }}
+                  onClick={isImg ? () => openMetaModal(idx) : undefined}
+                  title={isImg ? 'Click image to edit metadata (milestone, day, stage, perspective)' : file.name}
+                >
                   <div className="card-icon-wrapper">
                     {meta.kind === 'presentation' ? (
                       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="presentation-glyph">
@@ -1264,11 +1283,18 @@ export function ChatGPTView({
                       <PieChart size={22} color="#10b981" />
                     ) : meta.kind === 'video' ? (
                       <Film size={22} color="#38bdf8" />
-                    ) : isImg && file._previewUrl ? (
+                    ) : isImg && preview ? (
                       <img
-                        src={file._previewUrl}
+                        src={preview}
                         alt="specimen preview"
-                        style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '6px', border: '1px solid rgba(167, 139, 250, 0.35)' }}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          objectFit: 'cover',
+                          borderRadius: '6px',
+                          border: saarMeta ? `2px solid ${saarMeta.color || '#a78bfa'}` : '1px solid rgba(167, 139, 250, 0.45)',
+                          display: 'block'
+                        }}
                       />
                     ) : meta.kind === 'image' ? (
                       <ImageIcon size={22} color="#a78bfa" />
@@ -1295,48 +1321,24 @@ export function ChatGPTView({
                         </span>
                       )}
                       {saarMeta?.stage && (
-                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>
                           {saarMeta.stage}
                         </span>
                       )}
                       {saarMeta?.viewAngle && (
-                        <span style={{ fontSize: '0.66rem', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', color: '#cbd5e1' }}>
+                        <span style={{ fontSize: '0.66rem', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}>
                           {saarMeta.viewAngle}
                         </span>
                       )}
-                      {!saarMeta && <span>{meta.label}</span>}
+                      {isImg && !saarMeta && (
+                        <span style={{ fontSize: '0.68rem', color: '#a78bfa', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <Tag size={10} />
+                          <span>Click to add metadata</span>
+                        </span>
+                      )}
+                      {!isImg && !saarMeta && <span>{meta.label}</span>}
                     </div>
                   </div>
-
-                  {/* Image Milestone Tag Button */}
-                  {isImg && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openMetaModal(idx);
-                      }}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        padding: '3px 7px',
-                        borderRadius: '6px',
-                        background: saarMeta ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.12)',
-                        border: saarMeta ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(56, 189, 248, 0.25)',
-                        color: saarMeta ? '#34d399' : '#38bdf8',
-                        fontSize: '0.68rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                        marginRight: '2px'
-                      }}
-                      title="Tag milestone, day, stage, and view perspective"
-                    >
-                      <Tag size={10} />
-                      <span>{saarMeta ? 'Edit Tag' : 'Tag'}</span>
-                    </button>
-                  )}
 
                   <button
                     className="pill-dismiss-btn"
@@ -1564,25 +1566,37 @@ export function ChatGPTView({
 
             <div className="term-modal-body" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Thumbnail & File Details */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                {attachedFiles[metaModalFileIdx]._previewUrl ? (
-                  <img
-                    src={attachedFiles[metaModalFileIdx]._previewUrl}
-                    alt="Preview"
-                    style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.4)' }}
-                  />
-                ) : (
-                  <ImageIcon size={36} color="#a78bfa" />
-                )}
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {attachedFiles[metaModalFileIdx].name}
+              {(() => {
+                const targetFile = attachedFiles[metaModalFileIdx];
+                let modalPreview = targetFile?._previewUrl;
+                if (!modalPreview && targetFile && typeof URL !== 'undefined' && URL.createObjectURL) {
+                  try {
+                    modalPreview = URL.createObjectURL(targetFile);
+                    targetFile._previewUrl = modalPreview;
+                  } catch (e) {}
+                }
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    {modalPreview ? (
+                      <img
+                        src={modalPreview}
+                        alt="Preview"
+                        style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.4)' }}
+                      />
+                    ) : (
+                      <ImageIcon size={36} color="#a78bfa" />
+                    )}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {targetFile?.name}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                        Annotate this specimen photo for chronological milestones, cross-iteration tracking, and VLM comparative grounding.
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
-                    Annotate this specimen photo for chronological milestones, cross-iteration tracking, and VLM comparative grounding.
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Day # and Stage inputs */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
