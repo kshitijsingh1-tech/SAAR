@@ -20,6 +20,7 @@
 11. [Analytical Inquiry Reasoning Engine Overhaul & Gemini Model Re-alignment](#11-analytical-inquiry-reasoning-engine-overhaul--gemini-model-re-alignment)
 12. [Safe Upstream Integration of Origin/Main with Non-Regression Multimodal Invariants](#12-safe-upstream-integration-of-originmain-with-non-regression-multimodal-invariants)
 13. [Exact Alignment of Frontend with Origin/Main](#13-2026-09-13-exact-alignment-of-frontend-with-originmain)
+14. [Resolution of Badminton Studio Network Error & Complete Multimodal Unification](#14-2026-09-13-resolution-of-badminton-studio-network-error--complete-multimodal-unification)
 
 ---
 
@@ -404,6 +405,39 @@ Per user directive ("why have you made the changes to frintend use the main bran
 2. Verified `git diff origin/main frontend/src` is completely empty (100% byte-for-byte identical to `origin/main`).
 3. Retained `chart.js` and `react-chartjs-2` in `frontend/package.json` to ensure `PerformanceRadar.jsx` from `origin/main` compiles properly.
 4. Ran `npm run build` — compiled cleanly in 14.27s with 0 errors.
+
+---
+
+## 14. [2026-09-13] Resolution of Badminton Studio Network Error & Complete Multimodal Unification
+
+**Primary Files Modified**:
+- `frontend/src/api/client.js`
+- `frontend/src/App.jsx`
+- `frontend/src/components/ChatGPTView.jsx`
+- `frontend/src/components/PlotlyGraphViewer.jsx`
+- `frontend/src/components/SaarFindingsPanel.jsx`
+- `work_done.md`
+
+### Problem Description & Symptoms
+1. When uploading an athletic video to the Badminton Biomechanics & Kinematics Studio and clicking **Run Kinematics Analysis**, the UI displayed a red `Network Error` banner and failed to process.
+2. Inquiries regarding combining all functionalities from `work_done.md` (metadata context box modal, two-stage sequential ingestion, dynamic milestone timeline graph pinning) alongside the newly merged sports biomechanics and greyish scientific dashboard from `origin/main`.
+
+### Root Cause Analysis
+- **Port Mismatch in `client.js`**: `origin/main` defined `API_BASE_URL` with a fallback to port `8000` (`http://127.0.0.1:8000`), whereas the active FastAPI backend service runs on port `8001` (`http://127.0.0.1:8001`) per Section 6. All requests to badminton video analysis failed at the network transport layer with `ERR_CONNECTION_REFUSED`.
+- **Feature Convergence**: Needed seamless co-existence of both:
+  - The sports/badminton kinematics studio, verification modal, and scientific dashboard from `origin/main`.
+  - The single context text box modal (`info(example: data,name,time etc) : message for ai`), two-stage sequential ingestion, milestone graph pinning, and analytical inquiry engine from `work_done.md`.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Network Route Alignment**: Fixed `frontend/src/api/client.js` to default `API_BASE_URL` to `http://127.0.0.1:8001`. Verified `/api/sports/badminton/sample` succeeds with 200 OK and generates analysis ID.
+2. **Dual-Modal Synergy in `ChatGPTView.jsx`**:
+   - Integrated both the full-size `ImageVerificationModal` (via zoom button on thumbnails) and the single metadata text box modal (`info(...) : message for ai` by clicking the pill).
+   - Added the multi-frame auto-sequence days helper bar.
+3. **Multi-Frame & Milestone Pipeline in `App.jsx`**:
+   - Enhanced `executeImageInvestigation` to extract `_saarMeta`, assemble `imageMetadataPayload`, pass multi-frame images to `/api/investigate`, merge dynamic milestones onto `telemetry.milestones`, and render Stage 1 (text-first) + Stage 2 (visual grounding) thought processes.
+4. **Build & Runtime Verification**:
+   - Ran `npm run build` — compiled cleanly in 22.25s with **0 errors**.
+   - Verified both backend daemon (port 8001) and Vite dev server (port 3000) active and responding.
 
 ---
 
