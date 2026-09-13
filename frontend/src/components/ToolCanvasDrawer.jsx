@@ -118,25 +118,36 @@ export function ToolCanvasDrawer({
 
   if (!isOpen) return null;
 
-  // Operational tools strictly for active scientific investigations
-  // During movement/pediatric video analysis, hide irrelevant generic tools (sensor analytics, generic graph controls)
-  const isMovementAnalysis = selectedDomain === 'pediatrics' || activeTool === 'gait';
+  const isPediatricsDomain = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
 
-  const allToolsMeta = [
-    { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} />, hideInMovement: true },
-    { id: 'gait', label: 'Video Analysis', icon: <Activity size={15} /> },
-    { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} />, hideInMovement: true },
+  // Operational tools strictly for active scientific investigations
+  const isMovementAnalysis = isPediatricsDomain || activeTool === 'gait';
+
+  const toolsMeta = [
+    { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} /> },
+    ...(isPediatricsDomain ? [{ id: 'gait', label: 'Toddler Gait Analysis', icon: <Activity size={15} /> }] : []),
+    { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} /> },
     { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
-    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null, hideInMovement: true },
-    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'Scientific References', icon: <BookOpen size={15} /> },
-    { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} />, hideInMovement: true }
+    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
+    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'References', icon: <BookOpen size={15} /> },
+    { id: 'dictionary', label: 'Dictionary', icon: <BookA size={15} /> }
   ];
 
-  const toolsMeta = isMovementAnalysis
-    ? allToolsMeta.filter((t) => !t.hideInMovement)
-    : allToolsMeta;
+  // Robust tool alias normalization: map legacy or semantic IDs to active UI tool tabs
+  const TOOL_ALIASES = {
+    telemetry: 'analytics',
+    sensor: 'analytics',
+    sensors: 'analytics',
+    spectrometry: 'analytics',
+    biomechanics: 'gait',
+    posture: 'gait',
+    morphology: 'grounded',
+    inspector: 'camera',
+    image: 'camera'
+  };
+  const effectiveTool = TOOL_ALIASES[activeTool] || (toolsMeta.some((t) => t.id === activeTool) ? activeTool : 'grounded');
 
-  const currentToolMeta = toolsMeta.find((t) => t.id === activeTool) || toolsMeta[0];
+  const currentToolMeta = toolsMeta.find((t) => t.id === effectiveTool) || toolsMeta[0];
 
   return (
     <aside
@@ -171,7 +182,7 @@ export function ToolCanvasDrawer({
             {toolsMeta.map((t) => (
               <button
                 key={t.id}
-                className={`tool-pill-btn ${activeTool === t.id ? 'active' : ''}`}
+                className={`tool-pill-btn ${effectiveTool === t.id ? 'active' : ''}`}
                 onClick={() => onSelectTool(t.id)}
                 title={t.label}
               >
@@ -182,8 +193,8 @@ export function ToolCanvasDrawer({
                     fontSize: '0.62rem',
                     padding: '1px 5px',
                     borderRadius: '4px',
-                    background: activeTool === t.id ? '#ffffff35' : '#e0f2fe',
-                    color: activeTool === t.id ? '#ffffff' : '#0369a1',
+                    background: effectiveTool === t.id ? '#ffffff35' : '#e0f2fe',
+                    color: effectiveTool === t.id ? '#ffffff' : '#0369a1',
                     fontWeight: '700',
                     marginLeft: '3px'
                   }}>
@@ -220,7 +231,7 @@ export function ToolCanvasDrawer({
       {/* Tool Content Body */}
       <div className="canvas-body">
         {/* Tool: Grounded Split View (Side-by-Side Synchronized Image + Graph with IDE-style Resizable Splitter) */}
-        {activeTool === 'grounded' && (
+        {effectiveTool === 'grounded' && (
           <div
             ref={splitContainerRef}
             className="tool-body-pane"
@@ -270,81 +281,41 @@ export function ToolCanvasDrawer({
                 nodes={investigationData?.final_graph?.nodes || saarData?.graph_data?.nodes || []}
                 selectedNodeId={selectedNodeId}
                 onSelectNode={onSelectNode}
-                onOpenTool={(toolId) => onSelectTool(toolId)}
+                onOpenTool={(toolId, node) => {
+                  if (node?.id && onSelectNode) onSelectNode(node.id);
+                  onSelectTool(toolId);
+                }}
                 onAskQuery={(q) => onSendToChat && onSendToChat(q)}
                 onOpenGlossary={() => onSelectTool('dictionary')}
+                domain={selectedDomain}
               />
             </div>
 
             {/* IDE-style Draggable Splitter Divider Junction */}
             <div
-              className="ide-split-junction"
+              className={`ide-split-junction ${isSplitResizing ? 'active-resizing' : ''}`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 setIsSplitResizing(true);
               }}
-              onDoubleClick={() => setSplitRatio(48)}
-              title="Drag junction to expand/shrink panels (Double-click to reset 50/50)"
-              style={{
-                width: '12px',
-                margin: '0 -2px',
-                cursor: 'col-resize',
-                position: 'relative',
-                zIndex: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: isSplitResizing ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
-                transition: 'background 0.15s ease',
-                userSelect: 'none',
-                flexShrink: 0
-              }}
+              title="Drag anywhere along this divider to adjust split between Image and Graph"
             >
-              {/* Vertical Rule Line */}
-              <div
-                style={{
-                  width: '2px',
-                  height: '100%',
-                  background: isSplitResizing ? '#0284c7' : 'rgba(203, 213, 225, 0.75)',
-                  borderRadius: '1px',
-                  boxShadow: isSplitResizing ? '0 0 8px rgba(2, 132, 199, 0.6)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              />
-
-              {/* Centered Floating Grip Handle Pill */}
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '16px',
-                  height: '34px',
-                  borderRadius: '4px',
-                  background: isSplitResizing ? '#0284c7' : '#ffffff',
-                  border: isSplitResizing ? '1px solid #38bdf8' : '1px solid #cbd5e1',
-                  boxShadow: isSplitResizing
-                    ? '0 0 10px rgba(56, 189, 248, 0.6)'
-                    : '0 2px 5px rgba(0, 0, 0, 0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: isSplitResizing ? '#ffffff' : '#64748b',
-                  cursor: 'col-resize',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <GripVertical size={12} />
+              <div className="junction-line" />
+              <div className="junction-knob">
+                <GripVertical size={11} />
               </div>
             </div>
 
-            {/* Right Pane: Knowledge Graph Canvas */}
+            {/* Right Pane: Causal Knowledge Graph */}
             <div
+              className="split-right-pane"
               style={{
                 width: `calc(${100 - splitRatio}% - 6px)`,
                 minWidth: '280px',
+                maxWidth: 'calc(100% - 280px)',
                 height: '100%',
                 maxHeight: '100%',
                 minHeight: 0,
-                paddingLeft: '0.65rem',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
@@ -369,7 +340,7 @@ export function ToolCanvasDrawer({
         )}
 
         {/* Tool 1: Causal Knowledge Graph (KnowledgeGraphCanvas.jsx) */}
-        {activeTool === 'graph' && (
+        {effectiveTool === 'graph' && (
           <div className="tool-body-pane">
             <KnowledgeGraphCanvas
               activeInvestigation={saarData || investigationData}
@@ -386,7 +357,7 @@ export function ToolCanvasDrawer({
         )}
 
         {/* Tool 2: Visual Photo Evidence Monitor (ImageInspector.jsx) */}
-        {activeTool === 'camera' && (
+        {effectiveTool === 'camera' && (
           <div className="tool-body-pane custom-pane-scrollbar" style={{ height: '100%', maxHeight: '100%', minHeight: 0, overflowY: 'auto', padding: '0.65rem', display: 'block', boxSizing: 'border-box' }}>
             <ImageInspector
               preset={investigationData?.preset}
@@ -401,9 +372,14 @@ export function ToolCanvasDrawer({
               nodes={investigationData?.final_graph?.nodes || saarData?.graph_data?.nodes || []}
               selectedNodeId={selectedNodeId}
               onSelectNode={onSelectNode}
-              onOpenTool={(toolId) => onSelectTool(toolId)}
+              onOpenTool={(toolId, node) => {
+                if (node?.id && onSelectNode) onSelectNode(node.id);
+                onSelectTool(toolId);
+              }}
               onAskQuery={(q) => onSendToChat && onSendToChat(q)}
               onOpenGlossary={() => onSelectTool('dictionary')}
+              domain={selectedDomain}
+              investigationData={investigationData}
             />
           </div>
         )}
@@ -411,7 +387,7 @@ export function ToolCanvasDrawer({
 
 
         {/* Tool 3: Telemetry & Trend Analytics (PlotlyGraphViewer.jsx / AnalyticsService) */}
-        {activeTool === 'analytics' && (
+        {effectiveTool === 'analytics' && (
           <div className="tool-body-pane">
             <div style={{ padding: '1rem' }}>
               <PlotlyGraphViewer
@@ -432,7 +408,7 @@ export function ToolCanvasDrawer({
         )}
 
         {/* Tool 4: Domain Literature RAG (DomainRAGRadar.jsx / RAGKnowledgeService) */}
-        {activeTool === 'rag' && (
+        {effectiveTool === 'rag' && (
           <div className="tool-body-pane">
             <DomainRAGRadar
               theme={theme}
@@ -443,8 +419,8 @@ export function ToolCanvasDrawer({
           </div>
         )}
 
-        {/* Tool: Video Analysis (GaitDashboard.jsx) */}
-        {activeTool === 'gait' && (
+        {/* Tool: ToddleAI Gait Analysis (GaitDashboard.jsx) */}
+        {effectiveTool === 'gait' && (
           <div className="tool-body-pane custom-pane-scrollbar" style={{ overflowY: 'auto', height: '100%' }}>
             <GaitDashboard
               onRegisterToChat={onSendToChat}
@@ -455,7 +431,7 @@ export function ToolCanvasDrawer({
         )}
 
         {/* Tool: Scientific Dictionary (ScientificDictionaryDrawer.jsx) */}
-        {activeTool === 'dictionary' && (
+        {effectiveTool === 'dictionary' && (
           <div className="tool-body-pane">
             <ScientificDictionaryDrawer
               activeInvestigation={activeInvestigation}

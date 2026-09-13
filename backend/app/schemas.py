@@ -76,7 +76,7 @@ class JointAngleReading(BaseModel):
 
 class InvestigationRequest(BaseModel):
     domain: str = "infrastructure" # infrastructure | agriculture | pediatrics | sports | gait
-    preset_id: Optional[str] = "infra_damaged_road"
+    preset_id: Optional[str] = None
     scenario_id: Optional[str] = None
     image_url: Optional[str] = None
     image_data: Optional[str] = None # Base64 image payload
