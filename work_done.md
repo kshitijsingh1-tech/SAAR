@@ -28,6 +28,10 @@
 19. [Single-Frame Video Classification Architecture & Resilient Dynamic Port Adapter](#19-2026-09-13-single-frame-video-classification-architecture--resilient-dynamic-port-adapter)
 20. [Critical Toddler Gait vs. Badminton Classification & State Leak Isolation](#20-2026-09-13-critical-toddler-gait-vs-badminton-classification--state-leak-isolation)
 21. [Badminton Studio Video Playback Restoration & Clean Post-Analysis Controls](#21-2026-09-13-badminton-studio-video-playback-restoration--clean-post-analysis-controls)
+22. [In-Flight Analysis Cancellation & Toggle Stop Button](#22-2026-09-13-in-flight-analysis-cancellation--toggle-stop-button)
+23. [Comprehensive Fix: Enter Key Send & Instant Stop Analysis Cancellation](#23-2026-09-13-comprehensive-fix-enter-key-send--instant-stop-analysis-cancellation)
+24. [Fix TDZ Initialization Ordering for setMessages and handleStopProcessing](#24-2026-09-13-fix-tdz-initialization-ordering-for-setmessages-and-handlestopprocessing)
+25. [Dynamic Tool Discovery & Question-Driven Tool Unlocking](#25-2026-09-13-dynamic-tool-discovery--question-driven-tool-unlocking)
 
 ---
 
@@ -832,6 +836,7 @@ When uploading toddler walking videos (including domestic close-ups or sample to
    - Updated all asynchronous phases in `handleSendMessage`, `executeImageInvestigation`, `handleSelectScenario`, and `uploadSaarCsv` to pass `abortController.signal` and check `checkIsAborted()` at every step.
    - Cleanly resets UI and outputs `*Analysis stopped by user.*` without extra error messages or state corruptions.
 4. **Verification**:
+
 ---
 
 ## 26. [2026-09-13] Fix TDZ Initialization Ordering for `setMessages` and `handleStopProcessing`
@@ -851,13 +856,42 @@ When uploading toddler walking videos (including domestic close-ups or sample to
 ### Implemented Solution & Non-Regression Invariants
 1. **Re-ordered Hook Definitions ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
    - Moved `abortControllerRef`, `isAbortedRef`, `checkIsAborted`, and `handleStopProcessing` immediately below the definition of `setMessages`.
-2. **Verification**:
-   - `npm run build` compiled cleanly in 54.85s with 0 errors.
-   - All 41 backend tests pass.
 
+---
 
+## 27. [2026-09-14] Dynamic Tool Discovery & Question-Driven Tool Unlocking
 
+**Primary Files Modified**:
+- [`frontend/src/components/ToolRolloutBar.jsx`](file:///d:/bytebuild/frontend/src/components/ToolRolloutBar.jsx)
+- [`frontend/src/components/ToolCanvasDrawer.jsx`](file:///d:/bytebuild/frontend/src/components/ToolCanvasDrawer.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
 
+### Problem Description & Symptoms
+- Previously, all analytical tools (`grounded`, `graph`, `gait`, `badminton`, `analytics`, `rag`, `dictionary`) were visible in the flowing tool rollout bar (`ToolRolloutBar`) and tool drawer (`ToolCanvasDrawer`) by default, regardless of user context.
+- The user requested that tools start with **only** the `Scientific Dictionary` (`dictionary`), and relevant diagnostic tools should be dynamically unlocked and appended to the tool icon stream based on the user's question, media uploads, and investigation context.
 
+### Root Cause Analysis
+- The tool rollout bar and tool drawer directly rendered static tool lists (`allTools` / `toolsMeta`) without session-level filtering or dynamic discovery dispatch.
+- There was no reactive hook or state dispatch mechanism to detect intent/artifacts from user questions, file MIME types, or model step telemetry and selectively unlock matching analytical toolkits.
 
-
+### Implemented Solution & Non-Regression Invariants
+1. **ToolRolloutBar & ToolCanvasDrawer Gating**:
+   - Both components now accept an `unlockedTools` prop (defaulting strictly to `['dictionary']`).
+   - `ToolRolloutBar` filters `allTools` by `unlockedTools.includes(t.id)` and renders a dynamic count badge (`Scientific Tools (N)`).
+   - `ToolCanvasDrawer` filters available tabs and active tool panes strictly to `unlockedTools`.
+2. **Session-Isolated Tool Unlocking State ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Added `sessionUnlockedTools` state with `localStorage` caching (`saar_session_unlocked_tools`).
+   - New sessions initialize with `sessionUnlockedTools[newId] = ['dictionary']` and `activeTool = 'dictionary'`.
+3. **Dynamic Semantic Tool Classifier & Dispatcher ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Implemented `detectAndUnlockTools(queryText, attachedFiles, report, domain)`:
+     - **Botanical / Vision questions & image uploads**: Unlocks `grounded` and `graph`.
+     - **Toddler gait / orthopedic inquiries & gait videos**: Unlocks `gait` and `rag`.
+     - **Badminton / athletics inquiries & sports videos**: Unlocks `badminton`, `rag`, `analytics`, and `graph`.
+     - **CSV / sensor telemetry & tabular data inquiries**: Unlocks `analytics` and `graph`.
+     - **Biomechanical / anatomical questions**: Unlocks `rag`, `grounded`, and `graph`.
+   - Wired into `handleSendMessage`, `executeImageInvestigation`, `handleSelectScenario`, and `handleOpenTool`.
+4. **Verification**:
+   - `npm run build` completed with 0 errors in 36.35s.
+   - All 41 backend tests passed (`41 passed in 79.58s`).

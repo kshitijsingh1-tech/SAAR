@@ -16,6 +16,7 @@ export function ToolCanvasDrawer({
   onClose,
   activeTool,
   onSelectTool,
+  unlockedTools = ['dictionary'],
   activeSessionId,
   activeInvestigation,
   investigationData,
@@ -135,33 +136,15 @@ export function ToolCanvasDrawer({
   const isBadmintonActive = (activeTool === 'badminton' || isSportsDomain) && !isGaitActive;
 
   // Configure tools uniquely for each domain, always preserving accessibility:
-  let toolsMeta = [];
-
-  if (isGaitActive) {
-    toolsMeta = [
-      { id: 'gait', label: 'Toddler Gait Screening', icon: <Activity size={15} /> },
-      { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
-      { id: 'rag', label: 'Clinical References', icon: <BookOpen size={15} /> }
-    ];
-  } else if (isBadmintonActive) {
-    toolsMeta = [
-      { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
-      { id: 'gait', label: 'Toddler Gait Screening', icon: <Activity size={15} /> },
-      { id: 'rag', label: 'Sports References', icon: <BookOpen size={15} /> },
-      { id: 'analytics', label: 'Kinematic Analytics', icon: <BarChart2 size={15} /> }
-    ];
-  } else {
-    // Standard and full operational scientific tools:
-    toolsMeta = [
-      { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
-      { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
-      { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
-      { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
-      { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-      { id: 'rag', label: isPediatricsDomain ? 'Clinical References' : isSportsDomain ? 'Sports References' : 'Scientific References', icon: <BookOpen size={15} /> },
-      { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
-    ];
-  }
+  let toolsMeta = [
+    { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
+    { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
+    { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
+    { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
+    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
+    { id: 'rag', label: isPediatricsDomain ? 'Clinical References' : isSportsDomain ? 'Sports References' : 'Scientific References', icon: <BookOpen size={15} /> },
+    { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
+  ];
 
   // Robust tool alias normalization
   const TOOL_ALIASES = {
@@ -178,15 +161,23 @@ export function ToolCanvasDrawer({
     morphology: 'grounded',
     camera: 'grounded',
     inspector: 'grounded',
-    image: 'grounded'
+    image: 'grounded',
+    dict: 'dictionary',
+    terms: 'dictionary',
+    lexicon: 'dictionary'
   };
 
-  const availableIds = toolsMeta.map((t) => t.id);
-  const defaultTool = isGaitActive ? 'gait' : isBadmintonActive ? 'badminton' : 'grounded';
+  // Filter tools strictly by the session's unlocked tools list (starts with only dictionary)
+  const activeToolIds = Array.isArray(unlockedTools) && unlockedTools.length > 0 ? unlockedTools : ['dictionary'];
+  const filteredToolsMeta = toolsMeta.filter((t) => activeToolIds.includes(t.id));
+  const activeList = filteredToolsMeta.length > 0 ? filteredToolsMeta : toolsMeta.filter((t) => t.id === 'dictionary');
+
+  const availableIds = activeList.map((t) => t.id);
+  const defaultTool = availableIds[0] || 'dictionary';
   const aliased = TOOL_ALIASES[activeTool] || activeTool;
   const effectiveTool = availableIds.includes(aliased) ? aliased : defaultTool;
 
-  const currentToolMeta = toolsMeta.find((t) => t.id === effectiveTool) || toolsMeta[0];
+  const currentToolMeta = activeList.find((t) => t.id === effectiveTool) || activeList[0] || { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> };
 
   return (
     <aside
@@ -218,7 +209,7 @@ export function ToolCanvasDrawer({
 
           {/* Tool Switcher Tabs */}
           <div className="tool-switcher-pills">
-            {toolsMeta.map((t) => (
+            {activeList.map((t) => (
               <button
                 key={t.id}
                 className={`tool-pill-btn ${effectiveTool === t.id ? 'active' : ''}`}

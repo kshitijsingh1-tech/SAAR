@@ -396,6 +396,127 @@ export default function App() {
     saarData?.observations_count
   );
 
+  // Dynamic Unlocked Tools per Session (Starts with ONLY ['dictionary'] for any new session)
+  const [sessionUnlockedTools, setSessionUnlockedTools] = useState(() => {
+    try {
+      const saved = localStorage.getItem('saar_session_unlocked_tools');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      'session-1': ['dictionary', 'grounded', 'graph', 'analytics', 'rag'],
+      'session-2': ['dictionary', 'grounded', 'graph', 'analytics', 'rag'],
+      'session-3': ['dictionary', 'grounded', 'graph', 'rag'],
+      'session-4': ['dictionary', 'badminton', 'analytics', 'rag', 'graph']
+    };
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('saar_session_unlocked_tools', JSON.stringify(sessionUnlockedTools));
+    } catch (e) {}
+  }, [sessionUnlockedTools]);
+
+  const unlockedTools = sessionUnlockedTools[activeSessionId] || ['dictionary'];
+
+  const unlockTools = useCallback((toolsToUnlock, sessionId = activeSessionId) => {
+    const list = Array.isArray(toolsToUnlock) ? toolsToUnlock : [toolsToUnlock];
+    if (list.length === 0) return;
+    setSessionUnlockedTools((prev) => {
+      const current = prev[sessionId] || ['dictionary'];
+      const nextSet = new Set([...current, ...list]);
+      const nextList = Array.from(nextSet);
+      if (nextList.length === current.length && current.every((t) => nextSet.has(t))) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [sessionId]: nextList
+      };
+    });
+  }, [activeSessionId]);
+
+  // Semantic Tool Detector: dynamically analyzes question text, attachments, and model findings to unlock relevant tools
+  const detectAndUnlockTools = useCallback((queryText, attachedFiles = [], report = null, domain = selectedDomain) => {
+    const detected = new Set(['dictionary']);
+    const combined = `${queryText || ''} ${report?.summary || ''} ${report?.conclusion || ''} ${report?.domain || ''} ${domain || ''}`.toLowerCase();
+    const fileList = Array.isArray(attachedFiles) ? attachedFiles : (attachedFiles ? [attachedFiles] : []);
+    const fileNames = fileList.map((f) => (typeof f === 'string' ? f : (f?.name || '')).toLowerCase()).join(' ');
+    const fileTypes = fileList.map((f) => (f?.type || '').toLowerCase()).join(' ');
+    const fullContext = `${combined} ${fileNames} ${fileTypes}`;
+
+    const hasImage = fileList.some((f) => {
+      const name = typeof f === 'string' ? f : (f?.name || '');
+      const type = (f?.type || '').toLowerCase();
+      return type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(name);
+    });
+
+    const hasVideo = fileList.some((f) => {
+      const name = typeof f === 'string' ? f : (f?.name || '');
+      const type = (f?.type || '').toLowerCase();
+      return type.startsWith('video/') || /\.(mp4|mov|avi|webm|mkv)$/i.test(name);
+    });
+
+    const hasCsv = fileList.some((f) => {
+      const name = typeof f === 'string' ? f : (f?.name || '');
+      const type = (f?.type || '').toLowerCase();
+      return /\.(csv|tsv|txt|xlsx|xls)$/i.test(name) || type.includes('csv') || type.includes('spreadsheet');
+    });
+
+    if (hasImage || report?.final_graph || report?.preset_id || /image|photo|picture|leaf|foliage|fenestration|specimen|shoot|crack|asphalt|surface|spot|yellowing|chlorosis|camera|crop|flower|plant|tissue|defect|grounding/.test(fullContext)) {
+      detected.add('grounded');
+      detected.add('graph');
+    }
+
+    if ((hasVideo && /badminton|smash|racket|shuttle|sport/.test(fullContext)) || report?.court_calibration || /badminton|tennis|smash|shuttle|shuttlecock|racket|racquet|kinetic|stroke|court|wrist|elbow|jump|biomechanic|athlet|player|rally/.test(fullContext)) {
+      detected.add('badminton');
+      detected.add('rag');
+      detected.add('analytics');
+      detected.add('graph');
+    }
+
+    if ((hasVideo && /gait|toddle|pediat|walk|child/.test(fullContext)) || report?.metrics?.usable_step_count != null || /gait|toddle|pediat|infant|baby|child|walk|step|cadence|asymmetry|stance|clearance|ambulation/.test(fullContext)) {
+      detected.add('gait');
+      detected.add('rag');
+    }
+
+    if (hasCsv || report?.telemetry || report?.perception?.features_detected || /sensor|telemetry|moisture|ph|rhizosphere|gpr|temperature|humidity|timeseries|correlation|column|dataset|observation|trend|time-series|csv|dataframe/.test(fullContext)) {
+      detected.add('analytics');
+      detected.add('graph');
+    }
+
+    if (report?.domain_knowledge?.length > 0 || /literature|citation|paper|reference|peer-reviewed|journal|study|clinical|guideline|published|evidence|hypothesis|source/.test(fullContext)) {
+      detected.add('rag');
+    }
+
+    if (report?.final_graph || report?.relationships?.length > 0 || /graph|causal|cause|dependency|network|node|edge|pathway|chain|link|mechanism/.test(fullContext)) {
+      detected.add('graph');
+    }
+
+    if (report?.steps && Array.isArray(report.steps)) {
+      report.steps.forEach((s) => {
+        const stepName = (s.tool_name || s.step_name || '').toLowerCase();
+        if (stepName.includes('morphology') || stepName.includes('ground') || stepName.includes('inspect')) {
+          detected.add('grounded');
+          detected.add('graph');
+        }
+        if (stepName.includes('spectrometry') || stepName.includes('telemetry') || stepName.includes('sensor')) {
+          detected.add('analytics');
+          detected.add('graph');
+        }
+        if (stepName.includes('gait') || stepName.includes('posture')) {
+          detected.add('gait');
+          detected.add('rag');
+        }
+        if (stepName.includes('badminton') || stepName.includes('stroke')) {
+          detected.add('badminton');
+          detected.add('rag');
+        }
+      });
+    }
+
+    unlockTools(Array.from(detected));
+  }, [selectedDomain, unlockTools]);
+
   // Synchronize active session context dynamically ONLY when activeSessionId actually changes
   useEffect(() => {
     if (prevActiveSessionIdRef.current === activeSessionId && (customImageData || customImageUrl)) {
@@ -523,6 +644,8 @@ export default function App() {
       };
 
       if (checkIsAborted()) return;
+
+      detectAndUnlockTools(queryText, [], res, domain);
 
       setMessages((prev) => [
         ...prev,
@@ -789,6 +912,8 @@ export default function App() {
         steps: thoughtSteps
       };
 
+      detectAndUnlockTools(optionalUserText, fileList, res, targetDomain);
+
       setMessages((prev) => [
         ...prev,
         {
@@ -898,6 +1023,9 @@ export default function App() {
       }
     ]);
 
+    // Dynamically unlock relevant tools right when user submits question/upload
+    detectAndUnlockTools(userText, currentFiles);
+
     // Update active session query if new session
     setSessions((prev) =>
       prev.map((s) =>
@@ -998,6 +1126,8 @@ export default function App() {
 
               if (checkIsAborted()) return;
 
+              detectAndUnlockTools(userText, currentFiles, badmintonResult, 'sports');
+
               setMessages((prev) => [
                 ...prev,
                 {
@@ -1019,6 +1149,7 @@ export default function App() {
               const gaitResult = await analyzeGaitVideo(file, 24, { signal: abortController.signal });
               if (checkIsAborted()) return;
               setSaarData(gaitResult);
+              detectAndUnlockTools(userText, currentFiles, gaitResult, 'pediatrics');
               let responseText = `### Video Gait Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
               responseText += `- **Video Processed**: \`${fileName}\` (${gaitResult.video?.fps || 24} FPS, ${gaitResult.video?.duration_seconds || 0}s)\n`;
               responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence || 'High'} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
@@ -1126,6 +1257,8 @@ export default function App() {
 
           let responseText = report?.summary || report?.conclusion || `I have ingested and analyzed \`${fileName}\`. Longitudinal trends, cross-correlations, and causal relationships are mapped in the **Sensor Telemetry** and **Causal Graph** tools.`;
 
+          detectAndUnlockTools(userText, currentFiles, report);
+
           if (userText && userText.trim()) {
             try {
               const questionReply = await askSaarQuestion(report?.investigation_id || 'latest', userText.trim(), { signal: abortController.signal });
@@ -1191,6 +1324,8 @@ export default function App() {
       };
 
       if (checkIsAborted()) return;
+
+      detectAndUnlockTools(msgText, currentFiles, askRes);
 
       setMessages((prev) => [
         ...prev,
@@ -1261,6 +1396,7 @@ export default function App() {
     if (node?.id) {
       setSelectedNodeId(node.id);
     }
+    unlockTools([toolId]);
     setActiveTool(toolId);
     setIsToolDrawerOpen(true);
   };
@@ -1368,6 +1504,12 @@ export default function App() {
       ...prev,
       [newId]: false
     }));
+    // New sessions strictly start with ONLY ['dictionary'] tool
+    setSessionUnlockedTools((prev) => ({
+      ...prev,
+      [newId]: ['dictionary']
+    }));
+    setActiveTool('dictionary');
     setAllMessages((prevAll) => {
       const nextAll = { ...prevAll, [newId]: [] };
       try {
@@ -1750,6 +1892,7 @@ export default function App() {
           onReturnToLanding={handleReturnToLanding}
           onNewSession={handleNewSession}
           hasSensorData={hasSensorData}
+          unlockedTools={unlockedTools}
         />
       </main>
 
@@ -1759,6 +1902,7 @@ export default function App() {
         onClose={() => setIsToolDrawerOpen(false)}
         activeTool={activeTool}
         onSelectTool={setActiveTool}
+        unlockedTools={unlockedTools}
         activeSessionId={activeSessionId}
         activeInvestigation={saarData || investigationData}
         investigationData={investigationData}

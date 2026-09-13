@@ -366,7 +366,8 @@ export function ChatGPTView({
   onSelectTheme,
   onReturnToLanding,
   onNewSession,
-  hasSensorData = true
+  hasSensorData = true,
+  unlockedTools = ['dictionary']
 }) {
   const [inputText, setInputText] = useState('');
   const [textSnippet, setTextSnippet] = useState(null);
@@ -1452,6 +1453,7 @@ export function ChatGPTView({
           isDrawerOpen={isToolDrawerOpen}
           floating={true}
           selectedDomain={selectedDomain}
+          unlockedTools={unlockedTools}
         />
       </div>
 

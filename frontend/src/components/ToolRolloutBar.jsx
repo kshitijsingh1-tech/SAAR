@@ -4,7 +4,14 @@ import {
   BookA, X, Crosshair, Activity
 } from 'lucide-react';
 
-export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating = false, selectedDomain = 'agriculture' }) {
+export function ToolRolloutBar({
+  onOpenTool,
+  activeTool,
+  isDrawerOpen,
+  floating = false,
+  selectedDomain = 'agriculture',
+  unlockedTools = ['dictionary']
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef(null);
 
@@ -68,14 +75,10 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     }
   ];
 
-  const domainLower = String(selectedDomain || '').toLowerCase();
-  const isPediatrics = domainLower.includes('pediat') || domainLower.includes('gait') || domainLower.includes('toddle');
-
-  const tools = isPediatrics
-    ? allTools
-        .filter((t) => ['gait', 'rag'].includes(t.id))
-        .map((t) => (t.id === 'rag' ? { ...t, label: 'Clinical References' } : t))
-    : allTools;
+  // Filter tools strictly based on what is unlocked in the active session
+  const activeToolIds = Array.isArray(unlockedTools) && unlockedTools.length > 0 ? unlockedTools : ['dictionary'];
+  const filtered = allTools.filter((t) => activeToolIds.includes(t.id));
+  const tools = filtered.length > 0 ? filtered : allTools.filter((t) => t.id === 'dictionary');
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -111,7 +114,7 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
           };
 
           return (
-            <div key={t.id} className="round-tool-item-wrapper">
+            <div key={t.id} className="round-tool-item-wrapper animate-fade-in">
               <button
                 className={`round-tool-btn ${isActive ? 'tool-active' : ''}`}
                 style={delayStyle}
@@ -147,8 +150,8 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
         {/* Trigger Tooltip */}
         {!isExpanded && (
           <div className="round-tool-tooltip trigger-tooltip">
-            <strong>Scientific Tools</strong>
-            <small>Click to roll out</small>
+            <strong>Scientific Tools ({tools.length})</strong>
+            <small>{tools.length === 1 ? 'Dictionary active' : `${tools.length} active tools`}</small>
           </div>
         )}
       </div>
