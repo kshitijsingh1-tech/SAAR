@@ -6,15 +6,7 @@ import {
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
   PieChart, ChevronRight, MessageSquare, Sprout, Construction, Orbit, Activity,
-<<<<<<< HEAD
-<<<<<<< HEAD
-  Image as ImageIcon, Film, Sun, Moon, Eye, Trash2, ZoomIn
-=======
-  Image as ImageIcon, Film, Sun, Moon, Crosshair
->>>>>>> a034de23bfd5df6600655a1590250dd2b3c4dc87
-=======
-  Image as ImageIcon, Film, Sun, Moon, Eye, Trash2, ZoomIn
->>>>>>> ddf65c9d2c4b7fccf3117e19273ebc5193492afe
+  Image as ImageIcon, Film, Sun, Moon, Eye, Trash2, ZoomIn, Crosshair
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
