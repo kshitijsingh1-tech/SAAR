@@ -381,11 +381,12 @@ export const ImageInspector = ({
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       handleUpload(file, null);
     }
   };
+  const handleFileSelect = handleFileChange;
 
   const handleUrlSubmit = (e) => {
     e.preventDefault();
@@ -604,7 +605,7 @@ export const ImageInspector = ({
             type="file"
             accept="image/*,video/*"
             style={{ display: 'none' }}
-            onChange={handleFileSelect}
+            onChange={handleFileChange}
           />
           <button
             onClick={() => fileInputRef.current?.click()}
