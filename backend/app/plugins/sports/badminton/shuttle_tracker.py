@@ -290,8 +290,8 @@ class BadmintonShuttleTracker:
         verified_count = len(verified_set)
         visibility_ratio = float(round(verified_count / max(1, n_frames), 3))
         is_usable = visibility_ratio >= SHUTTLE_USABILITY_THRESHOLD
-
-        if is_usable and H_np is not None and shuttle_speeds_km_h:
+        has_verified_trajectory = verified_count >= 3 and len(shuttle_speeds_km_h) >= 1
+        if (is_usable or has_verified_trajectory) and H_np is not None and shuttle_speeds_km_h:
             peak_shuttle = float(round(np.percentile(shuttle_speeds_km_h, 95), 1))
             mean_shuttle = float(round(np.mean(shuttle_speeds_km_h), 1))
             shuttle_peak_metric = Metric(
@@ -312,6 +312,7 @@ class BadmintonShuttleTracker:
                 available=True,
                 unavailable_reason=None
             )
+            is_usable = True
         else:
             reason = (
                 f"NOT_RELIABLY_MEASURABLE: Shuttle tracked in only {visibility_ratio * 100:.1f}% of frames (minimum {SHUTTLE_USABILITY_THRESHOLD * 100:.0f}% required for physical trajectory reconstruction)."

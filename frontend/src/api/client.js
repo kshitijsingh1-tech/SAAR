@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8002';
 
 export const fetchDomains = async () => {
   const res = await axios.get(`${API_BASE_URL}/domains`);
@@ -13,6 +13,8 @@ export const runInvestigation = async (domain, presetId, options = {}) => {
     preset_id: presetId,
     image_data: options.imageData || null,
     image_url: options.imageUrl || null,
+    images: options.images || null,
+    image_metadata: options.imageMetadata || options.image_metadata || null,
     vlm_provider: options.vlmProvider || 'auto',
     api_key: options.apiKey || null
   };
@@ -194,6 +196,16 @@ export const askGaitQuestion = async (assessmentId, question) => {
   const res = await axios.post(`${API_BASE_URL}/api/gait/assessment/${assessmentId}/ask`, {
     question
   });
+  return res.data;
+};
+
+export const classifyVideo = async (file, contextText = '') => {
+  const formData = new FormData();
+  formData.append('video', file);
+  if (contextText) {
+    formData.append('context', contextText);
+  }
+  const res = await axios.post(`${API_BASE_URL}/api/video/classify`, formData);
   return res.data;
 };
 

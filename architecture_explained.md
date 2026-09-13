@@ -81,7 +81,7 @@ d:\bytebuild\
 │   │   │   ├── key_pool_manager.py     <-- Multi-Key Load-Balancing, Rotation & Circuit Breaker
 │   │   │   ├── ingestion_service.py     <-- CSV Upload, Schema Detection, Column Profiling
 │   │   │   ├── analytics_service.py     <-- Correlations, Trends, Anomalies, Interventions
-│   │   │   ├── reasoning_service.py     <-- SAAR Iterative Investigation Loop Orchestrator
+│   │   │   ├── reasoning_service.py     <-- SAAR Iterative Investigation Loop, Dynamic Milestone & Telemetry Extractor
 │   │   │   ├── dictionary_service.py    <-- Grounded Lexical & Scientific Terminology Engine
 │   │   │   └── persistence_service.py   <-- JSON-on-Disk Temporal Snapshots & Investigation Store
 │   │   │
@@ -107,9 +107,9 @@ d:\bytebuild\
 │   │       ├── ChatAssistant.jsx       <-- Lightweight Conversational AI Sidebar Assistant
 │   │       ├── SaarCentralChat.jsx     <-- SAAR-Specific Deep Reasoning Chat View
 │   │       ├── SaarFindingsPanel.jsx   <-- Structured Investigation Findings & Evidence Summary
-│   │       ├── ImageInspector.jsx      <-- Fullscreen Evidence Monitor with Pan/Zoom HUD & Normalized Bounding Anchors
+│   │       ├── ImageInspector.jsx      <-- Fullscreen Evidence Monitor with Pan/Zoom HUD, Normalized Bounding Anchors & Dynamic Milestone Dropdown
 │   │       ├── KnowledgeGraphCanvas.jsx<-- Pure SVG/Canvas Knowledge Graph Visualizer (Zero-Dependency)
-│   │       ├── PlotlyGraphViewer.jsx   <-- Interactive Directed Causal Scene Graph (Plotly-powered)
+│   │       ├── PlotlyGraphViewer.jsx   <-- Interactive Causal Scene Graph, Longitudinal Multi-Sensor Scrubber, Dynamic Covariance Heatmap & Milestone Photostrip
 │   │       ├── ToolCanvasDrawer.jsx    <-- Dynamic Tool Inspection Drawer & Diagnostics (Domain-Isolated)
 │   │       ├── ToolRolloutBar.jsx      <-- Animated Tool Execution Progress Bar
 │   │       ├── GaitDashboard.jsx       <-- ToddleAI Pediatric Gait Screening Dashboard & Video Player
@@ -193,7 +193,24 @@ d:\bytebuild\
   - `Kinetic Chain Contribution Calculator`: Decomposes total power contribution percentage from legs (ground reaction force), trunk rotation, shoulder, elbow, and wrist snap across the kinetic chain.
   - `Jump-Landing Valgus Risk Assessor`: Evaluates lower-extremity deceleration mechanics and knee valgus angle during landing to flag injury-risk compensation patterns.
 
-#### E. `backend/app/gait/` — The ToddleAI Deterministic Pediatric Gait Engine
+#### E. `vlm_service.py` — Hybrid VLM Perception & Two-Stage Sequential Pipeline
+* **Role**: Multimodal visual grounding, scene graph extraction, and context-first text analysis.
+* **Architecture & Sequential Ingestion Pipeline**:
+  1. **Stage 1 (Text-First Analysis Engine — Analyzed First)**:
+     - When users attach specimen photographs with free-form contextual notes/instructions in the single modal text box, `analyze_context_text()` executes **prior** to visual perception.
+     - Calls fast LLM reasoning (`_call_text_analyzer_llm` via Gemini Flash / Groq LLaMA) with deterministic keyword fallback.
+     - Extracts:
+       - **Temporal Milestone**: `{ day, stage, milestone_label }` (e.g. Day 10 - Callus Formation) for dynamic 30-day timeline graph pinning.
+       - **Focus Targets**: 2–5 specific anatomical/structural entities that the VLM must ground.
+       - **Prior Hypotheses**: Scientific hypotheses to test against visual evidence.
+       - **Context Summary**: Crisp synthesis of user context and conditions.
+  2. **Stage 2 (Context-Guided Visual Grounding & Spatial Perception)**:
+     - The Stage 1 extracted targets and hypotheses are injected as top-priority prompt directives (`[PRIOR CONTEXT ANALYSIS (STAGE 1 - ANALYZED FIRST)]`) into the VLM.
+     - VLM models (Google Gemini 2.0/1.5 Flash, Groq Qwen/LLaMA, Ollama, OpenAI GPT-4o) detect individual entity instances and output normalized bounding boxes `[ymin, xmin, ymax, xmax]`.
+  3. **Attachment & Telemetry Synchronization**:
+     - The Stage 1 context analysis is attached directly to the investigation report (`InvestigationResponse.text_context_analysis`), prepended to findings summaries, and returned in `telemetry.milestones` to dynamically pin the photo to the 30-day timeline graph.
+
+#### F. `backend/app/gait/` — The ToddleAI Deterministic Pediatric Gait Engine
 * **Role**: End-to-end computer-vision and signal-processing pipeline evaluating toddler walking clips.
 * **Key Submodules**:
   - `video_processor.py`: Decouples video frames via OpenCV (`cv2.VideoCapture`) with timestamp indexing.
@@ -204,7 +221,7 @@ d:\bytebuild\
   - `quality/recording_quality.py`: Evaluates tracking jitter, occlusion, and minimum step count to gate recordings into `HIGH`, `MEDIUM`, `LOW`, or `REJECT`.
   - `observations/observation_engine.py`: Emits objective clinical screening observations with developmental context.
 
-#### F. `main.py` — REST API Gateway
+#### G. `main.py` — REST API Gateway
 * **Role**: FastAPI web server running on Uvicorn (`http://127.0.0.1:8001`).
 * **Endpoints**:
   - `GET /domains`: Lists available domain plugins and scenario presets.
@@ -215,6 +232,9 @@ d:\bytebuild\
   - `GET /api/gait/sample` & `GET /api/gait/sample/video`: Pre-bundled sample video analysis and streaming.
   - `POST /api/dictionary/lookup` & `GET /api/dictionary/lookup`: Context-grounded scientific term lookup.
   - `POST /api/dictionary/glossary`: Instant domain glossary extraction.
+  - `POST /api/saar/upload`: Ingests multi-column tabular datasets (CSV/TSV), discovering schema, continuous numeric channels, timestamps, and dynamic milestones.
+  - `GET /api/saar/read-file`: Resolves local file paths to blobs, supporting clipboard path-pasting and bypassing OS file-sandbox limitations.
+  - `GET /api/saar/investigation/{id}`: Returns complete investigation state including dynamic telemetry, causal graph, and observations.
 
 ---
 
@@ -1517,4 +1537,388 @@ To accelerate scientific drill-down without requiring the user to formulate comp
 - Clicking a chip dispatches the exact contextual question to `POST /api/saar/investigation/{id}/ask`, maintaining conversational momentum and continuous graph refinement.
 
 ---
+
+## 20. Zero-Hardcoding & Data-Driven Milestone Architecture
+
+In strict compliance with [`AGENTS.md`](file:///d:/bytebuild/AGENTS.md) and [`.agents/rules/no_hardcoding.md`](file:///d:/bytebuild/.agents/rules/no_hardcoding.md), the SAAR platform prohibits static entity registries, species-specific lookup files, or hardcoded scenario conditionals in frontend presentation layers.
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                       UNIVERSAL DATA-DRIVEN MILESTONE EXTRACTION PIPELINE                      │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                │
+│   Raw User Dataset (CSV / TSV / Stream)                                                        │
+│   ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│   │ timestamp,cambium_kohm,sap_flow,growth_stage,intervention,photograph_url               │   │
+│   │ Day 0 (2018-09-05),38.4,12.4,Incision Grafted,Scion Bud Attached,/rose_milestones/m1.jpg│   │
+│   │ Day 10 (2018-09-15),41.2,14.1,Callus Formation,Parafilm Wrap Sealed,/rose_milestones/m2.jpg │   │
+│   │ ...                                                                                    │   │
+│   └────────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                              │                                                 │
+│                                              ▼                                                 │
+│   Backend Ingestion & Reasoning Service (`reasoning_service.py:get_report`)                   │
+│   ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│   │ • Dynamic Column Detection:                                                            │   │
+│   │   - Image candidate sub-strings: ['image', 'photo', 'photograph', 'url', 'visual']     │   │
+│   │   - Stage candidate sub-strings: ['stage', 'phase', 'growth_stage', 'development']     │   │
+│   │   - Intervention candidate sub-strings: ['intervention', 'milestone', 'event', 'act'] │   │
+│   │ • Regex Day Parser: re.search(r"Day\s*(\d+(?:\.\d+)?)", timestamp) -> float day offset  │   │
+│   │ • Chronological Palette Mapping & Normalized Milestone Contract Generation             │   │
+│   └────────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                              │                                                 │
+│                                              ▼                                                 │
+│   Serialized Data Contract (`telemetry.milestones`)                                            │
+│   ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│   │ [                                                                                      │   │
+│   │   { day: 0, label: "Scion Bud Attached", badge: "DAY 0", url: "...", color: "#0284c7" },│   │
+│   │   { day: 10, label: "Callus Formation", badge: "DAY 10", url: "...", color: "#0ea5e9" } │   │
+│   │ ]                                                                                      │   │
+│   └────────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                              │                                                 │
+│                                              ▼                                                 │
+│   Pure Presentation Consumption Layer                                                          │
+│   ┌──────────────────────────────────────────────┬─────────────────────────────────────────┐   │
+│   │ PlotlyGraphViewer.jsx                        │ ImageInspector.jsx                      │   │
+│   │ • Photostrip timeline with image cards       │ • Dynamic milestone dropdown selector   │   │
+│   │ • Interactive photo zoom modal               │ • Zero plant names in component logic   │   │
+│   │ • In-chart vertical marker annotations       │ • Empty state if no images present      │   │
+│   └──────────────────────────────────────────────┴─────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### A. Why Static Scenario Files (e.g. `roseMilestones.js`) Were Permanently Deleted
+In early iterations, a static file (`frontend/src/data/roseMilestones.js`) was introduced to map chip-budding stages to Wikipedia photography. This violated three foundational invariants:
+1. **Domain Over-Fitting**: Hardcoding rose data made the viewer incapable of displaying milestone imagery for grapevines, apple rootstocks, or non-botanical longitudinal datasets (e.g. asphalt freeze-thaw progression or postoperative knee flexion).
+2. **Presentation Pollution**: Presentation components like `PlotlyGraphViewer.jsx` and `ImageInspector.jsx` were forced to maintain conditional string branches (e.g. `if (isRoseDataset)` or `if (activeDomain === 'agriculture')`), corrupting them with business logic.
+3. **Loss of Single Source of Truth**: When users uploaded an updated CSV or a novel botanical trial, the UI ignored the file's authentic columns and rendered static placeholder arrays instead.
+
+### B. Dynamic Schema Detection in `reasoning_service.py`
+To achieve 100% data-driven autonomy, `backend/app/services/reasoning_service.py` inspects any uploaded tabular profile dynamically:
+1. **Semantic Column Dispatch**:
+   - Searches column headers for candidate photographic references (`image`, `photo`, `photograph`, `url`, `visual`).
+   - Searches headers for developmental phases (`stage`, `phase`, `growth_stage`, `development`) or active interventions (`intervention`, `milestone`, `event`, `action`).
+2. **Temporal Day Alignment**:
+   - Extracts numeric offsets from timestamp strings (e.g. `"Day 10 (2018-09-15)"` $\rightarrow 10.0$). If dates lack "Day" markers, sequential row indices are used.
+3. **Unified Milestone Contract**:
+   Emits an array conforming to the canonical data contract:
+   ```json
+   {
+     "day": 10.0,
+     "timestamp": "Day 10 (2018-09-15)",
+     "label": "Parafilm Wrap Sealed",
+     "badge": "DAY 10",
+     "color": "#0ea5e9",
+     "stage": "Callus Formation",
+     "date": "2018-09-15",
+     "url": "/rose_graft_milestones/m2.jpg",
+     "description": "Longitudinal observation recorded at Day 10. Developmental Stage: Callus Formation. Intervention: Parafilm Wrap Sealed."
+   }
+   ```
+4. **Zero Fallback Hallucination**:
+   If a dataset contains no photographic or stage columns, `telemetry.milestones` is an empty array `[]`. The UI gracefully renders an honest empty state without generating phantom boxes or borrowing assets from another domain.
+
+---
+
+## 21. Longitudinal Multi-Sensor Telemetry & Empirical Covariance Engine
+
+Longitudinal scientific investigations require tracking continuous multi-channel timeseries alongside discrete developmental milestones over multi-month lifecycles (e.g. 30 to 192+ days).
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                   LONGITUDINAL TELEMETRY & EMPIRICAL COVARIANCE ARCHITECTURE                   │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                │
+│  1. Ingestion Modalities (`ChatGPTView.jsx` & `main.py`)                                       │
+│     [ Clipboard CSV Text ]   [ File Path Paste ]   [ Drag & Drop ]   [ File Dialog Upload ]    │
+│                 │                     │                    │                    │              │
+│                 └─────────────────────┼────────────────────┴────────────────────┘              │
+│                                       ▼                                                        │
+│                    POST /api/saar/upload  OR  GET /api/saar/read-file                          │
+│                                       │                                                        │
+│                                       ▼                                                        │
+│  2. Dynamic Longitudinal Timeseries (`PlotlyGraphViewer.jsx`)                                  │
+│     ┌──────────────────────────────────────────────────────────────────────────────────────┐   │
+│     │ Y1: Cambium Bioimpedance (kΩ) ──────/\──────   Y2: Parafilm Relative Humidity (%) - -│   │
+│     │              │                          │                                            │   │
+│     │              ▼ [DAY 10: Callus]         ▼ [DAY 30: Shoot]                            │   │
+│     │ 0 ───────────────────────────────────────────────────────────────────────────── 192d │   │
+│     └──────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                       │                                                        │
+│                    ┌──────────────────┴──────────────────┐                                     │
+│                    ▼                                     ▼                                     │
+│  3. Bivariate Scatter & Regression      4. N x N Empirical Covariance Heatmap                  │
+│     • Dynamic Var X vs. Var Y           • Dynamic pairwise Pearson r across all channels       │
+│     • Live Pearson r & R² computation   • Diverging colorscale (#0284c7 to #ec4899)            │
+│     • Empirical slope & intercept       • Real-time interactive cell hover inspection          │
+│                                                                                                │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### A. Four-Way Ingestion Pipeline
+To allow frictionless data loading directly inside the reasoning dialogue:
+1. **Direct Tabular Text Pasting**: Detects multi-row delimited text ($\ge 2$ lines, comma/tab/semicolon) in `ChatGPTView.jsx:handlePaste`. Automatically synthesizes a virtual CSV `File` blob and attaches it to the prompt.
+2. **Local File Path Pasting**: On Windows, clipboard sandboxing prevents direct file blob access when copying files in File Explorer. SAAR intercepts pasted filesystem paths (e.g. `d:\bytebuild\dataset.csv`), queries the backend path resolver `GET /api/saar/read-file?path=...`, and fetches the file contents into the active session.
+3. **Drag-and-Drop Dropzone**: Direct drag over the chat composer creates structured spreadsheet attachments.
+4. **Standard File Dialog**: Paperclip icon opens native OS file pickers for `.csv`, `.tsv`, and `.txt` files.
+
+### B. Dual-Axis Longitudinal Timeline (`PlotlyGraphViewer.jsx`)
+Visualizing heterogeneous biological and physical phenomena requires plotting variables with vastly different magnitudes and units:
+- **Dual Independent Y-Axes**: Channels are mapped to `yaxis` (left, e.g. Cambium Bioimpedance in $k\Omega$) and `yaxis2` (right, e.g. Sub-Tape Relative Humidity in %).
+- **Milestone Marker Synchronization**: Milestones are injected into the Plotly layout as vertical shapes (`type: 'line'`, dashed, colored by milestone) with text annotations indicating the milestone day and label.
+- **Dynamic Time Scrubbing**: Works seamlessly across arbitrary durations, from 24-hour acute stress responses to 192-day multi-season graft journeys.
+
+### C. Empirical Bivariate Regression & $N \times N$ Covariance Matrix
+Rather than relying on synthetic correlation claims:
+1. **Real-Time Bivariate Scatter**: The user selects any two continuous numeric variables from the active dataset. The client computes:
+   $$\bar{x} = \frac{1}{n}\sum_{i=1}^n x_i, \quad \bar{y} = \frac{1}{n}\sum_{i=1}^n y_i$$
+   $$r = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum (x_i - \bar{x})^2 \sum (y_i - \bar{y})^2}}, \quad R^2 = r^2$$
+   The regression line $\hat{y} = mx + c$ is rendered directly over the scatter points with exact slope and intercept readouts.
+2. **Pairwise Covariance Heatmap**: Dynamically calculates the full Pearson correlation matrix for all $N$ numerical channels in the dataset, rendering an interactive Plotly heatmap with diverging gradient scales for instant collinearity detection.
+
+---
+
+## 22. Bi-Directional Cross-Modal Grounding & State Preservation Protocol
+
+A central strength of SAAR is the tight coupling between numerical sensor telemetry and high-resolution visual evidence without causing session state fragmentation.
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                         BI-DIRECTIONAL CROSS-MODAL GROUNDING WORKFLOW                          │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                │
+│   Sensor Telemetry Drawer (`PlotlyGraphViewer.jsx`)                                            │
+│   ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│   │ [Thumbnail: Day 10 Callus]  [Thumbnail: Day 30 Shoot]  [Thumbnail: Day 90 Union]        │   │
+│   │                                                                                        │   │
+│   │ Clicking Milestone Thumbnail opens Photographic Inspection Modal:                      │   │
+│   │ ┌────────────────────────────────────────────────────────────────────────────────────┐ │   │
+│   │ │ [High-Res Preview] • DAY 10 Callus Formation • Parafilm Wrap Sealed                │ │   │
+│   │ │ [ Open in Image Analysis Screen  ↗ ]                                               │ │   │
+│   │ └──────────────────────────────────────┬─────────────────────────────────────────────┘ │   │
+│   └────────────────────────────────────────┼───────────────────────────────────────────────┘   │
+│                                            │                                                   │
+│                                            ▼ onSelectMilestoneImage(url, { preserveTelemetry }) │
+│   Workspace Orchestrator (`App.jsx`)                                                           │
+│   ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│   │ • Updates active visual asset: selectedImageUrl = milestone.url                        │   │
+│   │ • State Preservation Protocol: preserveTelemetry = true                                │   │
+│   │   ==> Retains active telemetryData, timeseries array, and sensor channels              │   │
+│   │   ==> Retains active causal graph nodes, edges, and chat history                       │   │
+│   └────────────────────────────────────────┬───────────────────────────────────────────────┘   │
+│                                            │                                                   │
+│                                            ▼                                                   │
+│   Visual Evidence Inspector (`ImageInspector.jsx`)                                             │
+│   ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│   │ • Renders high-resolution specimen in full-pan/zoom canvas                             │   │
+│   │ • Dynamic Milestone Selector Dropdown: [ Day 10 - Callus Formation ▼ ]                 │   │
+│   │ • Normalized Bounding Anchors and SVG Leader Lines locked to active milestone          │   │
+│   └────────────────────────────────────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### A. The "Open in Image Analysis Screen" Bridge
+When an agronomist or engineer observes an anomalous sensor event (e.g. a sharp drop in `cambium_bioimpedance_kohm` on Day 10 indicating vascular callus bridging):
+1. The user clicks the corresponding milestone card in `PlotlyGraphViewer.jsx`.
+2. The interactive modal displays the authentic high-resolution photograph with clinical stage notes.
+3. Clicking **"Open in Image Analysis Screen"** dispatches `onSelectMilestoneImage(url, { preserveTelemetry: true })`.
+4. The main workspace seamlessly switches focus to `ImageInspector.jsx`, loading the photograph onto the high-resolution hardware-accelerated canvas for detailed spatial inspection.
+
+### B. State Preservation Protocol (`preserveTelemetry=true`)
+In traditional single-page apps, changing the active media URL often triggers a destructive cascading state reset. SAAR implements a non-destructive state preservation invariant:
+```javascript
+// App.jsx: Non-destructive image update
+const handlePasteImageUrl = (url, options = {}) => {
+  setSelectedImageUrl(url);
+  
+  // Strict State Preservation Invariant:
+  // If preserveTelemetry is specified, never wipe active sensor arrays or causal graphs!
+  if (!options.preserveTelemetry) {
+    // Standard new image reset logic
+  }
+};
+```
+This ensures researchers can jump back and forth between examining high-resolution morphological details and inspecting multi-channel electrical/hydraulic sensor curves without losing their analytical context.
+
+### C. Dynamic Milestone Dropdown in `ImageInspector.jsx`
+`ImageInspector.jsx` receives the active session's `milestones` as a dynamic prop:
+- If milestones exist in the active dataset, a sleek glassmorphic dropdown (`Milestone: [Day X - Stage ▼]`) appears in the top control bar.
+- Selecting a different milestone immediately swaps the canvas image and synchronizes bounding anchors to that developmental stage.
+- If the session is an arbitrary single-photo upload with no milestones, the dropdown is completely hidden, preserving a clean and focused workspace.
+
+### D. Local Asset Architecture & Offline VLM Ingestion
+To eliminate external CDN latency and network failures during mission-critical field work:
+- Authentic photographic records are stored locally under `frontend/public/` (e.g. `/rose_graft_milestones/`).
+- When sending visual assets to backend VLMs, `backend/app/vlm_service.py:_prepare_image_data` detects relative `/...` paths and resolves them directly against the local filesystem:
+  ```python
+  # Local filesystem path resolution in vlm_service.py
+  if image_source.startswith("/"):
+      local_path = os.path.join(frontend_public_dir, image_source.lstrip("/"))
+      if os.path.exists(local_path):
+          with open(local_path, "rb") as f:
+              return f.read(), mime_type
+  ```
+  This allows local and cloud-based models (Gemini, Groq, Ollama) to ingest high-resolution raw bytes directly without round-trip network hops.
+
+---
+
+## 23. Tabular Telemetry Ingestion Thought Process Capsule
+
+In alignment with SAAR's commitment to clean, high-signal conversational interaction, technical data profiling must never clutter the dialogue response body.
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                         TELEMETRY INGESTION THOUGHT PROCESS CAPSULE                            │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                │
+│  User Message: "Analyze the attached rose chip budding sensor dataset"                         │
+│                                                                                                │
+│  Agent Response:                                                                               │
+│  ┌──────────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │ 🧠 Thought Process  [ Ingested 21 variables • Discovered 14 causal edges • 92% ]   [ ▼ ] │  │
+│  ├──────────────────────────────────────────────────────────────────────────────────────────┤  │
+│  │ 1. Ingestion & Schema Profiling:                                                         │  │
+│  │    - Parsed rose_chip_budding_graft_journey_sensors.csv (193 rows x 21 columns)          │  │
+│  │    - Extracted 16 continuous numerical channels and 8 developmental milestones           │  │
+│  │                                                                                          │  │
+│  │ 2. Empirical Covariance & Trend Analysis:                                                │  │
+│  │    - Detected high negative correlation: bioimpedance vs. sap flow (r = -0.84, R² = 0.71)│  │
+│  │    - Identified cambial union stabilization inflection point between Day 10 and Day 30   │  │
+│  │                                                                                          │  │
+│  │ 3. Causal Graph Synthesis & Evidence Anchoring:                                          │  │
+│  │    - Synchronized sensor channels to Plotly dual-axis timeline and covariance heatmap    │  │
+│  │    - Bound authentic Wikimedia milestone photography to chronological keypoints          │  │
+│  └──────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                │
+│  Final Conversational Summary:                                                                 │
+│  "Successfully ingested the 192-day rose chip budding telemetry array. The dataset captures     │
+│   the complete physiological continuum from initial incision and parafilm isolation through    │
+│   cambial callus bridging, xylem reconnection, and active vegetative shoot elongation.          │
+│                                                                                                │
+│   Key Finding: Bioimpedance drops from 42.1 kΩ to 11.2 kΩ between Day 10 and Day 30,           │
+│   statistically confirming successful vascular reconnection and cambial union."                │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### A. Encapsulation of Parsing Telemetry
+When a CSV or tabular file is uploaded:
+- In `frontend/src/App.jsx`, parsing metrics, variable counts, row dimensions, and initial covariance findings are packed into a structured `thoughtProcess` capsule:
+  - `title`: Execution benchmark (e.g. `Thought for 1.8s`)
+  - `summary`: Ingested $N$ variables · Discovered $E$ causal edges · Confidence $C$%
+  - `steps`: Step-by-step audit trail detailing ingestion, feature extraction, causal topology computation, belief updating, and sensor tool synchronization.
+- Raw bulleted lists and hardcoded fallback strings are eliminated from the response body.
+
+### B. High-Signal Scientific Communication
+The assistant output text focuses exclusively on the substantive scientific and diagnostic essence:
+- Clear, authoritative narrative summaries.
+- Key physiological or structural inflection points.
+- Actionable next steps or recommended tool investigations.
+Practitioners can expand the Thought Process capsule anytime they need to audit the mathematical and algorithmic pipeline, achieving the ideal balance between conciseness and transparency.
+
+---
+
+## 24. Image Metadata Tagging & Multi-Iteration Milestone Architecture
+
+Scientific investigations often involve comparing photographic evidence recorded across multiple days, weeks, or experimental iterations (e.g. Day 1 incision, Day 15 callus formation, Day 30 shoot elongation). Without structured metadata, uploaded photographs remain anonymous pixel arrays, preventing chronological alignment and comparative longitudinal AI reasoning.
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                      IMAGE METADATA TAGGING & MULTI-ITERATION ARCHITECTURE                     │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                │
+│  1. Chat Composer Tagging (`ChatGPTView.jsx`)                                                  │
+│     ┌──────────────────────────────────────────────────────────────────────────────────────┐   │
+│     │ [Thumbnail Preview]  IMG_8392.jpg                                                    │   │
+│     │ Badge: [ DAY 10 ]  Callus Union · Lateral View                                       │   │
+│     │ [ 🏷️ Edit Tag ] ──> Opens Glassmorphic Metadata Editor Modal:                        │   │
+│     │                      • Milestone Day #: 10                                           │   │
+│     │                      • Stage / Action: Callus Formation & Vascular Bridge            │   │
+│     │                      • Perspective Angle: Lateral (Side View)                        │   │
+│     │                      • Field Notes: Parafilm intact, 95% sub-tape RH                 │   │
+│     │                      • Presets: [Incision] [Callus] [Shoot] [Bloom]                  │   │
+│     └──────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                           │                                                    │
+│               ┌───────────────────────────┴───────────────────────────┐                        │
+│               ▼                                                       ▼                        │
+│  2. Batch Auto-Sequence Helper                        3. Multi-Iteration Accumulation          │
+│     When >= 2 images uploaded at once:                   When user uploads in Turn 2 / Turn 3: │
+│     Auto-sequences Day 1, 10, 20, 30...                  Merges new milestones with historical │
+│     across all attached specimen frames                  milestones without overwriting        │
+│                                           │                                                    │
+│                                           ▼                                                    │
+│  4. Backend Comparative Multi-Image Reasoning (`vlm_service.py` & `schemas.py`)               │
+│     ┌──────────────────────────────────────────────────────────────────────────────────────┐   │
+│     │ InvestigationRequest.image_metadata: [ ImageMetadataItem, ... ]                      │   │
+│     │ Prompt Parts:                                                                        │   │
+│     │ • [Specimen Frame 1 Metadata: Day: 1; Stage: Incision; Angle: Lateral]               │   │
+│     │ • [Specimen Frame 2 Metadata: Day: 15; Stage: Callus Bridge; Angle: Lateral]         │   │
+│     │ • Inline image data bytes                                                            │   │
+│     │ VLM performs comparative differential analysis tracking morphological progression    │   │
+│     └──────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                           │                                                    │
+│                                           ▼                                                    │
+│  5. Universal UI Milestone Synchronization                                                     │
+│     • ImageInspector.jsx: Milestone dropdown instantly populated with user iterations      │
+│     • PlotlyGraphViewer.jsx: Photostrip & timeline markers render user-tagged images       │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### A. The Image Metadata Data Contract (`backend/app/schemas.py`)
+To formalize per-image annotations, SAAR defines the canonical `ImageMetadataItem` schema:
+```python
+class ImageMetadataItem(BaseModel):
+    filename: Optional[str] = None
+    day: Optional[float] = None
+    timestamp: Optional[str] = None
+    label: Optional[str] = None
+    stage: Optional[str] = None
+    view_angle: Optional[str] = None # e.g. Lateral, Apical, Frontal, Sagittal
+    description: Optional[str] = None
+    color: Optional[str] = None
+
+class InvestigationRequest(BaseModel):
+    ...
+    images: Optional[List[str]] = None
+    image_metadata: Optional[List[ImageMetadataItem]] = None
+```
+
+### B. Interactive Client Tagging & Batch Sequencing (`ChatGPTView.jsx`)
+1. **Thumbnail Previews**: Image attachments automatically generate secure object URLs (`URL.createObjectURL`), displaying visual thumbnails within composer pill cards.
+2. **Interactive Metadata Modal**: Clicking `🏷️ Tag` opens a glassmorphic editor allowing researchers to assign exact timeline parameters:
+   - **Day Number / Offset**: Numerical or alphanumeric day index.
+   - **Stage / Action**: Precise biological or clinical description.
+   - **Camera Perspective / Angle**: Normalized anatomical or directional orientation.
+   - **Empirical Notes**: Environmental or physiological field observations.
+3. **Batch Auto-Sequencing**: When uploading multi-photo trial batches, the `Auto-Sequence Days` action computes sequential timeline intervals automatically (`Day 1, Day 10, Day 20...`), eliminating tedious manual input.
+
+### C. Multi-Turn Milestone Accumulation Protocol (`frontend/src/App.jsx`)
+In real-world scientific monitoring, users frequently return to an active investigation to upload follow-up observations (e.g. Day 45 or Day 90 photographs). Traditional systems overwrite prior session assets. SAAR enforces a non-destructive accumulation protocol:
+```javascript
+// App.jsx: Non-destructive milestone accumulation across conversation turns
+const mergedMilestones = [...existingMilestones];
+for (const nm of newMilestones) {
+  const existIdx = mergedMilestones.findIndex(
+    (em) => em.url === nm.url || (em.day === nm.day && em.label === nm.label)
+  );
+  if (existIdx >= 0) {
+    mergedMilestones[existIdx] = nm;
+  } else {
+    mergedMilestones.push(nm);
+  }
+}
+mergedMilestones.sort((a, b) => (Number(a.day) || 0) - (Number(b.day) || 0));
+```
+Both `ImageInspector.jsx` and `PlotlyGraphViewer.jsx` consume `mergedMilestones`, ensuring the milestone dropdown and timeline continuously expand as the longitudinal experiment progresses.
+
+### D. Comparative VLM Grounding (`backend/app/vlm_service.py`)
+When multi-image or metadata-tagged payloads are transmitted, `vlm_service.py` embeds structural milestone headers directly into the model's multimodal prompt parts:
+```python
+# vlm_service.py: Embedding milestone metadata into multimodal parts
+for idx, img in enumerate(image_inputs):
+    meta = image_metadata[idx] if (image_metadata and idx < len(image_metadata)) else None
+    if meta:
+        meta_bits = [f"Day: {meta['day']}", f"Stage: {meta['stage']}", f"Angle: {meta['view_angle']}"]
+        parts.append({"text": f"[Specimen Frame {idx + 1} Metadata: {'; '.join(meta_bits)}]"})
+    parts.append({"inlineData": {"mimeType": mime_type, "data": b64_img}})
+```
+This enables frontier models (Gemini 2.5 Flash / Pro, Groq Qwen 2.5-VL, OpenAI GPT-4o) to recognize temporal sequences, contrast tissue differentiation between frames, identify healing rates, and ground changes directly within the causal knowledge graph.
 

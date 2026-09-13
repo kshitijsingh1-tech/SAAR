@@ -200,6 +200,7 @@ export function SaarFindingsPanel({
             <PlotlyGraphViewer
               chartType={activeChart}
               saarData={activeSaarData}
+              milestones={activeSaarData?.telemetry?.milestones || activeSaarData?.milestones || []}
               selectedRelationship={selectedRelationship}
               onSelectRelationship={onSelectRelationship}
               height={290}

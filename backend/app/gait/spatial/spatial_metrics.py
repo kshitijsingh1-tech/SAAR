@@ -82,15 +82,62 @@ def determine_walking_direction(frames: List[PoseFrame]) -> Tuple[float, float, 
     return (norm_dx, norm_dy, label)
 
 
+def _get_local_progression_vector(
+    frames: List[PoseFrame],
+    center_idx: int,
+    global_dir_x: float,
+    global_dir_y: float,
+    window_half: int = 5
+) -> Tuple[float, float]:
+    """Computes instantaneous forward progression vector around a specific frame,
+    falling back smoothly to the global progression vector if local motion is low."""
+    start_idx = max(0, center_idx - window_half)
+    end_idx = min(len(frames) - 1, center_idx + window_half)
+    
+    if end_idx <= start_idx:
+        return (global_dir_x, global_dir_y)
+
+    f_start = frames[start_idx]
+    f_end = frames[end_idx]
+
+    lh_s, rh_s = left_hip(f_start), right_hip(f_start)
+    lh_e, rh_e = left_hip(f_end), right_hip(f_end)
+
+    if min(lh_s.visibility, rh_s.visibility, lh_e.visibility, rh_e.visibility) < 0.20:
+        return (global_dir_x, global_dir_y)
+
+    p_start_x = (lh_s.x + rh_s.x) / 2.0
+    p_start_y = (lh_s.y + rh_s.y) / 2.0
+    p_end_x = (lh_e.x + rh_e.x) / 2.0
+    p_end_y = (lh_e.y + rh_e.y) / 2.0
+
+    dx = p_end_x - p_start_x
+    dy = p_end_y - p_start_y
+    mag = math.hypot(dx, dy)
+
+    if mag < 0.01:
+        return (global_dir_x, global_dir_y)
+
+    norm_dx = dx / mag
+    norm_dy = dy / mag
+
+    # Check if local direction aligns generally with global direction
+    dot_check = (norm_dx * global_dir_x) + (norm_dy * global_dir_y)
+    if dot_check < 0.2:
+        return (global_dir_x, global_dir_y)
+
+    return (norm_dx, norm_dy)
+
+
 def compute_foot_progression_angle(
     frames: List[PoseFrame],
     events: List[GaitEvent]
 ) -> FootProgressionResult:
     """
     Computes foot progression angle relative to the estimated walking progression vector.
-    Works invariantly for both left->right and right->left trajectories.
+    Uses localized trajectory vectors for each event to prevent path curvature distortions.
     """
-    dir_x, dir_y, dir_label = determine_walking_direction(frames)
+    global_dir_x, global_dir_y, dir_label = determine_walking_direction(frames)
     if dir_label == "unknown" or not events:
         return FootProgressionResult(
             mean_progression_angle_deg=None,
@@ -120,8 +167,13 @@ def compute_foot_progression_angle(
                 fy = toe.y - origin.y
                 f_mag = math.hypot(fx, fy)
                 if f_mag >= EPSILON:
+                    # Instantaneous progression vector
+                    loc_dx, loc_dy = _get_local_progression_vector(
+                        frames, ev.frame_index, global_dir_x, global_dir_y
+                    )
+                    
                     # Angle between foot vector and progression vector
-                    dot = (fx * dir_x) + (fy * dir_y)
+                    dot = (fx * loc_dx) + (fy * loc_dy)
                     cos_theta = dot / f_mag
                     clamped_cos = max(-1.0, min(1.0, cos_theta))
                     ang_deg = math.degrees(math.acos(clamped_cos))

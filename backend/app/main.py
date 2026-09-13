@@ -5,7 +5,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, HTTPException, Query, Response, Request
+from fastapi import FastAPI, HTTPException, Query, Response, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
@@ -76,6 +76,7 @@ def run_investigation(req: InvestigationRequest):
             image_url=req.image_url,
             image_data=req.image_data,
             images=req.images,
+            image_metadata=[m.model_dump() if hasattr(m, 'model_dump') else dict(m) for m in req.image_metadata] if req.image_metadata else None,
             vlm_provider=req.vlm_provider,
             api_key=req.api_key
         )
@@ -356,6 +357,31 @@ async def gait_analyze_video(
         raise HTTPException(status_code=500, detail=f"Gait analysis failed: {str(e)}")
 
 
+@app.post("/api/video/classify")
+async def classify_video_endpoint(
+    video: UploadFile = File(...),
+    context: Optional[str] = Form(None)
+):
+    """
+    Autonomous Video Domain Classifier & Tool Dispatcher.
+    Analyzes video keyframes, court boundary geometry, and anatomical stature
+    to dynamically determine whether a video is a Badminton rally or a Toddler Gait screening.
+    """
+    try:
+        from app.services.video_classifier import get_video_classifier
+        content = await video.read()
+        classifier = get_video_classifier()
+        result = classifier.classify_video_bytes(
+            video_bytes=content,
+            filename=video.filename or "video.mp4",
+            user_context=context or ""
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Video classification failed: {str(e)}")
+
+
+
 @app.get("/api/gait/sample/video")
 def gait_sample_video():
     """Stream pre-bundled sample toddler walking video."""
@@ -570,6 +596,7 @@ def badminton_sample_video():
     import os
     from fastapi.responses import FileResponse
     candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "sports", "badminton", "assets", "badminton_sample_rally.mp4")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "gait", "assets", "sample_toddler_walk.mp4")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "app", "gait", "assets", "sample_toddler_walk.mp4")),
     ]
@@ -585,17 +612,19 @@ _cached_badminton_sample = None
 def badminton_analyze_sample():
     """Run real badminton biomechanics analysis on the sample clip."""
     global _cached_badminton_sample
-    if _cached_badminton_sample is not None:
-        return _cached_badminton_sample
-
+    # Clear cache if needed to ensure fresh analysis runs on real badminton rally
     import os
     candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "sports", "badminton", "assets", "badminton_sample_rally.mp4")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "gait", "assets", "sample_toddler_walk.mp4")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "app", "gait", "assets", "sample_toddler_walk.mp4")),
     ]
     sample_path = next((c for c in candidates if os.path.exists(c)), None)
     if not sample_path:
         raise HTTPException(status_code=404, detail="Sample video not found.")
+
+    if _cached_badminton_sample is not None and _cached_badminton_sample.get("video", {}).get("filename") == "badminton_sample_rally.mp4":
+        return _cached_badminton_sample
 
     pipeline = get_badminton_pipeline()
     with open(sample_path, "rb") as f:

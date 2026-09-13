@@ -74,6 +74,17 @@ class JointAngleReading(BaseModel):
     unit: str = "degrees"
     frame_index: int = 0 # which frame this was measured at
 
+class ImageMetadataItem(BaseModel):
+    filename: Optional[str] = None
+    day: Optional[float] = None
+    timestamp: Optional[str] = None
+    label: Optional[str] = None
+    stage: Optional[str] = None
+    view_angle: Optional[str] = None
+    description: Optional[str] = None
+    color: Optional[str] = None
+    context: Optional[str] = None # User-provided single text box context analyzed first
+
 class InvestigationRequest(BaseModel):
     domain: str = "infrastructure" # infrastructure | agriculture | pediatrics | sports | gait
     preset_id: Optional[str] = None
@@ -81,6 +92,7 @@ class InvestigationRequest(BaseModel):
     image_url: Optional[str] = None
     image_data: Optional[str] = None # Base64 image payload
     images: Optional[List[str]] = None # Multiple base64 or URL image payloads for multi-photo analysis
+    image_metadata: Optional[List[ImageMetadataItem]] = None # Rich metadata per image (day, stage, view, notes, context)
     videos: Optional[List[VideoSession]] = None # Multi-session video array for sports kinematics
     user_query: Optional[str] = None
     telemetry: Optional[Dict[str, Any]] = None
@@ -97,4 +109,6 @@ class InvestigationResponse(BaseModel):
     final_graph: GraphStateModel
     baseline: BaselineComparisonModel
     conclusion: str
+    text_context_analysis: Optional[Dict[str, Any]] = None
+    telemetry: Optional[Dict[str, Any]] = None
 

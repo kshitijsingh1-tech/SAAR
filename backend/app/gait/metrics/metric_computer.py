@@ -141,7 +141,9 @@ class MetricComputer:
         left_mean = _weighted_mean(left_durations, left_confidences) if left_durations else 0.0
         right_mean = _weighted_mean(right_durations, right_confidences) if right_durations else 0.0
 
-        cadence = (60.0 / median_step_time) if median_step_time > 0.0 else 0.0
+        # Continuous cadence from confidence-weighted step duration
+        effective_step_time = mean_step_time if (mean_step_time > 0.0 and len(clean_steps) >= 3) else median_step_time
+        cadence = (60.0 / effective_step_time) if effective_step_time > 0.0 else 0.0
 
         timing_diff_ms = abs(left_mean - right_mean) * 1000.0 if (left_mean > 0.0 and right_mean > 0.0) else 0.0
         symmetry_ratio = (left_mean / right_mean) if (left_mean > 0.0 and right_mean > 0.0) else 0.0

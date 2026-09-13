@@ -70,19 +70,12 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
 
   const domainLower = String(selectedDomain || '').toLowerCase();
   const isPediatrics = domainLower.includes('pediat') || domainLower.includes('gait') || domainLower.includes('toddle');
-  const isSports = domainLower.includes('sport') || domainLower.includes('athlet') || domainLower.includes('badminton');
-  const isAgri = domainLower.includes('agri') || domainLower.includes('crop') || domainLower.includes('plant') || domainLower.includes('botan');
 
   const tools = isPediatrics
     ? allTools
         .filter((t) => ['gait', 'rag'].includes(t.id))
         .map((t) => (t.id === 'rag' ? { ...t, label: 'Clinical References' } : t))
-    : isSports
-    ? allTools
-        .filter((t) => ['badminton', 'graph', 'analytics', 'rag', 'dictionary'].includes(t.id))
-    : isAgri
-    ? allTools.filter((t) => t.id !== 'gait' && t.id !== 'badminton')
-    : allTools.filter((t) => t.id !== 'gait' && t.id !== 'badminton');
+    : allTools;
 
   useEffect(() => {
     function handleClickOutside(event) {

@@ -38,6 +38,7 @@ class DynamicWorkflowOrchestrator:
         image_url: Optional[str] = None,
         image_data: Optional[str] = None,
         images: Optional[List[str]] = None,
+        image_metadata: Optional[List[Dict[str, Any]]] = None,
         vlm_provider: str = "auto",
         api_key: Optional[str] = None
     ) -> InvestigationResponse:
@@ -71,7 +72,8 @@ class DynamicWorkflowOrchestrator:
             preset_id=preset_id,
             vlm_provider=vlm_provider,
             api_key=api_key,
-            images=effective_images
+            images=effective_images,
+            image_metadata=image_metadata
         )
 
         # If VLM fell back to synthesized mode and the plugin provides its own
@@ -180,6 +182,25 @@ class DynamicWorkflowOrchestrator:
 
         baseline_comp = plugin.get_baseline_comparison(preset_id or "custom_investigation")
 
+        # Stage 1 text context analysis and milestone telemetry attachment
+        context_analysis = getattr(self.vlm_service, "last_context_analysis", None)
+        telemetry_payload = None
+        if context_analysis and context_analysis.get("milestone"):
+            m = context_analysis["milestone"]
+            telemetry_payload = {
+                "milestones": [{
+                    "day": m.get("day", 1),
+                    "timestamp": f"Day {m.get('day', 1)}",
+                    "label": m.get("milestone_label", f"Day {m.get('day', 1)} Milestone"),
+                    "badge": f"DAY {m.get('day', 1)}",
+                    "stage": m.get("stage", "Specimen Context"),
+                    "description": context_analysis.get("context_summary", ""),
+                    "focus_targets": context_analysis.get("focus_targets", []),
+                    "hypotheses": context_analysis.get("hypotheses", []),
+                    "color": "#0284c7"
+                }]
+            }
+
         return InvestigationResponse(
             investigation_id=str(uuid.uuid4())[:8],
             domain=domain,
@@ -189,5 +210,7 @@ class DynamicWorkflowOrchestrator:
             steps=steps,
             final_graph=final_graph,
             baseline=baseline_comp,
-            conclusion=final_conclusion
+            conclusion=final_conclusion,
+            text_context_analysis=context_analysis,
+            telemetry=telemetry_payload
         )

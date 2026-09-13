@@ -12,6 +12,7 @@ import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
 import { MediaAttachmentPreview } from './MediaAttachmentPreview';
 import { ChatCameraRecorder } from './ChatCameraRecorder';
+import { API_BASE_URL } from '../api/client';
 
 // Built-in grounded domain lexicon for automatic chat dictionary linking
 const SCIENTIFIC_LEXICON = [
@@ -154,8 +155,8 @@ function formatFileSize(bytes) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-// Compact Image Attachment Card with Live Visual Thumbnail
-const ImageAttachmentCard = ({ file, onRemove, onInspect, formatTitle }) => {
+// Compact Image Attachment Card with Live Visual Thumbnail and Context Tagging
+const ImageAttachmentCard = ({ file, onRemove, onInspect, onOpenMeta, formatTitle }) => {
   const [thumbUrl, setThumbUrl] = useState(null);
 
   useEffect(() => {
@@ -174,30 +175,83 @@ const ImageAttachmentCard = ({ file, onRemove, onInspect, formatTitle }) => {
     }
   }, [file]);
 
+  const saarMeta = file?._saarMeta;
+
   return (
     <div
       className="context-pill-card file-card file-card-image image-preview-card"
-      onClick={() => onInspect(file, thumbUrl)}
-      title="Click to zoom and verify image"
+      onClick={onOpenMeta}
+      title="Click to add/edit context metadata: info : message"
+      style={{ cursor: 'pointer' }}
     >
-      <div className="card-image-thumb-box">
+      <div
+        className="card-image-thumb-box"
+        style={{
+          position: 'relative',
+          width: '36px',
+          height: '36px',
+          minWidth: '36px',
+          maxWidth: '36px',
+          borderRadius: '6px',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}
+      >
         {thumbUrl ? (
-          <img src={thumbUrl} alt={file.name || 'Preview'} className="card-image-thumb-img" />
+          <img
+            src={thumbUrl}
+            alt={file.name || 'Preview'}
+            className="card-image-thumb-img"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block'
+            }}
+          />
         ) : (
-          <ImageIcon size={20} color="#7e22ce" />
+          <ImageIcon size={20} color="var(--primary)" />
         )}
-        <div className="thumb-zoom-overlay">
+        <button
+          type="button"
+          className="thumb-zoom-overlay"
+          onClick={(e) => {
+            e.stopPropagation();
+            onInspect(file, thumbUrl);
+          }}
+          title="Zoom & Verify Image"
+        >
           <ZoomIn size={11} color="#ffffff" />
-        </div>
+        </button>
       </div>
       <div className="pill-card-text">
         <div className="pill-card-title" title={file.name}>
-          {formatTitle(file.name, 26)}
+          {formatTitle(file.name, 24)}
         </div>
-        <div className="pill-card-subtitle">
+        <div className="pill-card-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+          {saarMeta ? (
+            <span
+              style={{
+                background: saarMeta.color || 'var(--primary)',
+                color: '#ffffff',
+                fontSize: '0.62rem',
+                fontWeight: 700,
+                padding: '1px 5px',
+                borderRadius: '4px',
+                letterSpacing: '0.02em'
+              }}
+            >
+              DAY {saarMeta.day}
+            </span>
+          ) : (
+            <span style={{ fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 600 }}>
+              🏷️ Add Context (info : message)
+            </span>
+          )}
           <span>{formatFileSize(file.size)}</span>
-          <span className="pill-dot-sep">·</span>
-          <span className="verify-hint">Verify Image</span>
         </div>
       </div>
       <button
@@ -318,9 +372,93 @@ export function ChatGPTView({
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [pendingFile, setPendingFile] = useState(null);
   const [verifyingImage, setVerifyingImage] = useState(null);
+  const [metaModalFileIdx, setMetaModalFileIdx] = useState(null);
+  const [metaContextText, setMetaContextText] = useState('');
+  const [metaColor, setMetaColor] = useState('#0284c7');
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
+
+  const openMetaModal = (idx) => {
+    const file = attachedFiles[idx];
+    if (!file) return;
+    const existing = file._saarMeta || {};
+    setMetaModalFileIdx(idx);
+    setMetaContextText(existing.context || existing.notes || '');
+    const palette = ['#0284c7', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4'];
+    setMetaColor(existing.color || palette[idx % palette.length]);
+  };
+
+  const handleSaveMeta = () => {
+    if (metaModalFileIdx === null) return;
+    setAttachedFiles((prev) => {
+      const next = [...prev];
+      const target = next[metaModalFileIdx];
+      if (target) {
+        const text = metaContextText.trim();
+        let infoPart = text;
+        let messagePart = text;
+
+        // Find separator colon (skipping time colons like 14:00)
+        let splitIdx = null;
+        for (let i = 0; i < text.length; i++) {
+          if (text[i] === ':') {
+            if (i > 0 && i < text.length - 1 && /\d/.test(text[i - 1]) && /\d/.test(text[i + 1])) {
+              continue;
+            }
+            splitIdx = i;
+            break;
+          }
+        }
+        if (splitIdx !== null) {
+          infoPart = text.slice(0, splitIdx).trim();
+          messagePart = text.slice(splitIdx + 1).trim();
+        }
+
+        const dayMatch = text.match(/(?:day|milestone|timepoint|d|week)\s*[:#-]?\s*(\d+)/i);
+        const parsedDay = dayMatch ? Number(dayMatch[1]) : (metaModalFileIdx + 1);
+        const cleanLabel = infoPart ? (infoPart.length > 32 ? infoPart.slice(0, 30) + '...' : infoPart) : `Day ${parsedDay}`;
+
+        target._saarMeta = {
+          day: parsedDay,
+          context: text,
+          info: infoPart,
+          notes: messagePart || text,
+          label: cleanLabel,
+          stage: infoPart || `Day ${parsedDay}`,
+          color: metaColor
+        };
+      }
+      return next;
+    });
+    setMetaModalFileIdx(null);
+  };
+
+  const handleAutoSequenceDays = () => {
+    setAttachedFiles((prev) => {
+      const palette = ['#0284c7', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4'];
+      let imgIdx = 0;
+      return prev.map((f) => {
+        const meta = getFileCardMeta(f);
+        if (meta.kind === 'image') {
+          imgIdx++;
+          const dayOffsets = [1, 10, 20, 30, 45, 60, 90, 120];
+          const assignedDay = imgIdx <= dayOffsets.length ? dayOffsets[imgIdx - 1] : imgIdx * 10;
+          const defaultContext = `Day ${assignedDay}, Stage ${imgIdx} : Track developmental progression and tissue status.`;
+          f._saarMeta = {
+            day: assignedDay,
+            context: f._saarMeta?.context || defaultContext,
+            info: f._saarMeta?.info || `Day ${assignedDay}, Stage ${imgIdx}`,
+            notes: f._saarMeta?.notes || 'Track developmental progression and tissue status.',
+            label: `Day ${assignedDay}: Specimen ${imgIdx}`,
+            stage: `Day ${assignedDay}`,
+            color: f._saarMeta?.color || palette[(imgIdx - 1) % palette.length]
+          };
+        }
+        return f;
+      });
+    });
+  };
 
   // Floating "Ask Saar" Selection Popover State (ChatGPT style)
   const [selectionPopover, setSelectionPopover] = useState(null);
@@ -480,6 +618,7 @@ export function ChatGPTView({
   };
 
   const handleSend = () => {
+    if (isProcessing) return;
     const combinedPrompt = [textSnippet?.content, inputText].filter(Boolean).join('\n\n').trim();
     if (!combinedPrompt && attachedFiles.length === 0) return;
     onSendMessage(combinedPrompt || inputText, attachedFiles);
@@ -498,6 +637,39 @@ export function ChatGPTView({
     }
   };
 
+  // Global keydown listener so that pressing Enter anywhere when a video/file is attached triggers send
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        // Do not intercept if user is typing in a modal or inquiry answer
+        if (
+          e.target.closest('.inquiry-answer-input') ||
+          e.target.closest('.term-modal-card') ||
+          e.target.closest('.camera-modal-backdrop') ||
+          e.target.closest('.image-verify-card')
+        ) {
+          return;
+        }
+
+        // If target is already the textarea, handleKeyDown handles it
+        if (e.target === textareaRef.current) {
+          return;
+        }
+
+        // If we have attached files or typed text, trigger send on Enter
+        if ((attachedFiles.length > 0 || (inputText && inputText.trim().length > 0)) && !isProcessing) {
+          e.preventDefault();
+          handleSend();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [attachedFiles, inputText, textSnippet, isProcessing]);
+
   const handleTextareaChange = (e) => {
     setInputText(e.target.value);
     e.target.style.height = 'auto';
@@ -509,6 +681,9 @@ export function ChatGPTView({
     if (files.length > 0) {
       setAttachedFiles((prev) => [...prev, ...files]);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 50);
     }
   };
 
@@ -551,6 +726,9 @@ export function ChatGPTView({
         e.preventDefault();
         e.stopPropagation();
         setAttachedFiles((prev) => [...prev, ...pastedFiles]);
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 50);
         return;
       }
     }
@@ -575,7 +753,7 @@ export function ChatGPTView({
 
       if (isFilePathCandidate) {
         try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+          const apiUrl = API_BASE_URL;
           const res = await fetch(`${apiUrl}/api/saar/read-file?path=${encodeURIComponent(cleanPath)}`);
           if (res.ok) {
             e.preventDefault();
@@ -1276,6 +1454,33 @@ export function ChatGPTView({
               </div>
             )}
 
+            {/* Auto-sequence helper bar when >= 2 images attached */}
+            {attachedFiles.filter((f) => getFileCardMeta(f).kind === 'image').length >= 2 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', width: '100%' }}>
+                <button
+                  type="button"
+                  onClick={handleAutoSequenceDays}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    background: 'var(--primary-bg)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--primary)',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                  title="Automatically sequence Day 1, Day 10, Day 20... across all attached image frames"
+                >
+                  <Sparkles size={11} />
+                  <span>Auto-Sequence Days</span>
+                </button>
+              </div>
+            )}
+
             {/* Attached Files Cards (With Rich Live Image Preview & Verification) */}
             {attachedFiles.map((file, idx) => {
               const meta = getFileCardMeta(file);
@@ -1289,6 +1494,7 @@ export function ChatGPTView({
                     formatTitle={formatCardTitle}
                     onRemove={() => setAttachedFiles(attachedFiles.filter((_, i) => i !== idx))}
                     onInspect={(f, url) => setVerifyingImage({ file: f, url })}
+                    onOpenMeta={() => openMetaModal(idx)}
                   />
                 );
               }
@@ -1510,6 +1716,181 @@ export function ChatGPTView({
           }
         }}
       />
+
+      {/* Click-to-Verify Enlarged Image Modal */}
+      <ImageVerificationModal
+        fileData={verifyingImage}
+        onClose={() => setVerifyingImage(null)}
+        onRemove={(f) => {
+          setAttachedFiles((prev) => prev.filter((x) => x !== f));
+          setVerifyingImage(null);
+        }}
+      />
+
+      {/* Dynamic Metadata & Instructions Modal (Theme-Matched) */}
+      {metaModalFileIdx !== null && (
+        <div className="term-modal-backdrop" onClick={() => setMetaModalFileIdx(null)}>
+          <div
+            className="term-modal-card"
+            style={{ maxWidth: '540px', width: '92%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="term-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={16} color="var(--primary)" />
+                <h3 className="term-modal-title">Specimen Context & Instructions</h3>
+              </div>
+              <button
+                type="button"
+                className="term-modal-close-btn"
+                onClick={() => setMetaModalFileIdx(null)}
+                title="Close modal"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="term-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Target File Info */}
+              {(() => {
+                const targetFile = attachedFiles[metaModalFileIdx];
+                let modalPreview = null;
+                if (targetFile) {
+                  try {
+                    modalPreview = typeof targetFile === 'string' ? targetFile : URL.createObjectURL(targetFile);
+                  } catch (e) {}
+                }
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '10px', background: 'var(--bg-card-hover)', border: '1px solid var(--border-color)' }}>
+                    {modalPreview ? (
+                      <img
+                        src={modalPreview}
+                        alt="Preview"
+                        style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                      />
+                    ) : (
+                      <ImageIcon size={32} color="var(--primary)" />
+                    )}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {targetFile?.name}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Sliders size={11} />
+                        <span>Two-Stage Pipeline: Text analyzed first → attached to image findings</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Format Specification Banner */}
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: '10px',
+                background: 'var(--primary-bg)',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '5px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Required Format:
+                  </span>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                    No extra info or fields needed
+                  </span>
+                </div>
+                <div style={{
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  background: 'var(--bg-card)',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-color)',
+                  letterSpacing: '0.01em',
+                  display: 'inline-block'
+                }}>
+                  info(example: data,name,time etc) : message for ai
+                </div>
+                <div style={{ fontSize: '0.71rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>
+                  Put your specimen data (day, milestone, timestamp, or condition) before the colon <code>:</code>, and your specific instructions or question for the AI after it.
+                </div>
+              </div>
+
+              {/* Text Area */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>
+                  Metadata & Message for AI
+                </label>
+                <textarea
+                  value={metaContextText}
+                  onChange={(e) => setMetaContextText(e.target.value)}
+                  rows={5}
+                  autoFocus
+                  placeholder="Day 10, Incision Specimen, 14:00 : Inspect callus bridge and check vascular reconnection"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--input-bg, var(--bg-dark))',
+                    color: 'var(--text-main)',
+                    fontSize: '0.84rem',
+                    lineHeight: 1.45,
+                    outline: 'none',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                    fontFamily: 'var(--font-sans)'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="term-modal-footer" style={{ borderTop: '1px solid var(--border-color)', padding: '12px 18px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setMetaModalFileIdx(null)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  background: 'transparent',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveMeta}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 16px',
+                  borderRadius: '8px',
+                  background: 'var(--primary)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px var(--primary-glow)'
+                }}
+              >
+                <Check size={14} />
+                <span>Save & Attach Context</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Click-to-Verify Enlarged Image Modal */}
       <ImageVerificationModal

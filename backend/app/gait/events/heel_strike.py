@@ -77,7 +77,7 @@ def _compute_event_confidence(
     """Computes a 0.0-1.0 confidence score for a detected gait event.
     
     Factors:
-    - heel_visibility: how well the heel landmark was seen (0-1)
+    - heel_visibility: how well the foot landmark was seen (0-1)
     - prominence_ratio: peak prominence relative to segment amplitude (0-1)
     """
     vis_score = min(1.0, max(0.0, heel_visibility))
@@ -89,6 +89,22 @@ def _compute_event_confidence(
     return round(confidence, 4)
 
 
+def _parabolic_subframe_peak(signal: List[float], idx: int) -> float:
+    """Computes sub-frame peak vertex offset p in [-0.5, 0.5] using quadratic interpolation."""
+    if idx <= 0 or idx >= len(signal) - 1:
+        return 0.0
+    y_prev = signal[idx - 1]
+    y_curr = signal[idx]
+    y_next = signal[idx + 1]
+    if math.isnan(y_prev) or math.isnan(y_curr) or math.isnan(y_next):
+        return 0.0
+    denom = (y_prev - 2.0 * y_curr + y_next)
+    if abs(denom) < 1e-7:
+        return 0.0
+    p = 0.5 * (y_prev - y_next) / denom
+    return max(-0.5, min(0.5, p))
+
+
 def detect_side_events(
     frames: List[PoseFrame],
     fps: float,
@@ -96,7 +112,8 @@ def detect_side_events(
     min_peak_distance: int,
     direction: float
 ) -> List[GaitEvent]:
-    """Detects heel-strike gait events for one side (LEFT or RIGHT) with dual-landmark foot fusion."""
+    """Detects heel-strike gait events for one side (LEFT or RIGHT) with dual-landmark foot fusion,
+    baseline drift compensation, and parabolic sub-frame timing refinement."""
     n = len(frames)
     raw_signal: List[float] = [float("nan")] * n
     foot_visibilities: List[float] = [0.0] * n
@@ -105,16 +122,23 @@ def detect_side_events(
         heel = heel_for_side(frame, side)
         ankle = ankle_for_side(frame, side)
         
-        # Dual-landmark foot tracking: use heel if visible, fallback to ankle
-        if heel.visibility >= MIN_HEEL_VISIBILITY:
+        # Dual-landmark foot tracking: confidence-weighted fusion when both are visible
+        h_vis = heel.visibility
+        a_vis = ankle.visibility
+
+        if h_vis >= MIN_HEEL_VISIBILITY and a_vis >= MIN_HEEL_VISIBILITY:
+            total_vis = h_vis + a_vis
+            foot_x = (h_vis * heel.x + a_vis * ankle.x) / total_vis
+            v = total_vis / 2.0
+        elif h_vis >= MIN_HEEL_VISIBILITY:
             foot_x = heel.x
-            v = heel.visibility
-        elif ankle.visibility >= MIN_HEEL_VISIBILITY:
+            v = h_vis
+        elif a_vis >= MIN_HEEL_VISIBILITY:
             foot_x = ankle.x
-            v = ankle.visibility
+            v = a_vis
         else:
             foot_x = None
-            v = max(heel.visibility, ankle.visibility)
+            v = max(h_vis, a_vis)
 
         foot_visibilities[i] = v
         if foot_x is not None:
@@ -123,7 +147,7 @@ def detect_side_events(
 
     interpolated = interpolate_nans(raw_signal)
     
-    # Use Savitzky-Golay smoothing (zero phase lag) instead of moving average
+    # Use Savitzky-Golay smoothing (zero phase lag)
     smoothed = savgol_smooth(interpolated, fps=fps)
 
     events: List[GaitEvent] = []
@@ -152,6 +176,10 @@ def detect_side_events(
                         continue
                     frame = frames[f_idx]
                     
+                    # Sub-frame parabolic continuous time refinement
+                    sub_offset = _parabolic_subframe_peak(smoothed, f_idx)
+                    continuous_time = (float(frame.timestamp_ms) / 1000.0) + (sub_offset / max(1.0, fps))
+                    
                     confidence = _compute_event_confidence(
                         heel_visibility=foot_visibilities[f_idx],
                         prominence=peak_prominence,
@@ -160,7 +188,7 @@ def detect_side_events(
                     
                     events.append(GaitEvent(
                         frame_index=frame.frame_index,
-                        time_seconds=float(frame.timestamp_ms / 1000.0),
+                        time_seconds=round(continuous_time, 4),
                         side=side,
                         confidence=confidence
                     ))

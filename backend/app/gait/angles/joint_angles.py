@@ -271,9 +271,18 @@ def compute_cycle_aware_rom(
 
             # Require at least 5 angle samples per valid gait cycle
             if len(cycle_angles) >= 5:
-                c_min = min(cycle_angles)
-                c_max = max(cycle_angles)
-                c_rom = c_max - c_min
+                s_angles = sorted(cycle_angles)
+                # For cycles with sufficient samples, use 2.5th and 97.5th percentiles to reject single-frame tracking noise
+                if len(s_angles) >= 10:
+                    idx_low = max(0, int(0.025 * len(s_angles)))
+                    idx_high = min(len(s_angles) - 1, int(0.975 * len(s_angles)))
+                    c_min = s_angles[idx_low]
+                    c_max = s_angles[idx_high]
+                else:
+                    c_min = s_angles[0]
+                    c_max = s_angles[-1]
+
+                c_rom = max(0.0, c_max - c_min)
                 valid_cycle_roms.append(CycleROM(
                     cycle_index=idx + 1,
                     start_time=round(t_start, 3),
