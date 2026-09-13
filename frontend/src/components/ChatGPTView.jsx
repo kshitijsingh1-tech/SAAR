@@ -183,9 +183,34 @@ const ImageAttachmentCard = ({ file, onRemove, onInspect, onOpenMeta, formatTitl
       title="Click to add/edit context metadata: info : message"
       style={{ cursor: 'pointer' }}
     >
-      <div className="card-image-thumb-box">
+      <div
+        className="card-image-thumb-box"
+        style={{
+          position: 'relative',
+          width: '36px',
+          height: '36px',
+          minWidth: '36px',
+          maxWidth: '36px',
+          borderRadius: '6px',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}
+      >
         {thumbUrl ? (
-          <img src={thumbUrl} alt={file.name || 'Preview'} className="card-image-thumb-img" />
+          <img
+            src={thumbUrl}
+            alt={file.name || 'Preview'}
+            className="card-image-thumb-img"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block'
+            }}
+          />
         ) : (
           <ImageIcon size={20} color="var(--primary)" />
         )}
@@ -1825,6 +1850,16 @@ export function ChatGPTView({
           </div>
         </div>
       )}
+
+      {/* Click-to-Verify Enlarged Image Modal */}
+      <ImageVerificationModal
+        fileData={verifyingImage}
+        onClose={() => setVerifyingImage(null)}
+        onRemove={(f) => {
+          setAttachedFiles((prev) => prev.filter((x) => x !== f));
+          setVerifyingImage(null);
+        }}
+      />
     </div>
   );
 }

@@ -21,6 +21,9 @@
 12. [Safe Upstream Integration of Origin/Main with Non-Regression Multimodal Invariants](#12-safe-upstream-integration-of-originmain-with-non-regression-multimodal-invariants)
 13. [Exact Alignment of Frontend with Origin/Main](#13-2026-09-13-exact-alignment-of-frontend-with-originmain)
 14. [Resolution of Badminton Studio Network Error & Complete Multimodal Unification](#14-2026-09-13-resolution-of-badminton-studio-network-error--complete-multimodal-unification)
+15. [Resolution of Badminton Studio Unavailable Features & Multi-Keyframe Court Calibration](#15-2026-09-13-resolution-of-badminton-studio-unavailable-features--multi-keyframe-court-calibration)
+16. [Elimination of Sample Limitations & Authentic Badminton Rally Ingestion](#16-2026-09-13-elimination-of-sample-limitations--authentic-badminton-rally-ingestion)
+17. [Resolution of Image Attachment Thumbnail Overflow & Verification Modal Restoration](#17-2026-09-13-resolution-of-image-attachment-thumbnail-overflow--verification-modal-restoration)
 
 ---
 
@@ -529,6 +532,42 @@ Even after court calibration was enhanced, clicking **Load Sample Clip** in the 
      - `Limitations count`: **0** (`Limitations: []`)
    - All **41 backend pytest tests** pass cleanly.
    - Frontend compiles with **0 errors**.
+
+---
+
+## 17. [2026-09-13] Resolution of Image Attachment Thumbnail Overflow & Verification Modal Restoration
+
+**Primary Files Modified**:
+- `frontend/src/index.css`
+- `frontend/src/components/ChatGPTView.jsx`
+- `work_done.md`
+
+### Problem Description & Symptoms
+When an image file (e.g. a high-resolution lotus specimen photograph) was attached to the chat composer via paste, drag-and-drop, or file selection:
+1. The image thumbnail rendered at full native resolution (e.g. 800×600px or larger), violently overflowing out of the attachment pill card (`.context-pill-card.image-preview-card`).
+2. The card metadata (`🏷️ Add Context (info: message)` and file size `164.8 KB`) were pushed off to the right.
+3. The zoom icon button rendered as a tiny unpositioned button at the bottom-left corner of the overflowed card.
+
+### Root Cause Analysis
+1. **Missing CSS Stylesheet Rules**:
+   - Following the upstream checkout and integration of `origin/main`, the CSS definitions for `.context-pill-card.image-preview-card`, `.card-image-thumb-box`, `.card-image-thumb-img`, `.thumb-zoom-overlay`, and the `.image-verify-*` modal classes from commit `3c5330b` ("added ux in image preview and logo changes") were absent from `frontend/src/index.css`.
+2. **Unconstrained Natural `<img>` Dimensions**:
+   - Without explicit width/height constraints or defensive inline bounds on `.card-image-thumb-box` and `.card-image-thumb-img`, the browser defaulted to the image's raw intrinsic pixel resolution.
+3. **Unmounted Image Verification Modal**:
+   - In `ChatGPTView.jsx`, while `ImageAttachmentCard` passed `onInspect={(f, url) => setVerifyingImage({ file: f, url })}`, the `<ImageVerificationModal />` component was never mounted at the end of `ChatGPTView`, preventing the zoom-and-verify workflow from opening.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Restored & Theme-Adapted CSS in `index.css`**:
+   - Added complete rules for `.context-pill-card.image-preview-card`, `.card-image-thumb-box` (36×36px, `border-radius: 6px`, `overflow: hidden`, `position: relative`), `.card-image-thumb-img` (`100%`, `object-fit: cover`), and `.thumb-zoom-overlay` (`position: absolute; inset: 0; opacity: 0; transition: opacity 0.18s;` with hover reveal).
+   - Fully restored the complete suite of glassmorphic Image Verification Modal styles (`.image-verify-modal-backdrop`, `.image-verify-modal-card`, `.image-verify-body`, `.image-verify-full-img`, `.image-verify-footer`, etc.) seamlessly harmonized with CSS custom properties (`var(--bg-card)`, `var(--border-color)`, `var(--primary)`, `var(--text-main)`).
+2. **Defensive Inline Sizing in `ChatGPTView.jsx`**:
+   - In `ImageAttachmentCard`, added inline dimensions (`width: 36px`, `height: 36px`, `minWidth: 36px`, `maxWidth: 36px`, `borderRadius: 6px`, `overflow: hidden`, `display: flex`, `alignItems: center`, `justifyContent: center`, `flexShrink: 0`) and on the image (`width: 100%`, `height: 100%`, `objectFit: cover`, `display: block`).
+   - Ensures that under any stylesheet load ordering, network latency, or CSS specificity edge cases, the thumbnail can never break card bounds.
+3. **Mounted Verification Modal in `ChatGPTView.jsx`**:
+   - Mounted `<ImageVerificationModal fileData={verifyingImage} onClose={() => setVerifyingImage(null)} onRemove={...} />` at the root of `ChatGPTView`.
+4. **Verification**:
+   - Production frontend build (`npm run build`) succeeded in 19.86s with **0 errors**.
+   - Preserves all Section 9 and Section 10 invariants: single-context text box (`info: message`), click-to-tag metadata modal, and two-stage text-first pipeline.
 
 ---
 
