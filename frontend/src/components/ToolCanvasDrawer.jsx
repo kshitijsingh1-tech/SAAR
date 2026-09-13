@@ -124,13 +124,13 @@ export function ToolCanvasDrawer({
   const isMovementAnalysis = isPediatricsDomain || activeTool === 'gait';
 
   const toolsMeta = [
-    { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} /> },
-    ...(isPediatricsDomain ? [{ id: 'gait', label: 'Toddler Gait Analysis', icon: <Activity size={15} /> }] : []),
-    { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} /> },
-    { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
+    { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
+    { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
+    { id: 'camera', label: 'Visual Evidence Monitor', icon: <Camera size={15} /> },
+    { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
     { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'References', icon: <BookOpen size={15} /> },
-    { id: 'dictionary', label: 'Dictionary', icon: <BookA size={15} /> }
+    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'Scientific References', icon: <BookOpen size={15} /> },
+    { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
   ];
 
   // Robust tool alias normalization: map legacy or semantic IDs to active UI tool tabs

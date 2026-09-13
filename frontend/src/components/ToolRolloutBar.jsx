@@ -11,36 +11,36 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
   // Operational Scientific Tools:
   const allTools = [
     {
+      id: 'grounded',
+      label: 'Image Analysis (Query & Graph)',
+      tooltip: 'Visual image perception alongside query-grounded causal graph',
+      icon: <Crosshair size={17} />,
+      gradient: 'linear-gradient(135deg, #0284c7, #10b981)',
+      glow: 'rgba(14, 165, 233, 0.45)'
+    },
+    {
       id: 'gait',
-      label: 'Video Analysis',
+      label: 'Video Analysis (Motion & Gait)',
       tooltip: 'Deterministic 33-point MediaPipe Pose Kinematics & Video Screening',
       icon: <Activity size={17} />,
       gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
       glow: 'rgba(6, 182, 212, 0.45)'
     },
     {
-      id: 'grounded',
-      label: 'Grounded Split Graph',
-      tooltip: 'Bidirectional Image-to-Knowledge Graph Linkage',
-      icon: <Crosshair size={17} />,
-      gradient: 'linear-gradient(135deg, #0284c7, #10b981)',
-      glow: 'rgba(14, 165, 233, 0.45)'
+      id: 'camera',
+      label: 'Visual Evidence Monitor',
+      tooltip: 'High-Res Photo & Visual Inspection Monitor with Spatial Anchors',
+      icon: <Camera size={17} />,
+      gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)',
+      glow: 'rgba(244, 63, 94, 0.45)'
     },
     {
       id: 'graph',
-      label: 'Causal Graph',
+      label: 'Causal Knowledge Graph',
       tooltip: 'NetworkX Causal Knowledge Graph',
       icon: <GitFork size={17} />,
       gradient: 'linear-gradient(135deg, #a855f7, #6366f1)',
       glow: 'rgba(168, 85, 247, 0.45)'
-    },
-    {
-      id: 'camera',
-      label: 'Evidence Monitor',
-      tooltip: 'High-Res Photo & Visual Inspection Monitor',
-      icon: <Camera size={17} />,
-      gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)',
-      glow: 'rgba(244, 63, 94, 0.45)'
     },
     {
       id: 'analytics',

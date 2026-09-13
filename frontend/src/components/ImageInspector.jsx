@@ -119,8 +119,8 @@ export const ImageInspector = ({
   const [customVideoUrl, setCustomVideoUrl] = useState(null);
   const videoRef = useRef(null);
 
-  const isPediatrics = presetId?.startsWith('toddler') || preset?.domain === 'pediatrics' || domain === 'pediatrics';
-  const isAgriculture = presetId?.startsWith('agri') || preset?.domain === 'agriculture' || presetId === 'session-3' || domain === 'agriculture';
+  const isPediatrics = (presetId?.startsWith('toddler')) && !customImageData && !customImageUrl;
+  const isAgriculture = (presetId?.startsWith('agri') || presetId === 'session-3') && !customImageData && !customImageUrl;
 
   // Pre-configured temporal keyframe streams for video analysis demonstrations
   const temporalKeyframes = useMemo(() => {

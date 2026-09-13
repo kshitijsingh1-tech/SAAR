@@ -113,7 +113,7 @@ const ThoughtProcessPill = ({ thought }) => {
         onClick={() => setIsExpanded(!isExpanded)}
         title={isExpanded ? "Collapse thinking steps" : "Expand thinking steps"}
       >
-        <span className="thought-pill-icon">🧠</span>
+        <Sparkles size={12} className="thought-pill-sparkle" />
         <span className="thought-pill-title">{thought.title || 'Thought process'}</span>
         {thought.summary && (
           <>
@@ -134,7 +134,7 @@ const ThoughtProcessPill = ({ thought }) => {
           <ul className="thought-steps-list">
             {(thought.steps || [thought.summary]).map((step, idx) => (
               <li key={idx} className="thought-step-item">
-                <CheckCircle2 size={12} className="text-emerald" style={{ minWidth: '12px' }} />
+                <CheckCircle2 size={13} style={{ color: 'var(--emerald)', marginTop: '2px', flexShrink: 0 }} />
                 <span className="thought-step-text">{step}</span>
               </li>
             ))}
