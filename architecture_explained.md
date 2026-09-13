@@ -78,6 +78,7 @@ d:\bytebuild\
 │   │   ├── models/
 │   │   │   └── saar_models.py          <-- Entity, Feature, Observation, Concept, Relationship, Evidence
 │   │   ├── services/
+│   │   │   ├── key_pool_manager.py     <-- Multi-Key Load-Balancing, Rotation & Circuit Breaker
 │   │   │   ├── ingestion_service.py     <-- CSV Upload, Schema Detection, Column Profiling
 │   │   │   ├── analytics_service.py     <-- Correlations, Trends, Anomalies, Interventions
 │   │   │   ├── reasoning_service.py     <-- SAAR Iterative Investigation Loop Orchestrator
@@ -102,14 +103,14 @@ d:\bytebuild\
 │   │   └── components/
 │   │       ├── LandingPage.jsx         <-- Futuristic Product Showcase & Domain Demo Portal
 │   │       ├── LandingHero.jsx         <-- Hero Banner & Animated Feature Highlights
-│   │       ├── ChatGPTView.jsx         <-- Central Scientific Reasoning Chat & Evidence HUD
+│   │       ├── ChatGPTView.jsx         <-- Central Scientific Reasoning Dialogue, Evidence HUD & Thought Process Pill
 │   │       ├── ChatAssistant.jsx       <-- Lightweight Conversational AI Sidebar Assistant
 │   │       ├── SaarCentralChat.jsx     <-- SAAR-Specific Deep Reasoning Chat View
 │   │       ├── SaarFindingsPanel.jsx   <-- Structured Investigation Findings & Evidence Summary
-│   │       ├── ImageInspector.jsx      <-- Dynamic Evidence Monitor with Normalized Bounding Anchors
+│   │       ├── ImageInspector.jsx      <-- Fullscreen Evidence Monitor with Pan/Zoom HUD & Normalized Bounding Anchors
 │   │       ├── KnowledgeGraphCanvas.jsx<-- Pure SVG/Canvas Knowledge Graph Visualizer (Zero-Dependency)
 │   │       ├── PlotlyGraphViewer.jsx   <-- Interactive Directed Causal Scene Graph (Plotly-powered)
-│   │       ├── ToolCanvasDrawer.jsx    <-- Dynamic Tool Inspection Drawer & Diagnostics
+│   │       ├── ToolCanvasDrawer.jsx    <-- Dynamic Tool Inspection Drawer & Diagnostics (Domain-Isolated)
 │   │       ├── ToolRolloutBar.jsx      <-- Animated Tool Execution Progress Bar
 │   │       ├── GaitDashboard.jsx       <-- ToddleAI Pediatric Gait Screening Dashboard & Video Player
 │   │       ├── PlantCareCard.jsx       <-- Botanical Pathology & Foliar Moisture/Light Card
@@ -225,14 +226,14 @@ d:\bytebuild\
 #### B. `LandingPage.jsx` & `LandingHero.jsx` — Futuristic Product Showcase
 * **Role**: First-impression interactive landing portal presenting domain scenario cards (ToddleAI, Agriculture, Infrastructure, Sports), animated pipeline flow diagrams, theme selector dropdown, and a prominent **"Enter SAAR Studio"** call-to-action.
 
-#### C. `ChatGPTView.jsx` — Central Scientific Dialogue & Reasoning HUD
-* **Role**: Primary user interaction surface presenting investigation dialogue, interactive follow-up question chips, evidence counters, file attachment handling, and specialist card injection (PlantCareCard, ToddlerPostureCard).
+#### C. `ChatGPTView.jsx` — Central Scientific Dialogue, Reasoning HUD & Thought Process Pill
+* **Role**: Primary user interaction surface presenting investigation dialogue, interactive follow-up question chips, evidence counters, file attachment handling, specialist card injection (PlantCareCard, ToddlerPostureCard), and an interactive **Thought Process / Reasoning Pill** that reveals step-by-step model deliberation and causal hypothesis testing in real time.
 
 #### D. `ChatAssistant.jsx` & `SaarCentralChat.jsx` & `IdeSideChat.jsx`
 * **Role**: Alternative chat surfaces. `ChatAssistant` provides a lightweight sidebar assistant. `SaarCentralChat` is the deep reasoning chat view for SAAR investigations. `IdeSideChat` renders a docked IDE-style side panel for concurrent investigation Q&A.
 
-#### E. `ImageInspector.jsx` — Dynamic Evidence Monitor with Normalized Anchors
-* **Role**: 16:9 visual inspection surface rendering dynamically grounded bounding boxes (`[ymin, xmin, ymax, xmax]`), regional inspection cards, and zoom controls. Follows zero-hardcoding rules: visual anchors derive strictly from backend perception or uploaded media.
+#### E. `ImageInspector.jsx` — Dynamic Evidence Monitor with Fullscreen Zoom HUD & Anchors
+* **Role**: 16:9 visual inspection surface rendering dynamically grounded bounding boxes (`[ymin, xmin, ymax, xmax]`), regional inspection cards, and zoom controls. Features a YouTube-style `[ ]` fullscreen toggle that expands the media view to fill the viewport while retaining crisp, framed SVG bounding box labels, and provides smooth interactive zoom-in/out and pan capabilities. Follows zero-hardcoding rules: visual anchors derive strictly from backend perception or uploaded media.
 
 #### F. `KnowledgeGraphCanvas.jsx` — Pure SVG Knowledge Graph Visualizer
 * **Role**: Zero-dependency SVG-based directed acyclic graph renderer with flow (left-to-right DAG) and radial layout modes, interactive zoom/pan, hover-highlight edge cascading, and synchronized node selection with the Image Inspector. Replaces Plotly in lightweight deployments.
@@ -240,8 +241,8 @@ d:\bytebuild\
 #### G. `PlotlyGraphViewer.jsx` — Interactive Directed Causal Scene Graph
 * **Role**: Full-featured Plotly.js-powered directed DAG visualizer mapping objects, properties, observations, hypotheses, and tool results with real-time physics, edge confidence indicators, and graph export.
 
-#### H. `ToolCanvasDrawer.jsx` & `ToolRolloutBar.jsx` — Dynamic Tool Inspection HUD
-* **Role**: `ToolCanvasDrawer` is a slide-over diagnostic canvas executing tools mapped dynamically via semantic category (`pathology`, `morphology`, `infrastructure`, `biomechanics`, `measurement`). `ToolRolloutBar` provides animated progress visualization during tool execution steps.
+#### H. `ToolCanvasDrawer.jsx` & `ToolRolloutBar.jsx` — Dynamic Tool Inspection HUD (Domain-Isolated)
+* **Role**: `ToolCanvasDrawer` is a slide-over diagnostic canvas executing tools mapped dynamically via semantic category (`pathology`, `morphology`, `infrastructure`, `biomechanics`, `measurement`). Strictly isolates tools per inquiry domain—specialized video tools (e.g., ToddleAI Gait Dashboard) are quarantined to gait inquiries and never exposed in botanical, civil, or sports investigations. `ToolRolloutBar` provides animated progress visualization during tool execution steps.
 
 #### I. `GaitDashboard.jsx` — Pediatric Gait Screening Dashboard
 * **Role**: Clinical-grade video assessment interface with active video player, quality gating banner, bilateral temporal metrics cards, age-based normative progress bars, pipeline confidence indicator, and in-context developmental Q&A.
@@ -302,6 +303,18 @@ d:\bytebuild\
 8. **Six-Domain Plugin Architecture**:
    - *Decision*: Extended from 5 to 6 domain plugins (Infrastructure, Astronomy, Agriculture, Pediatrics, Gait, Sports) with a unified `BaseDomainPlugin` contract.
    - *Rationale*: The sports biomechanics domain demonstrates SAAR's ability to perform longitudinal multi-session kinematic analysis, proving the architecture generalizes beyond single-image diagnostics.
+
+9. **Strict Session & Inquiry Isolation**:
+   - *Decision*: Strictly isolated all session media, visual anchors, and tool registries per inquiry domain. Video/gait tools and media are quarantined exclusively to pediatric gait investigations and cannot bleed into botanical, sports, or civil engineering sessions.
+   - *Rationale*: Eliminates asset cross-contamination (e.g. toddler gait videos appearing in botanical rose analysis) and preserves zero-hardcoding boundaries.
+
+10. **In-Place Fullscreen Inspection Over Detached Monitors**:
+    - *Decision*: Consolidated visual inspection into `ImageInspector.jsx` with a YouTube-style `[ ]` fullscreen toggle offering hardware-accelerated pan and zoom while keeping visual bounding box anchors and leader lines framed and in sync.
+    - *Rationale*: Eliminates redundant "visual monitor" pages/tools and provides researchers with a seamless in-place inspection workflow.
+
+11. **Auditable Deliberative Reasoning Pill**:
+    - *Decision*: Injected an interactive "Thought Process" pill above agent reasoning responses in `ChatGPTView.jsx` across all inquiries.
+    - *Rationale*: Exposes step-by-step model deliberation, causal reflections, and tool selection rationales so researchers can audit internal reasoning prior to reviewing final scientific findings.
 
 ---
 
@@ -1367,3 +1380,141 @@ SAAR introduces a centralized, thread-safe Key Pool Manager ([key_pool_manager.p
 4. **Tier 4 — Groq Qwen 2.5-VL / Local Ollama / OpenRouter**: Automated offline and external failover when cloud connectivity is unavailable.
 
 ---
+
+## 19. Inquiry Isolation, In-Place Fullscreen Inspection & The Thought Process Pill
+
+To guarantee clinical reliability and prevent asset cross-contamination across multi-turn scientific investigations, SAAR incorporates three core presentation and orchestration capabilities:
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                INQUIRY ISOLATION & INTERACTION WORKFLOW                                │
+├───────────────────────────────────────┬───────────────────────────────────┬────────────────────────────┤
+│ 1. Atomic Session Isolation           │ 2. In-Place Fullscreen HUD        │ 3. Deliberative Reasoning  │
+├───────────────────────────────────────┼───────────────────────────────────┼────────────────────────────┤
+│ • Strict per-inquiry tool scoping     │ • YouTube-style [ ] expand        │ • Collapsible Thought Pill │
+│ • Zero media bleed between domains    │ • Dynamic matrix pan/zoom (1x-5x) │ • Real-time CoT deduction  │
+│ • Domain-quarantined video/gait tools │ • Synced SVG anchors & labels     │ • Transparent hypothesis   │
+│ • Atomic state swapping on selection  │ • Zero detached monitor overhead  │   testing & tool rationale │
+└───────────────────────────────────────┴───────────────────────────────────┴────────────────────────────┘
+```
+
+---
+
+### A. Strict Inquiry Isolation & Zero Cross-Contamination
+
+#### 1. The Challenge of Multi-Domain Workspaces
+When researchers switch between disparate domains—such as diagnosing chlorosis on a potted *Monstera adansonii*, evaluating asphalt voids in civil infrastructure, or assessing a 24-month-old toddler's bilateral step cadence—traditional monolithic UI states risk **asset leakage**. In un-isolated architectures, media objects (e.g. video files) or domain tools (e.g. gait kinematics) from one inquiry inadvertently linger or render in an active botanical session.
+
+#### 2. Architectural Quarantine Protocol
+SAAR enforces strict **session-level isolation** across both backend dispatchers and frontend presentation layers:
+
+1. **Atomic Session Objects**:
+   - Every investigation is maintained as an isolated atomic record:
+     ```typescript
+     interface InvestigationSession {
+       id: string;
+       domain: "agriculture" | "infrastructure" | "astronomy" | "pediatrics" | "gait" | "sports";
+       presetId?: string;
+       imageUrl?: string;
+       videoUrl?: string;
+       graphData: { nodes: NodeModel[]; edges: EdgeModel[] };
+       tools: ToolExecutionModel[];
+       messages: ChatMessage[];
+     }
+     ```
+2. **Zero Media Bleed**:
+   - When switching sessions in `App.jsx`, the active media state immediately purges prior image and video references. An active agricultural inquiry exclusively renders botanical media; the `GaitDashboard` and video scrubbers are rendered **if and only if** `session.domain === 'gait'`.
+3. **Dynamic Tool Registry Scoping**:
+   - The tool drawer (`ToolCanvasDrawer.jsx`) dynamically queries `backend/app/plugins/` filtered strictly by the active domain. Specialized gait kinematic detectors and frame scrubbers are strictly quarantined to pediatric gait sessions, preventing video tools from ever appearing in agricultural or civil engineering workflows.
+
+---
+
+### B. In-Place Fullscreen Evidence Inspector (`ImageInspector.jsx`)
+
+#### 1. Why Detached "Visual Monitors" Failed
+Previous iterations utilized a separate "visual monitor" page or drawer for deep visual analysis. This forced researchers to navigate away from the reasoning chat and causal graph, fracturing their analytical train of thought and causing cognitive disconnections between visual evidence and graph nodes.
+
+#### 2. The YouTube-Style Fullscreen Architecture
+SAAR replaces detached monitors with an integrated, in-place fullscreen visual inspection engine directly embedded in `ImageInspector.jsx`:
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        FULLSCREEN EVIDENCE INSPECTOR                   │
+├────────────────────────────────────────────────────────────────────────┤
+│  [ Zoom Out - ]  [ 100% Reset ]  [ Zoom In + ]             [ X Exit ]  │
+│                                                                        │
+│    ┌────────────────────────────────────────────────────────────┐      │
+│    │                  VIEWPORT TRANSFORM MATRIX                 │      │
+│    │             transform: translate(X, Y) scale(Z)            │      │
+│    │                                                            │      │
+│    │    Base Image Specimen                                     │      │
+│    │    ───────────────────                                     │      │
+│    │    [ High-Res Botanical / Radiographic Asset ]            │      │
+│    │                                                            │      │
+│    │    Synchronized SVG Overlay Layer                          │      │
+│    │    ──────────────────────────────                          │      │
+│    │    • Normalized Bounding Box: [ymin, xmin, ymax, xmax]     │      │
+│    │    • Anchor Node Dot (High-contrast cyan/purple)           │      │
+│    │    • Dynamic Leader Line -> Margin Callout Label           │      │
+│    │                                                            │      │
+│    └────────────────────────────────────────────────────────────┘      │
+│                                                                        │
+│  Interactive Controls: Mouse Wheel Zoom • Drag-to-Pan • Arrow Keys     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 3. Key Technical Characteristics:
+- **YouTube-Style `[ ]` Fullscreen Button**: A single click on the overlay expand button expands the evidence inspector to occupy 100% of the viewport.
+- **Hardware-Accelerated Canvas Transforms**: Uses CSS `transform: translate3d(...) scale(...)` with `transform-origin: center center`, delivering fluid 60fps pan and zoom ($1.0\times \dots 5.0\times$) without DOM re-renders.
+- **Bound-Preserving SVG Overlays**: SVG coordinate layers are locked to the intrinsic aspect ratio of the underlying media. When zooming or panning, bounding boxes and anatomical leader lines scale and translate in exact mathematical lockstep with image pixels, eliminating anchor drift.
+
+---
+
+### C. The Deliberative Thought Process Pill (`ChatGPTView.jsx`)
+
+#### 1. The Need for Auditable Reasoning
+In scientific and clinical decision support, presenting only the final conclusion is insufficient and unacceptable. Domain practitioners must verify **how** the model arrived at its conclusion:
+- What diagnostic hypotheses were formulated?
+- Which visual features triggered tool execution?
+- Why were competing differential diagnoses ruled out?
+
+#### 2. Architecture of the Reasoning Pill
+SAAR introduces an interactive **Thought Process / Reasoning Pill** rendered at the apex of agent reasoning responses across all inquiries:
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  🧠 Thought Process  [ 8,192 tokens deliberated • 4 steps ]      [ ▼ ] │
+├────────────────────────────────────────────────────────────────────────┤
+│  1. Spatial Perception:                                                │
+│     - Detected interveinal chlorosis on apical leaves [Node: leaf_01]  │
+│     - Identified high substrate moisture saturation [Node: soil_01]    │
+│                                                                        │
+│  2. Differential Hypothesis Generation:                                │
+│     - Formulated H1: Bicarbonate-induced Fe2+ bioavailability deficit  │
+│     - Formulated H2: Rhizosphere fungal pathogen (Pythium root rot)    │
+│                                                                        │
+│  3. Causal Graph Synthesis & Tool Selection:                           │
+│     - Triggered SPAD Chlorophyll Fluorometer to evaluate PSII yield    │
+│     - Measured Fv/Fm = 0.62 (sub-optimal, confirms metabolic stress)   │
+│                                                                        │
+│  4. Deductive Rule-Out:                                                │
+│     - Substrate pH = 7.85 precipitating ferric iron into Fe(OH)3       │
+│     - Excluded fungal necrosis: No collar lesions observed             │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 3. Execution & Display Logic:
+- **Native Extraction**: Extracted from frontier model thinking tokens (e.g. Gemini `thought` chunks or Groq deep-reasoning tags `<think>...</think>`).
+- **Collapsible Glassmorphic Design**: Cleanly collapsed by default to keep the interface readable, with a subtle pulsing aura indicator while the model is actively deliberating.
+- **Auditable Verification Trail**: Provides complete transparency for agronomists, orthopedic specialists, and civil engineers before they act on SAAR's final recommendations.
+
+---
+
+### D. Contextual Follow-Up Action Chips
+
+To accelerate scientific drill-down without requiring the user to formulate complex prompts from scratch, `ChatGPTView.jsx` dynamically synthesizes **Contextual Follow-Up Chips**:
+- Derived directly from high-uncertainty nodes in the current scene graph (e.g. *"Evaluate Fe2+ chelate intervention"*, *"Run GPR void depth analysis"*, *"Compare cadence against 24m WHO norms"*).
+- Clicking a chip dispatches the exact contextual question to `POST /api/saar/investigation/{id}/ask`, maintaining conversational momentum and continuous graph refinement.
+
+---
+
