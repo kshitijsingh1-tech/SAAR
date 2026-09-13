@@ -5,7 +5,7 @@ import {
   TrendingUp, BarChart2, Activity, GitFork, AlertTriangle,
   Calendar, Layers, Sparkles, CheckCircle2, Sliders, ArrowRight,
   BookA, BookOpen, Info, X, MessageSquare, HelpCircle, ChevronRight,
-  UploadCloud, FileSpreadsheet, Database, RefreshCw, Camera, Crosshair, ExternalLink
+  UploadCloud, FileSpreadsheet, Database, RefreshCw
 } from 'lucide-react';
 
 const Plot = createPlotlyComponent(Plotly);
@@ -14,7 +14,6 @@ export function PlotlyGraphViewer({
   chartType: initialChartType = 'timeline',
   saarData = null,
   activeInvestigation = null,
-  milestones: propsMilestones = null,
   selectedRelationship = null,
   onSelectRelationship = null,
   theme = 'light',
@@ -23,12 +22,10 @@ export function PlotlyGraphViewer({
   onSendToChat = null,
   hasSensorData = true,
   onUploadSensorData = null,
-  onLoadSampleDataset = null,
-  onViewMilestoneImage = null
+  onLoadSampleDataset = null
 }) {
   const [activeTab, setActiveTab] = useState('timeline'); // 'timeline' | 'scatter' | 'heatmap'
   const [selectedKpiId, setSelectedKpiId] = useState(null);
-  const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isIngesting, setIsIngesting] = useState(false);
   const [uploadFeedback, setUploadFeedback] = useState(null);
@@ -51,34 +48,6 @@ export function PlotlyGraphViewer({
   const sensorSuite = useMemo(() => {
     // 1. Dynamic Empirical Telemetry from Uploaded CSV / Ingested Dataset (AGENTS.md Single Source of Truth)
     const activeTelemetry = saarData?.telemetry || activeInvestigation?.telemetry;
-
-    // Dynamically retrieve user-pinned image milestones, session milestones, or telemetry milestones
-    const rawMilestones = (propsMilestones && propsMilestones.length > 0)
-      ? propsMilestones
-      : (activeTelemetry?.milestones && activeTelemetry.milestones.length > 0
-          ? activeTelemetry.milestones
-          : (activeInvestigation?.milestones && activeInvestigation.milestones.length > 0
-              ? activeInvestigation.milestones
-              : (saarData?.milestones && saarData.milestones.length > 0
-                  ? saarData.milestones
-                  : [])));
-
-    const milestonePalette = ['#0284c7', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
-    const dynamicMilestones = (rawMilestones || []).map((m, mIdx) => {
-      const dayNum = Number(m.day != null ? (isNaN(Number(String(m.day).replace(/^day\s*/i, ''))) ? mIdx * 10 : Number(String(m.day).replace(/^day\s*/i, ''))) : mIdx * 10);
-      return {
-        day: isNaN(dayNum) ? mIdx * 10 : dayNum,
-        label: m.label || m.name || m.stage || `Milestone ${mIdx + 1}`,
-        color: m.color || milestonePalette[mIdx % milestonePalette.length],
-        url: m.url || m.image || m.photograph_url || null,
-        badge: m.badge || `DAY ${isNaN(dayNum) ? mIdx * 10 : dayNum}`,
-        stage: m.stage || '',
-        date: m.date || '',
-        description: m.description || m.notes || '',
-        botanicalDetails: m.botanicalDetails || m.details || ''
-      };
-    });
-
     if (activeTelemetry && activeTelemetry.channels && Object.keys(activeTelemetry.channels).length > 0) {
       const rawChannels = activeTelemetry.channels;
       const channelKeys = Object.keys(rawChannels);
@@ -106,19 +75,13 @@ export function PlotlyGraphViewer({
         };
       });
 
-      // Extract milestones or format from dynamicMilestones / activeTelemetry
-      let milestones = dynamicMilestones.length > 0 ? dynamicMilestones : (activeTelemetry.milestones || []).map((m, mIdx) => {
+      // Extract milestones or format from activeTelemetry
+      const milestones = (activeTelemetry.milestones || []).map((m, mIdx) => {
         const colors = ['#0284c7', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6'];
         return {
           day: m.day ?? mIdx * 10,
           label: m.label || m.name || `Milestone ${mIdx + 1}`,
-          color: m.color || colors[mIdx % colors.length],
-          url: m.url || m.image || null,
-          badge: m.badge || `DAY ${m.day ?? mIdx * 10}`,
-          stage: m.stage || '',
-          date: m.date || '',
-          description: m.description || '',
-          botanicalDetails: m.botanicalDetails || ''
+          color: m.color || colors[mIdx % colors.length]
         };
       });
 
@@ -187,7 +150,7 @@ export function PlotlyGraphViewer({
           { id: 'crack', name: 'Surface Crack Width (mm)', unit: 'mm', data: crackWidth, color: '#f43f5e', yaxis: 'y2' },
           { id: 'rain', name: 'Precipitation Rainfall (mm/day)', unit: 'mm', data: rain, color: '#10b981', yaxis: 'y2' }
         ],
-        milestones: dynamicMilestones.length > 0 ? dynamicMilestones : [
+        milestones: [
           { day: 7, label: 'Heavy Infiltration Storm', color: '#10b981' },
           { day: 15, label: 'Subsurface 1.8m Void Formed', color: '#f59e0b' },
           { day: 22, label: 'Pavement Shear Crack Failure', color: '#f43f5e' }
@@ -268,7 +231,7 @@ export function PlotlyGraphViewer({
         { id: 'ph', name: 'Substrate pH (Alkalinity)', unit: 'pH', data: substratePh, color: '#f59e0b', yaxis: 'y2' },
         { id: 'ndre', name: 'Foliar Chlorosis Index (NDRE)', unit: 'NDRE', data: chlorosisNDRE, color: '#f43f5e', yaxis: 'y' }
       ],
-      milestones: dynamicMilestones.length > 0 ? dynamicMilestones : [
+      milestones: [
         { day: 6, label: 'Continuous Drip Discharge Begins', color: '#0284c7' },
         { day: 14, label: 'Root Zone Anoxia (DO < 0.8 mg/L)', color: '#f59e0b' },
         { day: 22, label: 'Severe Foliar Chlorosis Observed', color: '#f43f5e' }
@@ -399,35 +362,18 @@ export function PlotlyGraphViewer({
       hovertemplate: `<b>${channel.name}</b><br>%{x}: %{y:.2f} ${channel.unit}<extra></extra>`
     }));
 
-    const getTargetX = (m) => {
-      if (!sensorSuite.days || sensorSuite.days.length === 0) return 0;
-      const targetDayNum = Number(m.day);
-      if (!isNaN(targetDayNum)) {
-        const floored = Math.floor(targetDayNum);
-        const dayMatch = sensorSuite.days.find((d) => {
-          const s = String(d).toLowerCase();
-          return s.startsWith(`day ${floored} `) || s === `day ${floored}` || s.includes(`day ${floored} (`) || s.includes(`(${floored})`);
-        });
-        if (dayMatch) return dayMatch;
-
-        if (floored >= 0 && floored < sensorSuite.days.length) {
-          return sensorSuite.days[floored];
-        }
-      }
-      if (m.date) {
-        const dateMatch = sensorSuite.days.find((d) => String(d).includes(m.date));
-        if (dateMatch) return dateMatch;
-      }
-      if (m.day != null) {
-        const match = sensorSuite.days.find((d) => String(d).toLowerCase().includes(String(m.day).toLowerCase()));
-        if (match) return match;
-      }
-      return sensorSuite.days[0];
-    };
-
     // Add milestone vertical dashed lines
     const shapes = sensorSuite.milestones.map((m) => {
-      const targetX = getTargetX(m);
+      let targetX = sensorSuite.days[0];
+      if (typeof m.day === 'number') {
+        if (m.day >= 0 && m.day < sensorSuite.days.length) {
+          targetX = sensorSuite.days[m.day];
+        } else {
+          targetX = sensorSuite.days.find((d) => String(d).toLowerCase().includes(`day ${m.day}`)) || sensorSuite.days[0];
+        }
+      } else if (m.day) {
+        targetX = m.day;
+      }
       return {
         type: 'line',
         x0: targetX,
@@ -440,26 +386,33 @@ export function PlotlyGraphViewer({
     });
 
     // Add milestone text annotations
-    const annotations = sensorSuite.milestones.map((m, idx) => {
-      const targetX = getTargetX(m);
-      const isAlt = idx % 2 === 1;
-      const stageSnippet = m.stage ? `<br><span style="font-size:8px;font-weight:400">${m.stage.slice(0, 16)}</span>` : '';
+    const annotations = sensorSuite.milestones.map((m) => {
+      let targetX = sensorSuite.days[0];
+      if (typeof m.day === 'number') {
+        if (m.day >= 0 && m.day < sensorSuite.days.length) {
+          targetX = sensorSuite.days[m.day];
+        } else {
+          targetX = sensorSuite.days.find((d) => String(d).toLowerCase().includes(`day ${m.day}`)) || sensorSuite.days[0];
+        }
+      } else if (m.day) {
+        targetX = m.day;
+      }
       return {
         x: targetX,
-        y: isAlt ? 0.82 : 0.94,
+        y: 0.92,
         yref: 'paper',
-        text: `<b>${m.badge || 'DAY ' + Math.floor(m.day)}</b>${stageSnippet} 📷`,
+        text: `<b>${m.label}</b>`,
         showarrow: true,
         arrowhead: 2,
         arrowsize: 1,
         arrowcolor: m.color,
         ax: 0,
-        ay: isAlt ? -18 : -30,
-        font: { size: 9, color: m.color, family: 'Outfit, sans-serif' },
-        bgcolor: isDark ? '#0f172a' : '#ffffff',
+        ay: -20,
+        font: { size: 9.5, color: m.color, family: 'Outfit, sans-serif' },
+        bgcolor: '#ffffff',
         bordercolor: m.color,
         borderwidth: 1.5,
-        borderpad: 3
+        borderpad: 4
       };
     });
 
@@ -1427,300 +1380,14 @@ export function PlotlyGraphViewer({
                 <strong style={{ fontSize: '0.86rem', color: '#0f172a' }}>{sensorSuite.title}</strong>
               </div>
               <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                {sensorSuite.days.length} Synchronized Longitudinal Telemetry Observations
+                Synchronized 30-Day Multi-Sensor Longitudinal Tracking
               </span>
             </div>
-
-            {/* Milestone Photostrip Bar */}
-            {sensorSuite.milestones && sensorSuite.milestones.length > 0 && (
-              <div style={{
-                margin: '0.5rem 0 0.85rem 0',
-                padding: '0.65rem 0.85rem',
-                background: isDark ? '#0b1329' : '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '10px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Camera size={14} color="#0284c7" />
-                    <span style={{ fontSize: '0.76rem', fontWeight: '700', color: '#0f172a' }}>
-                      Developmental Milestones &amp; Authentic Photographic Evidence
-                    </span>
-                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                      ({sensorSuite.milestones.length} Recorded Stages)
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '0.68rem', color: '#0284c7', fontWeight: '600' }}>
-                    Click any milestone card or timeline marker to inspect photograph &amp; analyze
-                  </span>
-                </div>
-
-                {/* Horizontal Scrollable Photostrip */}
-                <div style={{
-                  display: 'flex',
-                  gap: '0.55rem',
-                  overflowX: 'auto',
-                  paddingBottom: '4px'
-                }}>
-                  {sensorSuite.milestones.map((m, idx) => {
-                    const isSelected = selectedMilestone?.label === m.label || (selectedMilestone?.day === m.day && selectedMilestone?.badge === m.badge);
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => setSelectedMilestone(isSelected ? null : m)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '0.35rem 0.6rem',
-                          background: isSelected ? '#ffffff' : (isDark ? '#1e293b' : '#ffffff'),
-                          border: isSelected ? `2px solid ${m.color}` : '1px solid #cbd5e1',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                          boxShadow: isSelected ? `0 4px 12px ${m.color}35` : '0 1px 3px rgba(0,0,0,0.04)',
-                          transition: 'all 0.15s ease'
-                        }}
-                        title={`Click to inspect ${m.label} (${m.date || `Day ${m.day}`})`}
-                      >
-                        {m.url ? (
-                          <img
-                            src={m.url}
-                            alt={m.label}
-                            style={{
-                              width: '44px',
-                              height: '44px',
-                              borderRadius: '6px',
-                              objectFit: 'cover',
-                              border: `1px solid ${m.color}40`,
-                              flexShrink: 0
-                            }}
-                          />
-                        ) : (
-                          <div style={{
-                            width: '44px',
-                            height: '44px',
-                            borderRadius: '6px',
-                            background: `${m.color}15`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: m.color,
-                            fontWeight: '700',
-                            fontSize: '0.72rem',
-                            flexShrink: 0
-                          }}>
-                            {m.badge || `D${m.day}`}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{
-                              fontSize: '0.62rem',
-                              fontWeight: '700',
-                              color: '#ffffff',
-                              background: m.color,
-                              padding: '0.1rem 0.35rem',
-                              borderRadius: '4px'
-                            }}>
-                              {m.badge || `DAY ${m.day}`}
-                            </span>
-                            {m.date && <span style={{ fontSize: '0.62rem', color: '#64748b' }}>{m.date}</span>}
-                          </div>
-                          <strong style={{ fontSize: '0.74rem', color: '#0f172a', whiteSpace: 'nowrap' }}>
-                            {m.label.replace(/^Day \d+(\.\d+)?:?\s*/i, '')}
-                          </strong>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Selected Milestone Inspection Card */}
-            {selectedMilestone && (
-              <div style={{
-                margin: '0.5rem 0 1rem 0',
-                background: '#ffffff',
-                border: `1.5px solid ${selectedMilestone.color}`,
-                borderRadius: '10px',
-                padding: '1rem',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                display: 'grid',
-                gridTemplateColumns: selectedMilestone.url ? '180px 1fr' : '1fr',
-                gap: '1.25rem',
-                alignItems: 'center',
-                position: 'relative'
-              }}>
-                {selectedMilestone.url && (
-                  <div style={{ position: 'relative' }}>
-                    <img
-                      src={selectedMilestone.url}
-                      alt={selectedMilestone.label}
-                      style={{
-                        width: '100%',
-                        height: '150px',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                      }}
-                    />
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '6px',
-                      left: '6px',
-                      background: 'rgba(15, 23, 42, 0.82)',
-                      color: '#ffffff',
-                      fontSize: '0.62rem',
-                      fontWeight: '600',
-                      padding: '0.15rem 0.45rem',
-                      borderRadius: '4px',
-                      backdropFilter: 'blur(4px)'
-                    }}>
-                      {selectedMilestone.badge} · {selectedMilestone.date}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{
-                        background: `${selectedMilestone.color}18`,
-                        color: selectedMilestone.color,
-                        fontSize: '0.68rem',
-                        fontWeight: '700',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '4px',
-                        border: `1px solid ${selectedMilestone.color}35`
-                      }}>
-                        {selectedMilestone.stage || 'DEVELOPMENTAL STAGE'}
-                      </span>
-                      <h4 style={{ margin: 0, fontSize: '0.96rem', fontWeight: '700', color: '#0f172a' }}>
-                        {selectedMilestone.label}
-                      </h4>
-                    </div>
-
-                    <button
-                      onClick={() => setSelectedMilestone(null)}
-                      style={{
-                        border: 'none',
-                        background: '#f1f5f9',
-                        color: '#64748b',
-                        borderRadius: '6px',
-                        width: '26px',
-                        height: '26px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                      title="Close preview"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-
-                  {selectedMilestone.description && (
-                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#334155', lineHeight: '1.45' }}>
-                      {selectedMilestone.description}
-                    </p>
-                  )}
-
-                  {selectedMilestone.botanicalDetails && (
-                    <div style={{
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '6px',
-                      padding: '0.4rem 0.65rem',
-                      fontSize: '0.72rem',
-                      color: '#475569'
-                    }}>
-                      <strong>Sensor Telemetry Correlation:</strong> {selectedMilestone.botanicalDetails}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                    {selectedMilestone.url && (
-                      <button
-                        onClick={() => {
-                          if (onViewMilestoneImage) {
-                            onViewMilestoneImage(selectedMilestone.url);
-                          }
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '0.38rem 0.85rem',
-                          background: '#0284c7',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '0.74rem',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 6px rgba(2,132,199,0.3)'
-                        }}
-                      >
-                        <Crosshair size={13} />
-                        <span>Open in Image Analysis Screen</span>
-                      </button>
-                    )}
-
-                    {onSendToChat && (
-                      <button
-                        onClick={() => {
-                          onSendToChat(`Explain the physiological and morphological development occurring at ${selectedMilestone.label} (${selectedMilestone.date || `Day ${selectedMilestone.day}`}) during rose chip budding propagation.`);
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '0.38rem 0.75rem',
-                          background: '#ffffff',
-                          color: '#475569',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: '6px',
-                          fontSize: '0.74rem',
-                          fontWeight: '500',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <MessageSquare size={13} />
-                        <span>Inquire in Chat</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             <Plot
               data={timelinePlot.traces}
               layout={timelinePlot.layout}
               config={{ responsive: true, displayModeBar: false }}
               style={{ width: '100%' }}
-              onClick={(eventData) => {
-                if (eventData?.points?.[0]) {
-                  const ptX = eventData.points[0].x;
-                  const match = sensorSuite.milestones.find((m) => {
-                    if (typeof m.day === 'number') {
-                      const floored = Math.floor(m.day);
-                      const dayStr = String(ptX).toLowerCase();
-                      return dayStr.startsWith(`day ${floored}`) || dayStr.includes(`(${m.date})`);
-                    }
-                    return String(ptX).toLowerCase().includes(String(m.day).toLowerCase());
-                  });
-                  if (match) setSelectedMilestone(match);
-                }
-              }}
             />
           </div>
         )}

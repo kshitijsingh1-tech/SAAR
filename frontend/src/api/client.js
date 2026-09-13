@@ -13,8 +13,6 @@ export const runInvestigation = async (domain, presetId, options = {}) => {
     preset_id: presetId,
     image_data: options.imageData || null,
     image_url: options.imageUrl || null,
-    images: options.images || null,
-    image_metadata: options.imageMetadata || options.image_metadata || null,
     vlm_provider: options.vlmProvider || 'auto',
     api_key: options.apiKey || null
   };

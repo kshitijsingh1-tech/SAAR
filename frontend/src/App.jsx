@@ -503,89 +503,36 @@ export default function App() {
   };
 
   // Unified Autonomous Image Investigation Pipeline
-  // Unified Autonomous Image Investigation Pipeline (Supports single image, multi-image sequences & metadata milestones)
-  const executeImageInvestigation = async (fileOrDataUrl, rawFileName, optionalUserText, alreadyAddedUserMsg = false, csvReport = null) => {
-    const fileList = Array.isArray(fileOrDataUrl) ? fileOrDataUrl : [fileOrDataUrl];
-    const base64DataList = [];
-    const metaList = [];
-    const fileNames = [];
+  const executeImageInvestigation = async (fileOrDataUrl, rawFileName, optionalUserText, alreadyAddedUserMsg = false) => {
+    let base64Data = null;
+    let fileName = rawFileName || 'uploaded_evidence.png';
 
-    for (let i = 0; i < fileList.length; i++) {
-      const item = fileList[i];
-      let b64 = null;
-      let fName = rawFileName || `specimen_${i + 1}.png`;
-      let meta = item?._saarMeta || null;
-
-      if (typeof item === 'string') {
-        b64 = item;
-      } else if (item instanceof File || item instanceof Blob) {
-        fName = item.name || fName;
-        b64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(item);
-        });
-      }
-      if (b64) {
-        base64DataList.push(b64);
-        metaList.push(meta);
-        fileNames.push(fName);
-      }
+    if (typeof fileOrDataUrl === 'string') {
+      base64Data = fileOrDataUrl;
+    } else if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
+      fileName = fileOrDataUrl.name || fileName;
+      base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(fileOrDataUrl);
+      });
     }
 
-    if (base64DataList.length === 0) return;
-    const primaryBase64 = base64DataList[0];
-    const fileName = fileNames.join(', ');
+    if (!base64Data) return;
 
-    // Strict state reset: prevent cross-session visual anchor bleeding, but preserve existing milestones across turns
+    // Strict state reset: prevent cross-session visual anchor and graph bleeding
     setInvestigationData(null);
-    setCustomImageData(primaryBase64);
-    setCustomImageUrl(null);
+    setSaarData(null);
+    setBaselineData(null);
+    setCustomImageData(base64Data);
     setCustomVideoFile(null);
     setCameraConnected(true);
 
-    const activeSession = sessions.find((s) => s.id === activeSessionId);
-    const existingMilestones = activeSession?.telemetryData?.milestones || saarData?.telemetry?.milestones || [];
-    const palette = ['#0284c7', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4'];
-
-    const newMilestones = base64DataList.map((b64, idx) => {
-      const m = metaList[idx] || {};
-      const dayVal = m.day != null && !isNaN(Number(m.day)) ? Number(m.day) : (existingMilestones.length + idx + 1);
-      const dayStr = m.day ? (String(m.day).toLowerCase().startsWith('day') ? m.day : `Day ${m.day}`) : `Day ${dayVal}`;
-      const stageStr = m.stage || (base64DataList.length > 1 ? `Milestone ${idx + 1}` : 'Specimen Observation');
-      const labelStr = m.label || `${dayStr} - ${stageStr}`;
-      const badgeStr = `DAY ${dayVal}`;
-      return {
-        day: dayVal,
-        timestamp: dayStr,
-        label: labelStr,
-        badge: badgeStr,
-        color: m.color || palette[(existingMilestones.length + idx) % palette.length],
-        stage: stageStr,
-        view_angle: m.viewAngle || '',
-        date: new Date().toISOString().split('T')[0],
-        url: b64,
-        description: m.notes || `Specimen observation at ${dayStr}. Stage: ${stageStr}.${m.viewAngle ? ` View: ${m.viewAngle}.` : ''}`
-      };
-    });
-
-    // Merge new milestones with existing session milestones
-    const mergedMilestones = [...existingMilestones];
-    for (const nm of newMilestones) {
-      const existIdx = mergedMilestones.findIndex((em) => em.url === nm.url || (em.day === nm.day && em.label === nm.label));
-      if (existIdx >= 0) {
-        mergedMilestones[existIdx] = nm;
-      } else {
-        mergedMilestones.push(nm);
-      }
-    }
-    mergedMilestones.sort((a, b) => (Number(a.day) || 0) - (Number(b.day) || 0));
-
     // Auto-detect domain:
     let targetDomain = selectedDomain;
-    const combinedContext = `${fileName} ${optionalUserText || ''} ${newMilestones.map((m) => m.stage + ' ' + m.description).join(' ')}`.toLowerCase();
-    const isBotanical = /rose|aloe|plant|leaf|flower|cutting|root|propagat|stem|bloom|agri|foliar|sprout|botanical|crop|soil|seed|fruit|vegetab|tree|weed|fung|pest|graft|budding/.test(combinedContext);
+    const combinedContext = `${fileName} ${optionalUserText || ''}`.toLowerCase();
+    const isBotanical = /rose|aloe|plant|leaf|flower|cutting|root|propagat|stem|bloom|agri|foliar|sprout|botanical|crop|soil|seed|fruit|vegetab|tree|weed|fung|pest/.test(combinedContext);
     const isInfra = /road|pavement|asphalt|culvert|gpr|crack|concrete|bridge|sinkhole|sub-base/.test(combinedContext);
     const isAstro = /transit|star|planet|telescope|lightcurve|doppler|spectr|exoplanet|orbit/.test(combinedContext);
     const isSports = /badminton|tennis|smash|serve|racket|athlet|jump|biomechanic/.test(combinedContext);
@@ -609,21 +556,11 @@ export default function App() {
       setSelectedDomain('agriculture');
     }
 
-    // Persist image and merged milestones directly onto the active session
+    // Persist image directly onto the active session so it never wipes out on re-render
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId
-          ? {
-              ...s,
-              imageData: primaryBase64,
-              imageUrl: null,
-              videoFile: null,
-              domain: targetDomain,
-              telemetryData: {
-                ...(csvReport?.telemetry || s.telemetryData || {}),
-                milestones: mergedMilestones
-              }
-            }
+          ? { ...s, imageData: base64Data, imageUrl: null, videoFile: null, domain: targetDomain }
           : s
       )
     );
@@ -631,16 +568,14 @@ export default function App() {
     if (!alreadyAddedUserMsg) {
       const userMsgText = optionalUserText && optionalUserText.trim()
         ? optionalUserText.trim()
-        : (base64DataList.length === 1
-            ? `Attached specimen photo: \`${fileName}\`${newMilestones[0]?.label ? ` (${newMilestones[0].label})` : ''} for visual grounding and scientific reasoning.`
-            : `Attached ${base64DataList.length} specimen photos across milestones (${newMilestones.map((m) => m.label).join(', ')}) for comparative reasoning.`);
+        : `Attached photo: \`${fileName}\` for autonomous visual perception and scientific causal reasoning.`;
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'user',
           text: userMsgText,
-          files: fileNames,
+          files: [fileName],
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -649,52 +584,11 @@ export default function App() {
     setIsProcessing(true);
 
     try {
-      const imageMetadataPayload = newMilestones.map((m) => ({
-        filename: m.label,
-        day: m.day,
-        timestamp: m.timestamp,
-        label: m.label,
-        stage: m.stage,
-        view_angle: m.view_angle,
-        description: m.description,
-        color: m.color
-      }));
-
       const res = await runInvestigation(targetDomain, null, {
-        imageData: primaryBase64,
-        images: base64DataList.length > 1 ? base64DataList : null,
-        imageMetadata: imageMetadataPayload,
+        imageData: base64Data,
         vlmProvider: 'auto'
       });
-
-      const baseTelemetry = csvReport?.telemetry || saarData?.telemetry || res?.telemetry || {};
-      const csvMilestones = baseTelemetry.milestones || [];
-      const allMilestones = [...mergedMilestones];
-      for (const cm of csvMilestones) {
-        if (!allMilestones.some((m) => m.url === cm.url || (m.day === cm.day && m.label === cm.label))) {
-          allMilestones.push(cm);
-        }
-      }
-      allMilestones.sort((a, b) => (Number(a.day) || 0) - (Number(b.day) || 0));
-
-      if (!res.telemetry) res.telemetry = {};
-      res.telemetry = {
-        ...baseTelemetry,
-        milestones: allMilestones
-      };
-
       setInvestigationData(res);
-      setSaarData((prev) => ({
-        ...(prev || {}),
-        ...(csvReport || {}),
-        ...res,
-        telemetry: {
-          ...(prev?.telemetry || {}),
-          ...baseTelemetry,
-          ...(res?.telemetry || {}),
-          milestones: allMilestones
-        }
-      }));
 
       const nodeCount = res.final_graph?.nodes?.length || 0;
       const edgeCount = res.final_graph?.edges?.length || 0;
@@ -703,28 +597,6 @@ export default function App() {
       );
 
       let reply = res.conclusion || 'Scientific visual analysis completed successfully.';
-
-      // Attach Stage 1 Prior Text Analysis if available
-      if (res.text_context_analysis && !reply.includes('[Stage 1 Prior Context Analysis')) {
-        const tca = res.text_context_analysis;
-        const m = tca.milestone || {};
-        const targets = tca.focus_targets?.length ? `- **Focal Targets Grounded**: ${tca.focus_targets.join(', ')}\n` : '';
-        const hypos = tca.hypotheses?.length ? `- **Prior Hypotheses Evaluated**: ${tca.hypotheses.join('; ')}\n` : '';
-        const summaryText = tca.context_summary ? `- **Context**: *"${tca.context_summary}"*\n` : '';
-        const stage1Callout = `### Stage 1: Prior Context Analysis (${m.milestone_label || `Day ${m.day || 1}`})\n` +
-          `${summaryText}${targets}${hypos}\n---\n\n### Stage 2: Visual Grounding & Scene Perception\n`;
-        reply = stage1Callout + reply;
-      }
-
-      if (csvReport) {
-        const featCount = csvReport?.perception?.features_detected ?? (csvReport?.telemetry?.columnCount || 'several');
-        const obsCount = csvReport?.perception?.observations_count ?? (csvReport?.telemetry?.rowCount || 'multiple');
-        const relCount = csvReport?.relationships?.length ?? 0;
-        reply = `### Ingested Dataset & Grounded Visual Investigation\n\n` +
-          `- **Telemetry Stream**: Successfully parsed ${featCount} continuous sensor channels across ${obsCount} observations with ${relCount} discovered statistical relationships.\n` +
-          `- **Visual Grounding**: Grounded ${nodeCount} spatial entities from specimen photos and pinned ${allMilestones.length} milestones onto the 30-day sensor telemetry graph.\n\n---\n\n` +
-          reply;
-      }
 
       if (optionalUserText && optionalUserText.trim()) {
         try {
@@ -737,24 +609,16 @@ export default function App() {
         }
       }
 
-      const isMultiFrame = base64DataList.length > 1;
       const thoughtProcess = {
-        title: `Thought for ${(Math.random() * 0.5 + (isMultiFrame ? 2.4 : 2.0)).toFixed(1)}s`,
-        summary: isMultiFrame
-          ? `Comparative analysis across ${base64DataList.length} milestone frames · Grounded ${nodeCount} physical visual entities (${confidencePct}% confidence)`
-          : `Grounded ${nodeCount} physical visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
+        title: `Thought for ${(Math.random() * 0.5 + 2.1).toFixed(1)}s`,
+        summary: `Grounded ${nodeCount} physical visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
         steps: [
-          ...(res.text_context_analysis ? [
-            `Stage 1 (Text-First): Analyzed context into ${res.text_context_analysis.milestone?.milestone_label || 'Milestone'} · Extracted ${res.text_context_analysis.focus_targets?.length || 0} visual focal targets & ${res.text_context_analysis.hypotheses?.length || 0} testable hypotheses`
-          ] : []),
-          isMultiFrame
-            ? `Comparative Perception: Grounded ${base64DataList.length} sequential milestone frames: ${newMilestones.map((m) => m.badge + ' (' + m.stage + ')').join(' -> ')}`
-            : `Visual Perception: Grounded ${nodeCount} physical entities with bounding boxes from "${fileName}"`,
-          `Causal Graph Formulation: Formulated ${edgeCount} directed dependencies across active milestones (${confidencePct}% graph confidence)`,
+          `Visual Perception: Grounded ${nodeCount} physical entities with bounding boxes from "${fileName}"`,
+          `Causal Graph Formulation: Formulated ${edgeCount} directed dependencies (${confidencePct}% graph confidence)`,
           ...(res.steps && res.steps.length > 0
             ? res.steps.map((s) => `Executed diagnostic tool: ${s.tool_name || s.step_name || 'Specialized Diagnostic'}`)
             : [`Executed specialized domain diagnostic evaluators`]),
-          `Scientific Synthesis: Validated developmental progression findings and clinical recommendations`
+          `Scientific Synthesis: Formulated peer-reviewed causal mechanism and clinical findings`
         ]
       };
 
@@ -847,17 +711,10 @@ export default function App() {
 
     const currentFiles = [...attachedFiles];
     const textStr = typeof userText === 'string' ? userText : (userText ? String(userText) : '');
-    const imageFiles = currentFiles.filter((f) => {
-      const fn = f?.name || '';
-      const ft = (f?.type || '').toLowerCase();
-      return ft.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fn);
-    });
-    const isImageUpload = imageFiles.length > 0;
-    const firstImg = imageFiles[0];
+    const firstFile = currentFiles[0];
+    const isImageUpload = firstFile && ((firstFile.type || '').toLowerCase().startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(firstFile.name));
     const msgText = textStr || (isImageUpload
-      ? (imageFiles.length === 1
-          ? `Attached specimen photo: \`${firstImg.name}\`${firstImg._saarMeta?.label ? ` (${firstImg._saarMeta.label})` : ''} for visual grounding and scientific causal reasoning.`
-          : `Attached ${imageFiles.length} specimen photos across milestones (${imageFiles.map((f) => f._saarMeta?.label || f.name).join(', ')}) for comparative reasoning.`)
+      ? `Attached photo: \`${firstFile.name}\` for autonomous visual perception and scientific causal reasoning.`
       : (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : ''));
 
     // Always add user message to conversation history immediately
@@ -959,45 +816,19 @@ export default function App() {
           }
         }
 
-        const imageFilesToProcess = currentFiles.filter((f) => {
-          const fn = f?.name || '';
-          const ft = (f?.type || '').toLowerCase();
-          return ft.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fn);
-        });
-
-        const csvFilesToProcess = currentFiles.filter((f) => {
-          const fn = f?.name || '';
-          const ft = (f?.type || '').toLowerCase();
-          return /\.(csv|tsv|txt|xlsx|xls)$/i.test(fn) || ft.includes('csv') || ft.includes('spreadsheet') || ft.includes('excel');
-        });
-
-        let csvReport = null;
-        if (csvFilesToProcess.length > 0) {
-          try {
-            csvReport = await uploadSaarCsv(csvFilesToProcess[0]);
-            setSaarData(csvReport);
-            setSessionSensorData((prev) => ({
-              ...prev,
-              [activeSessionId]: true
-            }));
-          } catch (csvErr) {
-            console.warn("CSV upload error:", csvErr);
-          }
-        }
-
-        if (imageFilesToProcess.length > 0) {
-          await executeImageInvestigation(
-            imageFilesToProcess.length === 1 ? imageFilesToProcess[0] : imageFilesToProcess,
-            imageFilesToProcess.map((f) => f.name).join(', '),
-            userText,
-            true,
-            csvReport
-          );
+        if (isImage) {
+          await executeImageInvestigation(file, fileName, userText, true);
           return;
         }
 
-        if (csvReport) {
-          const report = csvReport;
+        if (isCsv) {
+          const report = await uploadSaarCsv(file);
+          setSaarData(report);
+          setSessionSensorData((prev) => ({
+            ...prev,
+            [activeSessionId]: true
+          }));
+
           const featuresCount = report?.perception?.features_detected ?? (report?.telemetry?.columnCount || 'several');
           const obsCount = report?.perception?.observations_count ?? (report?.telemetry?.rowCount || 'multiple');
           const relCount = report?.relationships?.length ?? 0;
@@ -1008,7 +839,7 @@ export default function App() {
             title: `Thought for ${(Math.random() * 0.4 + 1.8).toFixed(1)}s`,
             summary: `Ingested ${featuresCount} telemetry variables · Discovered ${relCount} causal edges · Confidence ${confPercent}%`,
             steps: [
-              `Telemetry Ingestion: Successfully processed dataset \`${csvFilesToProcess[0].name}\``,
+              `Telemetry Ingestion: Successfully processed dataset \`${fileName}\``,
               `Feature Extraction: Parsed ${featuresCount} continuous variables across ${obsCount} observations`,
               `Causal Topology: Computed empirical covariance discovering ${relCount} dependency edges`,
               `Belief Updating: Formulated ${conceptCount} grounded concepts with ${confPercent}% confidence`,
@@ -1016,7 +847,7 @@ export default function App() {
             ]
           };
 
-          let responseText = report?.summary || report?.conclusion || `I have ingested and analyzed \`${csvFilesToProcess[0].name}\`. Longitudinal trends, cross-correlations, and causal relationships are mapped in the **Sensor Telemetry** and **Causal Graph** tools.`;
+          let responseText = report?.summary || report?.conclusion || `I have ingested and analyzed \`${fileName}\`. Longitudinal trends, cross-correlations, and causal relationships are mapped in the **Sensor Telemetry** and **Causal Graph** tools.`;
 
           if (userText && userText.trim()) {
             try {
@@ -1658,13 +1489,10 @@ export default function App() {
         onUploadCustomImage={(fileOrDataUrl) => {
           executeImageInvestigation(fileOrDataUrl);
         }}
-        onPasteImageUrl={async (url, preserveTelemetry = false) => {
+        onPasteImageUrl={async (url) => {
           setInvestigationData(null);
-          // Preserve ingested CSV telemetry when viewing milestones so sensor graph is not cleared
-          if (!preserveTelemetry && !saarData?.telemetry) {
-            setSaarData(null);
-            setBaselineData(null);
-          }
+          setSaarData(null);
+          setBaselineData(null);
           setSelectedNodeId(null);
           setCustomImageData(null);
           setCustomImageUrl(url);

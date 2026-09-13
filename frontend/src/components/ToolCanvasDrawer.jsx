@@ -303,7 +303,6 @@ export function ToolCanvasDrawer({
                 if (onSendToChat) onSendToChat(q);
                 if (onClose) onClose();
               }}
-              milestones={saarData?.telemetry?.milestones || investigationData?.telemetry?.milestones || investigationData?.milestones || []}
               onCloseDrawer={onClose}
               onOpenGlossary={() => onSelectTool('dictionary')}
               domain={selectedDomain}
@@ -349,7 +348,6 @@ export function ToolCanvasDrawer({
               <PlotlyGraphViewer
                 saarData={saarData || investigationData}
                 activeInvestigation={saarData || investigationData}
-                milestones={saarData?.telemetry?.milestones || investigationData?.telemetry?.milestones || investigationData?.milestones || []}
                 selectedRelationship={selectedRelationship}
                 chartType={selectedChartType || 'histogram'}
                 theme={theme}
@@ -359,10 +357,6 @@ export function ToolCanvasDrawer({
                 hasSensorData={hasSensorData}
                 onUploadSensorData={onUploadSensorData}
                 onLoadSampleDataset={onLoadSampleDataset}
-                onViewMilestoneImage={(imgUrl) => {
-                  if (onPasteImageUrl) onPasteImageUrl(imgUrl, true);
-                  if (onSelectTool) onSelectTool('grounded');
-                }}
               />
             </div>
           </div>

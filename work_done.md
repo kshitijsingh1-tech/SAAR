@@ -19,6 +19,7 @@
 10. [Single Metadata Context Box with Standardized Format & Sequential Ingestion](#10-single-metadata-context-box-with-standardized-format--sequential-ingestion)
 11. [Analytical Inquiry Reasoning Engine Overhaul & Gemini Model Re-alignment](#11-analytical-inquiry-reasoning-engine-overhaul--gemini-model-re-alignment)
 12. [Safe Upstream Integration of Origin/Main with Non-Regression Multimodal Invariants](#12-safe-upstream-integration-of-originmain-with-non-regression-multimodal-invariants)
+13. [Exact Alignment of Frontend with Origin/Main](#13-2026-09-13-exact-alignment-of-frontend-with-originmain)
 
 ---
 
@@ -378,6 +379,31 @@ The user requested integrating the latest updates from `origin/main` (which incl
 - ✅ **Analytical Inquiry Engine**: `"help me with this analysis"` triggers deep multimodal synthesis without column gap notices.
 - ✅ **Zero Hardcoding**: No hardcoded bounding boxes or scenario strings in UI components; honest empty states preserved.
 - ✅ **Universal Tool Rollout & Badminton**: Full sports biomechanics suite and scientific dashboard operational.
+
+---
+
+## 13. [2026-09-13] Exact Alignment of Frontend with `origin/main`
+
+**Primary Files Modified**:
+- `frontend/src/App.jsx`
+- `frontend/src/api/client.js`
+- `frontend/src/components/ChatGPTView.jsx`
+- `frontend/src/components/ImageInspector.jsx`
+- `frontend/src/components/PlotlyGraphViewer.jsx`
+- `frontend/src/components/SaarFindingsPanel.jsx`
+- `frontend/src/components/ToolCanvasDrawer.jsx`
+- `frontend/src/index.css`
+- `work_done.md`
+
+### Problem Description & User Goal
+Per user directive ("why have you made the changes to frintend use the main branch one"), the frontend codebase in `frontend/src` was completely restored to the exact, unmodified state from `origin/main`.
+
+### Solution
+1. Checked out the exact tree for `frontend/src` from `origin/main`:
+   `git checkout origin/main -- frontend/src`
+2. Verified `git diff origin/main frontend/src` is completely empty (100% byte-for-byte identical to `origin/main`).
+3. Retained `chart.js` and `react-chartjs-2` in `frontend/package.json` to ensure `PerformanceRadar.jsx` from `origin/main` compiles properly.
+4. Ran `npm run build` — compiled cleanly in 14.27s with 0 errors.
 
 ---
 

@@ -7,7 +7,7 @@ import {
   Info, ExternalLink, HelpCircle, Layers, Cpu, Eye, EyeOff, Microscope, Check,
   TrendingUp, BarChart2, Share2, Download, Radio, RefreshCw, GitCompare,
   Sparkles, CheckCircle, ArrowUpRight, Thermometer, Droplets, Folder, CornerDownRight,
-  Filter, RotateCcw, Send, Loader2, Database, FileCheck, BookmarkCheck, Sprout
+  Filter, RotateCcw, Send, Loader2, Database, FileCheck, BookmarkCheck
 } from 'lucide-react';
 import { lookupScientificTerm, runInvestigation } from '../api/client';
 
@@ -77,7 +77,6 @@ export const ImageInspector = ({
   onOpenGlossary,
   domain = 'agriculture',
   investigationData,
-  milestones: propMilestones = [],
   saarData,
   edges = [],
   steps = [],
@@ -164,8 +163,8 @@ export const ImageInspector = ({
   const isAgriculture = resolvedDomain === 'agriculture' || presetId?.startsWith('agri') || presetId === 'session-3';
   const isInfrastructure = resolvedDomain === 'infrastructure';
 
-  // Display Image Payload (Zero hardcoded fallbacks: honest empty state if no image provided)
-  const displayImage = customImageData || customImageUrl || preset?.image || effectiveData?.preset?.image || null;
+  // Display Image Payload
+  const displayImage = customImageData || customImageUrl || preset?.image || effectiveData?.preset?.image || '/monstera_sample.png';
 
   // Fetch Live Backend Key Status & Knowledge Citations from Real RAG Database
   useEffect(() => {
@@ -369,21 +368,6 @@ export const ImageInspector = ({
 
   const investigationId = activeSessionId || effectiveData?.investigation_id || presetId || 'SAAR-Active';
   const effectiveVLM = effectiveData?.vlm_provider_used || vlmProviderUsed || (keyStatus?.pools?.gemini?.active_keys > 0 ? 'Google Gemini 2.5 Flash' : 'SAAR Vision Reasoner');
-
-  // ── DYNAMIC MILESTONE PHOTOGRAPHS FROM DATASET / INVESTIGATION TELEMETRY ──
-  const allMilestones = useMemo(() => {
-    const fromProps = Array.isArray(propMilestones) ? propMilestones : [];
-    const fromInv = effectiveData?.telemetry?.milestones || effectiveData?.milestones || investigationData?.telemetry?.milestones || investigationData?.milestones || [];
-    const raw = fromProps.length > 0 ? fromProps : fromInv;
-    return raw.filter((m) => Boolean(m && (m.url || m.image)));
-  }, [propMilestones, effectiveData, investigationData]);
-
-  const activeMilestone = useMemo(() => {
-    const currentUrl = customImageUrl || displayImage;
-    if (!currentUrl || typeof currentUrl !== 'string') return null;
-    return allMilestones.find((m) => (m.url && (currentUrl.includes(m.url) || currentUrl.endsWith(m.url))) || (m.image && currentUrl.includes(m.image))) || null;
-  }, [customImageUrl, displayImage, allMilestones]);
-
 
   // Automatically activate bounding boxes on mount or filter change
   useEffect(() => {
@@ -725,53 +709,6 @@ export const ImageInspector = ({
 
         {/* Live VLM Status + Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Dynamic Milestone Photograph Dropdown: rendered if dataset/investigation provides milestones */}
-          {allMilestones.length > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#ffffff',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              border: activeMilestone ? '1.5px solid #2563eb' : '1px solid #d5dae3',
-              boxShadow: activeMilestone ? '0 0 8px rgba(37, 99, 235, 0.2)' : 'none'
-            }}>
-              <Sprout size={13} color="#2563eb" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '0.7rem', fontWeight: '600', color: '#64748b' }}>
-                Milestone:
-              </span>
-              <select
-                value={activeMilestone ? (activeMilestone.url || activeMilestone.image) : ''}
-                onChange={(e) => {
-                  const targetUrl = e.target.value;
-                  if (targetUrl) {
-                    if (onPasteUrl) onPasteUrl(targetUrl);
-                    if (onUploadCustom) onUploadCustom(null, targetUrl);
-                  }
-                }}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  color: '#0f172a',
-                  fontSize: '0.72rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  maxWidth: '185px'
-                }}
-                title="Select photographic milestone from active dataset telemetry"
-              >
-                <option value="" disabled>Select milestone photo...</option>
-                {allMilestones.map((m, idx) => (
-                  <option key={idx} value={m.url || m.image}>
-                    {m.badge || `DAY ${m.day}`}: {m.label ? m.label.replace(/^Day \d+(\.\d+)?:?\s*/i, '') : `Stage ${idx + 1}`} {m.date ? `(${m.date})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {/* Live VLM Status Indicator */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',
@@ -1293,56 +1230,6 @@ export const ImageInspector = ({
                 </button>
               </div>
             </div>
-
-            {/* Milestone Context Ribbon */}
-            {activeMilestone && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.45rem 0.85rem',
-                marginBottom: '0.65rem',
-                background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.08) 0%, rgba(16, 185, 129, 0.06) 100%)',
-                border: '1px solid rgba(37, 99, 235, 0.25)',
-                borderRadius: '8px',
-                fontSize: '0.74rem',
-                flexWrap: 'wrap',
-                gap: '6px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{
-                    background: activeMilestone.color || '#2563eb',
-                    color: '#ffffff',
-                    fontSize: '0.62rem',
-                    fontWeight: '700',
-                    padding: '0.12rem 0.45rem',
-                    borderRadius: '4px'
-                  }}>
-                    {activeMilestone.badge || `DAY ${activeMilestone.day}`}
-                  </span>
-                  <strong style={{ color: '#0f172a' }}>{activeMilestone.label}</strong>
-                  {activeMilestone.date && <span style={{ color: '#64748b' }}>({activeMilestone.date})</span>}
-                  {activeMilestone.stage && (
-                    <span style={{
-                      fontSize: '0.65rem',
-                      padding: '0.1rem 0.4rem',
-                      background: 'rgba(255,255,255,0.85)',
-                      borderRadius: '4px',
-                      border: '1px solid rgba(0,0,0,0.06)',
-                      color: '#0f172a',
-                      fontWeight: 600
-                    }}>
-                      {activeMilestone.stage}
-                    </span>
-                  )}
-                </div>
-                {activeMilestone.botanicalDetails && (
-                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                    {activeMilestone.botanicalDetails}
-                  </span>
-                )}
-              </div>
-            )}
 
             {/* Specimen Visual Stage (Natural Aspect Ratio) */}
             <div
