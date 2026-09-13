@@ -571,6 +571,7 @@ def badminton_sample_video():
     import os
     from fastapi.responses import FileResponse
     candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "sports", "badminton", "assets", "badminton_sample_rally.mp4")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "gait", "assets", "sample_toddler_walk.mp4")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "app", "gait", "assets", "sample_toddler_walk.mp4")),
     ]
@@ -586,17 +587,19 @@ _cached_badminton_sample = None
 def badminton_analyze_sample():
     """Run real badminton biomechanics analysis on the sample clip."""
     global _cached_badminton_sample
-    if _cached_badminton_sample is not None:
-        return _cached_badminton_sample
-
+    # Clear cache if needed to ensure fresh analysis runs on real badminton rally
     import os
     candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "plugins", "sports", "badminton", "assets", "badminton_sample_rally.mp4")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "gait", "assets", "sample_toddler_walk.mp4")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "app", "gait", "assets", "sample_toddler_walk.mp4")),
     ]
     sample_path = next((c for c in candidates if os.path.exists(c)), None)
     if not sample_path:
         raise HTTPException(status_code=404, detail="Sample video not found.")
+
+    if _cached_badminton_sample is not None and _cached_badminton_sample.get("video", {}).get("filename") == "badminton_sample_rally.mp4":
+        return _cached_badminton_sample
 
     pipeline = get_badminton_pipeline()
     with open(sample_path, "rb") as f:
