@@ -363,24 +363,23 @@ export function ChatGPTView({
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      setPendingFile(files[0]);
+      setAttachedFiles((prev) => [...prev, ...files]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handlePaste = (e) => {
-    e.stopPropagation();
     const now = Date.now();
-    // Guard against duplicate paste events fired within 200ms
-    if (now - lastPasteTimeRef.current < 200) {
-      e.preventDefault();
+    // Guard against rapid duplicate paste events fired within 50ms
+    if (now - lastPasteTimeRef.current < 50) {
       return;
     }
     lastPasteTimeRef.current = now;
 
-    const clipboardData = e.clipboardData;
+    const clipboardData = e.clipboardData || window.clipboardData;
     if (!clipboardData) return;
 
-    // Check for clipboard files (e.g. copied screenshots, images from Snipping Tool, copied files)
+    // 1. Check for clipboard files (e.g. copied screenshots, images from Snipping Tool, copied media)
     const items = Array.from(clipboardData.items || []);
     const fileItems = items.filter((item) => item.kind === 'file');
 
@@ -400,24 +399,32 @@ export function ChatGPTView({
             name = `pasted_evidence_${Date.now()}.${ext}`;
           }
           const namedFile = new File([file], name, { type: file.type });
-          e.preventDefault();
-          setPendingFile(namedFile);
-          return;
+          pastedFiles.push(namedFile);
         }
+      }
+
+      if (pastedFiles.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        setAttachedFiles((prev) => [...prev, ...pastedFiles]);
+        return;
       }
     }
 
+    // 2. Direct clipboard files (e.g. copied from file explorer)
     if (clipboardData.files && clipboardData.files.length > 0) {
       e.preventDefault();
+      e.stopPropagation();
       const files = Array.from(clipboardData.files);
-      setPendingFile(files[0]);
+      setAttachedFiles((prev) => [...prev, ...files]);
       return;
     }
 
-    // Convert large text pastes into a staged draft pill card (Claude / ChatGPT behavior)
+    // 3. Convert large text pastes into a staged draft pill card (Claude / ChatGPT behavior)
     const text = clipboardData.getData('text');
     if (text && text.trim().length > 220) {
       e.preventDefault();
+      e.stopPropagation();
       const cleanFirst = text.trim().split('\n')[0].replace(/^[#>*\s-]+/, '').trim();
       const title = cleanFirst.length > 24 ? `${cleanFirst.slice(0, 24)}..` : (cleanFirst || 'Draft text..');
       setTextSnippet({
@@ -433,7 +440,7 @@ export function ChatGPTView({
     e.stopPropagation();
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const droppedFiles = Array.from(e.dataTransfer.files);
-      setPendingFile(droppedFiles[0]);
+      setAttachedFiles((prev) => [...prev, ...droppedFiles]);
     }
   };
 
@@ -1129,6 +1136,8 @@ export function ChatGPTView({
             value={inputText}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onDrop={handleDrop}
             placeholder="Ask Saar anything about the evidence, upload datasets, paste screenshots (Ctrl+V), or simulate interventions..."
           />
 
