@@ -3,7 +3,7 @@ import {
   Eye, EyeOff, Radio, Upload, Sparkles, Link as LinkIcon,
   Camera, X, Crosshair, Target, Layers, Activity, Droplets,
   HelpCircle, ExternalLink, Zap, Check, Film, Play, Pause,
-  Sprout, RotateCcw, AlertCircle, Maximize2, Minimize2, ZoomIn, ZoomOut
+  Sprout, RotateCcw, AlertCircle, Maximize, Maximize2, Minimize, Minimize2, ZoomIn, ZoomOut
 } from 'lucide-react';
 import { VideoTimelineScrubber } from './VideoTimelineScrubber';
 import { PlantCareCard } from './PlantCareCard';
@@ -593,10 +593,10 @@ export const ImageInspector = ({
               cursor: 'pointer',
               fontWeight: 600
             }}
-            title="Open Fullscreen with Zoom & Pan (Labels stay in frame)"
+            title="Fill Screen [ ] (YouTube-style fullscreen with zoom, pan, and pixel-locked labels)"
           >
-            <Maximize2 size={12} />
-            <span>Fullscreen</span>
+            <Maximize size={13} strokeWidth={2.5} />
+            <span>[ ] Fill Screen</span>
           </button>
 
           {/* Quick upload button */}
@@ -919,21 +919,61 @@ export const ImageInspector = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(6px)',
+          background: 'rgba(0, 0, 0, 0.72)',
+          backdropFilter: 'blur(8px)',
           padding: '0.25rem 0.6rem',
-          borderRadius: '5px',
+          borderRadius: '6px',
           color: '#ffffff',
           fontSize: '0.68rem',
-          zIndex: 10,
-          pointerEvents: 'none'
+          zIndex: 15,
+          border: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
           <span style={{ fontWeight: 500, opacity: 0.9 }}>
             {mediaMode === 'video' ? `Keyframe @ ${videoCurrentTime.toFixed(1)}s: ${activeKeyframe?.label || 'Continuous Track'}` : preset?.title || "Visual Evidence"}
           </span>
-          <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>
-            {visibleBoxIds.size} of {groundedNodes.length} Rectangles Active
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>
+              {visibleBoxIds.size} of {groundedNodes.length} Anchors Active
+            </span>
+            {/* YouTube-style [ ] Fullscreen Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsFullscreen(true);
+                setZoomLevel(1.0);
+                setPanOffset({ x: 0, y: 0 });
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                color: '#ffffff',
+                borderRadius: '4px',
+                padding: '2px 7px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                transition: 'all 0.15s ease'
+              }}
+              title="Full screen [ ] (YouTube-style view with zoom, pan, and pixel-locked labels)"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.3)';
+                e.currentTarget.style.borderColor = '#38bdf8';
+                e.currentTarget.style.color = '#38bdf8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                e.currentTarget.style.color = '#ffffff';
+              }}
+            >
+              <Maximize size={12} strokeWidth={2.5} />
+              <span>[ ]</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1746,10 +1786,10 @@ export const ImageInspector = ({
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
-                title="Exit Fullscreen (Esc)"
+                title="Exit Full Screen [ ] (Esc)"
               >
-                <Minimize2 size={14} />
-                <span>Exit Fullscreen</span>
+                <Minimize size={14} strokeWidth={2.5} />
+                <span>Exit Full Screen [ ]</span>
                 <span style={{ fontSize: '0.65rem', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>[ESC]</span>
               </button>
             </div>

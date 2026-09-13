@@ -46,7 +46,7 @@ export function HelpDrawer({ isOpen, onClose }) {
                 <strong>Inspect the Causal Knowledge Graph:</strong> Open the dynamic causal graph to visualize directed causal links, node confidences, and topological uncertainty.
               </li>
               <li>
-                <strong>Roll Out Operational Scientific Tools:</strong> Access Grounded Split Graph for image-to-graph linkage, Sensor Analytics for Pearson correlations/trends, Scientific References for peer-reviewed citations, Visual Evidence Monitor for high-resolution imagery, and the Scientific Dictionary for domain terminology.
+                <strong>Roll Out Operational Scientific Tools:</strong> Access Image Analysis for synchronized image-to-graph linkage, Video Analysis for 33-point gait/motion kinematics, Sensor Analytics for Pearson correlations/trends, Scientific References for peer-reviewed citations, and the Scientific Dictionary for domain terminology.
               </li>
             </ol>
           </div>

@@ -822,11 +822,11 @@ export function ChatGPTView({
                         <button
                           type="button"
                           className="tool-invoke-badge compact"
-                          onClick={() => onOpenTool('camera')}
+                          onClick={() => onOpenTool('grounded')}
                           title="Inspect spatial visual bounding boxes on image canvas"
                         >
-                          <Camera size={12} className="text-rose" />
-                          <span>Visual Evidence Monitor</span>
+                          <Crosshair size={12} className="text-emerald" />
+                          <span>Image Analysis</span>
                           <ArrowRight size={10} />
                         </button>
 

@@ -613,7 +613,7 @@ export default function App() {
         }
       ]);
 
-      setActiveTool('camera');
+      setActiveTool('grounded');
       setIsToolDrawerOpen(true);
     } catch (err) {
       setMessages((prev) => [
@@ -1430,7 +1430,7 @@ export default function App() {
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
             ]);
-            setActiveTool('camera');
+            setActiveTool('grounded');
             setIsToolDrawerOpen(true);
           } catch (err) {
             console.error("Paste image URL error:", err);
