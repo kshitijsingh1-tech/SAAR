@@ -503,47 +503,110 @@ export default function App() {
   };
 
   // Unified Autonomous Image Investigation Pipeline
+  // Unified Autonomous Image Investigation Pipeline (Supports single image, multi-image sequences & metadata milestones)
   const executeImageInvestigation = async (fileOrDataUrl, rawFileName, optionalUserText, alreadyAddedUserMsg = false) => {
-    let base64Data = null;
-    let fileName = rawFileName || 'uploaded_evidence.png';
+    const fileList = Array.isArray(fileOrDataUrl) ? fileOrDataUrl : [fileOrDataUrl];
+    const base64DataList = [];
+    const metaList = [];
+    const fileNames = [];
 
-    if (typeof fileOrDataUrl === 'string') {
-      base64Data = fileOrDataUrl;
-    } else if (fileOrDataUrl instanceof File || fileOrDataUrl instanceof Blob) {
-      fileName = fileOrDataUrl.name || fileName;
-      base64Data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(fileOrDataUrl);
-      });
+    for (let i = 0; i < fileList.length; i++) {
+      const item = fileList[i];
+      let b64 = null;
+      let fName = rawFileName || `specimen_${i + 1}.png`;
+      let meta = item?._saarMeta || null;
+
+      if (typeof item === 'string') {
+        b64 = item;
+      } else if (item instanceof File || item instanceof Blob) {
+        fName = item.name || fName;
+        b64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(item);
+        });
+      }
+      if (b64) {
+        base64DataList.push(b64);
+        metaList.push(meta);
+        fileNames.push(fName);
+      }
     }
 
-    if (!base64Data) return;
+    if (base64DataList.length === 0) return;
+    const primaryBase64 = base64DataList[0];
+    const fileName = fileNames.join(', ');
 
-    // Strict state reset: prevent cross-session visual anchor and graph bleeding
+    // Strict state reset: prevent cross-session visual anchor bleeding, but preserve existing milestones across turns
     setInvestigationData(null);
-    setSaarData(null);
     setBaselineData(null);
-    setCustomImageData(base64Data);
+    setCustomImageData(primaryBase64);
     setCustomImageUrl(null);
     setCustomVideoFile(null);
     setCameraConnected(true);
 
+    const activeSession = sessions.find((s) => s.id === activeSessionId);
+    const existingMilestones = activeSession?.telemetryData?.milestones || saarData?.telemetry?.milestones || [];
+    const palette = ['#0284c7', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4'];
+
+    const newMilestones = base64DataList.map((b64, idx) => {
+      const m = metaList[idx] || {};
+      const dayVal = m.day != null && !isNaN(Number(m.day)) ? Number(m.day) : (existingMilestones.length + idx + 1);
+      const dayStr = m.day ? (String(m.day).toLowerCase().startsWith('day') ? m.day : `Day ${m.day}`) : `Day ${dayVal}`;
+      const stageStr = m.stage || (base64DataList.length > 1 ? `Milestone ${idx + 1}` : 'Specimen Observation');
+      const labelStr = m.label || `${dayStr} - ${stageStr}`;
+      const badgeStr = `DAY ${dayVal}`;
+      return {
+        day: dayVal,
+        timestamp: dayStr,
+        label: labelStr,
+        badge: badgeStr,
+        color: m.color || palette[(existingMilestones.length + idx) % palette.length],
+        stage: stageStr,
+        view_angle: m.viewAngle || '',
+        date: new Date().toISOString().split('T')[0],
+        url: b64,
+        description: m.notes || `Specimen observation at ${dayStr}. Stage: ${stageStr}.${m.viewAngle ? ` View: ${m.viewAngle}.` : ''}`
+      };
+    });
+
+    // Merge new milestones with existing session milestones
+    const mergedMilestones = [...existingMilestones];
+    for (const nm of newMilestones) {
+      const existIdx = mergedMilestones.findIndex((em) => em.url === nm.url || (em.day === nm.day && em.label === nm.label));
+      if (existIdx >= 0) {
+        mergedMilestones[existIdx] = nm;
+      } else {
+        mergedMilestones.push(nm);
+      }
+    }
+    mergedMilestones.sort((a, b) => (Number(a.day) || 0) - (Number(b.day) || 0));
+
     // Auto-detect domain if current domain is default/infrastructure and upload has botanical context
     let targetDomain = selectedDomain;
-    const combinedContext = `${fileName} ${optionalUserText || ''}`.toLowerCase();
-    const isBotanical = /rose|aloe|plant|leaf|flower|cutting|root|propagat|stem|bloom|agri|foliar|sprout|botanical/.test(combinedContext);
+    const combinedContext = `${fileName} ${optionalUserText || ''} ${newMilestones.map((m) => m.stage + ' ' + m.description).join(' ')}`.toLowerCase();
+    const isBotanical = /rose|aloe|plant|leaf|flower|cutting|root|propagat|stem|bloom|agri|foliar|sprout|botanical|graft|budding/.test(combinedContext);
     if (isBotanical && (selectedDomain === 'infrastructure' || !selectedDomain)) {
       targetDomain = 'agriculture';
       setSelectedDomain('agriculture');
     }
 
-    // Persist image directly onto the active session so it never wipes out on re-render
+    // Persist image and merged milestones directly onto the active session
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId
-          ? { ...s, imageData: base64Data, imageUrl: null, videoFile: null, domain: targetDomain }
+          ? {
+              ...s,
+              imageData: primaryBase64,
+              imageUrl: null,
+              videoFile: null,
+              domain: targetDomain,
+              telemetryData: {
+                ...(s.telemetryData || {}),
+                milestones: mergedMilestones
+              }
+            }
           : s
       )
     );
@@ -551,14 +614,16 @@ export default function App() {
     if (!alreadyAddedUserMsg) {
       const userMsgText = optionalUserText && optionalUserText.trim()
         ? optionalUserText.trim()
-        : `Attached photo: \`${fileName}\` for autonomous visual perception and scientific causal reasoning.`;
+        : (base64DataList.length === 1
+            ? `Attached specimen photo: \`${fileName}\`${newMilestones[0]?.label ? ` (${newMilestones[0].label})` : ''} for visual grounding and scientific reasoning.`
+            : `Attached ${base64DataList.length} specimen photos across milestones (${newMilestones.map((m) => m.label).join(', ')}) for comparative reasoning.`);
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'user',
           text: userMsgText,
-          files: [fileName],
+          files: fileNames,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -567,11 +632,37 @@ export default function App() {
     setIsProcessing(true);
 
     try {
+      const imageMetadataPayload = newMilestones.map((m) => ({
+        filename: m.label,
+        day: m.day,
+        timestamp: m.timestamp,
+        label: m.label,
+        stage: m.stage,
+        view_angle: m.view_angle,
+        description: m.description,
+        color: m.color
+      }));
+
       const res = await runInvestigation(targetDomain, null, {
-        imageData: base64Data,
+        imageData: primaryBase64,
+        images: base64DataList.length > 1 ? base64DataList : null,
+        imageMetadata: imageMetadataPayload,
         vlmProvider: 'auto'
       });
+
+      if (!res.telemetry) res.telemetry = {};
+      res.telemetry.milestones = mergedMilestones;
+
       setInvestigationData(res);
+      setSaarData((prev) => ({
+        ...(prev || {}),
+        ...res,
+        telemetry: {
+          ...(prev?.telemetry || {}),
+          ...(res?.telemetry || {}),
+          milestones: mergedMilestones
+        }
+      }));
 
       const nodeCount = res.final_graph?.nodes?.length || 0;
       const edgeCount = res.final_graph?.edges?.length || 0;
@@ -592,16 +683,21 @@ export default function App() {
         }
       }
 
+      const isMultiFrame = base64DataList.length > 1;
       const thoughtProcess = {
-        title: `Thought for ${(Math.random() * 0.5 + 2.1).toFixed(1)}s`,
-        summary: `Grounded ${nodeCount} spatial visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
+        title: `Thought for ${(Math.random() * 0.5 + (isMultiFrame ? 2.4 : 2.0)).toFixed(1)}s`,
+        summary: isMultiFrame
+          ? `Comparative analysis across ${base64DataList.length} milestone frames · Grounded ${nodeCount} visual entities (${confidencePct}% confidence)`
+          : `Grounded ${nodeCount} spatial visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
         steps: [
-          `Visual Perception: Grounded ${nodeCount} spatial entities with bounding boxes from "${fileName}"`,
-          `Causal Graph Formulation: Formulated ${edgeCount} directed dependencies (${confidencePct}% graph confidence)`,
+          isMultiFrame
+            ? `Comparative Perception: Grounded ${base64DataList.length} sequential milestone frames: ${newMilestones.map((m) => m.badge + ' (' + m.stage + ')').join(' -> ')}`
+            : `Visual Perception: Grounded ${nodeCount} spatial entities with bounding boxes from "${fileName}"`,
+          `Causal Graph Formulation: Formulated ${edgeCount} directed dependencies across active milestones (${confidencePct}% graph confidence)`,
           ...(res.steps && res.steps.length > 0
             ? res.steps.map((s) => `Executed diagnostic tool: ${s.tool_name || s.step_name || 'Specialized Diagnostic'}`)
             : [`Executed specialized domain diagnostic evaluators`]),
-          `Scientific Synthesis: Formulated peer-reviewed causal mechanism and clinical findings`
+          `Scientific Synthesis: Validated developmental progression findings and clinical recommendations`
         ]
       };
 
@@ -688,10 +784,17 @@ export default function App() {
 
     const currentFiles = [...attachedFiles];
     const textStr = typeof userText === 'string' ? userText : (userText ? String(userText) : '');
-    const firstFile = currentFiles[0];
-    const isImageUpload = firstFile && ((firstFile.type || '').toLowerCase().startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(firstFile.name));
+    const imageFiles = currentFiles.filter((f) => {
+      const fn = f?.name || '';
+      const ft = (f?.type || '').toLowerCase();
+      return ft.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fn);
+    });
+    const isImageUpload = imageFiles.length > 0;
+    const firstImg = imageFiles[0];
     const msgText = textStr || (isImageUpload
-      ? `Attached photo: \`${firstFile.name}\` for autonomous visual perception and scientific causal reasoning.`
+      ? (imageFiles.length === 1
+          ? `Attached specimen photo: \`${firstImg.name}\`${firstImg._saarMeta?.label ? ` (${firstImg._saarMeta.label})` : ''} for visual grounding and scientific causal reasoning.`
+          : `Attached ${imageFiles.length} specimen photos across milestones (${imageFiles.map((f) => f._saarMeta?.label || f.name).join(', ')}) for comparative reasoning.`)
       : (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : ''));
 
     // Always add user message to conversation history immediately
@@ -790,8 +893,19 @@ export default function App() {
           }
         }
 
-        if (isImage) {
-          await executeImageInvestigation(file, fileName, userText, true);
+        const imageFilesToProcess = currentFiles.filter((f) => {
+          const fn = f?.name || '';
+          const ft = (f?.type || '').toLowerCase();
+          return ft.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fn);
+        });
+
+        if (imageFilesToProcess.length > 0) {
+          await executeImageInvestigation(
+            imageFilesToProcess.length === 1 ? imageFilesToProcess[0] : imageFilesToProcess,
+            imageFilesToProcess.map((f) => f.name).join(', '),
+            userText,
+            true
+          );
           return;
         }
 

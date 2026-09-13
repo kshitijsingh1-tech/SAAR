@@ -73,6 +73,7 @@ def run_investigation(req: InvestigationRequest):
             image_url=req.image_url,
             image_data=req.image_data,
             images=req.images,
+            image_metadata=[m.model_dump() if hasattr(m, 'model_dump') else dict(m) for m in req.image_metadata] if req.image_metadata else None,
             vlm_provider=req.vlm_provider,
             api_key=req.api_key
         )

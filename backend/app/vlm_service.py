@@ -270,11 +270,12 @@ Structure:
         preset_id: Optional[str] = None,
         vlm_provider: str = "auto",
         api_key: Optional[str] = None,
-        images: Optional[List[str]] = None
+        images: Optional[List[str]] = None,
+        image_metadata: Optional[List[Dict[str, Any]]] = None
     ) -> Tuple[List[NodeModel], List[EdgeModel], str, str]:
         """
         Main entry point for image visual scene perception & hybrid reasoning.
-        Supports single image or multi-photo sequences (e.g. multi-view toddler posture).
+        Supports single image or multi-photo sequences (e.g. multi-view toddler posture, longitudinal plant growth).
         Implements Hybrid Architecture:
         1. Google Gemini 1.5/2.0 Flash (Primary Vision Perception & Long Context)
         2. Groq / Cerebras (Ultra-fast LLaMA 3.3 ReAct reasoning loops)
@@ -298,7 +299,7 @@ Structure:
         if vlm_provider in ("gemini", "auto"):
             gemini_candidates = [api_key] if api_key else [k.key for k in key_pool.get_available_keys("gemini")]
             for g_key in gemini_candidates:
-                res = self._call_gemini_vlm(all_images, domain, g_key)
+                res = self._call_gemini_vlm(all_images, domain, g_key, image_metadata=image_metadata)
                 if res and len(res[0]) > 0:
                     key_pool.record_success("gemini", g_key)
                     masked = g_key[:6] + "..." if len(g_key) > 6 else "***"
@@ -338,7 +339,13 @@ Structure:
             provider_name += " [Hybrid Live Key Active]"
         return nodes, edges, summary, provider_name
 
-    def _call_gemini_vlm(self, image_inputs: List[str], domain: str, api_key: str) -> Optional[Tuple[List[NodeModel], List[EdgeModel], str]]:
+    def _call_gemini_vlm(
+        self,
+        image_inputs: List[str],
+        domain: str,
+        api_key: str,
+        image_metadata: Optional[List[Dict[str, Any]]] = None
+    ) -> Optional[Tuple[List[NodeModel], List[EdgeModel], str]]:
         if not image_inputs:
             return None
 
@@ -346,9 +353,35 @@ Structure:
         domain_temp = self._get_temperature_for_domain(domain)
 
         # Build content parts: user instruction + inline images (NO system prompt in content)
-        parts = [{"text": f"Analyze this image for domain '{domain}'. Ground every distinct subject instance (e.g. each individual flower bloom, fruit, lesion, or organ) with its own tight, non-overlapping bounding box. Do not merge separate flowers into a single box. Detect all prominent instances and extract the structured visual scene graph."}]
+        is_multi = len(image_inputs) > 1
+        intro_text = (
+            f"Analyze these {len(image_inputs)} chronological / multi-perspective specimen frames for domain '{domain}'. "
+            f"Ground prominent spatial entities across stages, identifying temporal transitions, structural adaptations, "
+            f"and clinical/biological markers. Ground distinct instances with tight non-overlapping bounding boxes."
+            if is_multi else
+            f"Analyze this image for domain '{domain}'. Ground every distinct subject instance with its own tight, non-overlapping bounding box. Do not merge separate entities into a single box. Detect all prominent instances and extract the structured visual scene graph."
+        )
+        parts = [{"text": intro_text}]
 
-        for img in image_inputs:
+        for idx, img in enumerate(image_inputs):
+            meta = image_metadata[idx] if (image_metadata and idx < len(image_metadata)) else None
+            if meta:
+                meta_bits = []
+                if meta.get("day") is not None:
+                    meta_bits.append(f"Day: {meta['day']}")
+                if meta.get("timestamp"):
+                    meta_bits.append(f"Timestamp: {meta['timestamp']}")
+                if meta.get("stage"):
+                    meta_bits.append(f"Stage: {meta['stage']}")
+                if meta.get("label"):
+                    meta_bits.append(f"Milestone: {meta['label']}")
+                if meta.get("view_angle"):
+                    meta_bits.append(f"Perspective/Angle: {meta['view_angle']}")
+                if meta.get("description"):
+                    meta_bits.append(f"Notes: {meta['description']}")
+                if meta_bits:
+                    parts.append({"text": f"[Specimen Frame {idx + 1} Metadata: {'; '.join(meta_bits)}]"})
+
             img_bytes, mime_type = self._prepare_image_data(img)
             if img_bytes:
                 b64_img = base64.b64encode(img_bytes).decode("utf-8")

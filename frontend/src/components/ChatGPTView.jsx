@@ -6,7 +6,7 @@ import {
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
   PieChart, ChevronRight, MessageSquare, Sprout, Construction, Orbit, Activity,
-  Image as ImageIcon, Film, Sun, Moon, Crosshair
+  Image as ImageIcon, Film, Sun, Moon, Crosshair, Tag, Calendar, Layers
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -177,6 +177,15 @@ export function ChatGPTView({
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
+
+  // Image Milestone & Longitudinal Metadata Modal State
+  const [metaModalFileIdx, setMetaModalFileIdx] = useState(null);
+  const [metaDay, setMetaDay] = useState('');
+  const [metaStage, setMetaStage] = useState('');
+  const [metaLabel, setMetaLabel] = useState('');
+  const [metaViewAngle, setMetaViewAngle] = useState('Lateral (Side View)');
+  const [metaNotes, setMetaNotes] = useState('');
+  const [metaColor, setMetaColor] = useState('#0284c7');
 
   // Floating "Ask Saar" Selection Popover State (ChatGPT style)
   const [selectionPopover, setSelectionPopover] = useState(null);
@@ -354,6 +363,81 @@ export function ChatGPTView({
     }
   };
 
+  const enrichFilesWithPreviews = (files) => {
+    return files.map((file) => {
+      const isImg = (file.type || '').toLowerCase().startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name);
+      if (isImg && !file._previewUrl) {
+        try {
+          file._previewUrl = URL.createObjectURL(file);
+        } catch (e) {}
+      }
+      return file;
+    });
+  };
+
+  const openMetaModal = (idx) => {
+    const file = attachedFiles[idx];
+    if (!file) return;
+    const existing = file._saarMeta || {};
+    setMetaModalFileIdx(idx);
+    setMetaDay(existing.day != null ? String(existing.day) : String(idx + 1));
+    setMetaStage(existing.stage || '');
+    setMetaLabel(existing.label || '');
+    setMetaViewAngle(existing.viewAngle || 'Lateral (Side View)');
+    setMetaNotes(existing.notes || '');
+    const palette = ['#0284c7', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4'];
+    setMetaColor(existing.color || palette[idx % palette.length]);
+  };
+
+  const handleSaveMeta = () => {
+    if (metaModalFileIdx === null) return;
+    setAttachedFiles((prev) => {
+      const next = [...prev];
+      const target = next[metaModalFileIdx];
+      if (target) {
+        const rawDay = metaDay.trim();
+        const parsedDay = rawDay ? (isNaN(Number(rawDay.replace(/^day\s*/i, ''))) ? rawDay : Number(rawDay.replace(/^day\s*/i, ''))) : (metaModalFileIdx + 1);
+        const generatedLabel = metaLabel.trim() || (metaStage.trim() ? `Day ${parsedDay} - ${metaStage.trim()}` : `Day ${parsedDay} Milestone`);
+        target._saarMeta = {
+          day: parsedDay,
+          stage: metaStage.trim() || 'Milestone Stage',
+          label: generatedLabel,
+          viewAngle: metaViewAngle,
+          notes: metaNotes.trim(),
+          color: metaColor
+        };
+      }
+      return next;
+    });
+    setMetaModalFileIdx(null);
+  };
+
+  const handleAutoSequenceDays = () => {
+    setAttachedFiles((prev) => {
+      const palette = ['#0284c7', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4'];
+      let imgIdx = 0;
+      return prev.map((f) => {
+        const isImg = (f.type || '').toLowerCase().startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(f.name);
+        if (isImg) {
+          imgIdx++;
+          const dayOffsets = [1, 10, 20, 30, 45, 60, 90, 120];
+          const assignedDay = imgIdx <= dayOffsets.length ? dayOffsets[imgIdx - 1] : imgIdx * 10;
+          const stagePresets = ['Incision / Attachment', 'Callus Bridge', 'Vascular Union', 'Shoot Elongation', 'Foliar Expansion', 'Maturation'];
+          const assignedStage = f._saarMeta?.stage || stagePresets[(imgIdx - 1) % stagePresets.length];
+          f._saarMeta = {
+            day: f._saarMeta?.day ?? assignedDay,
+            stage: assignedStage,
+            label: f._saarMeta?.label || `Day ${f._saarMeta?.day ?? assignedDay} - ${assignedStage}`,
+            viewAngle: f._saarMeta?.viewAngle || 'Lateral (Side View)',
+            notes: f._saarMeta?.notes || `Specimen record at Day ${f._saarMeta?.day ?? assignedDay}`,
+            color: f._saarMeta?.color || palette[(imgIdx - 1) % palette.length]
+          };
+        }
+        return f;
+      });
+    });
+  };
+
   const handleTextareaChange = (e) => {
     setInputText(e.target.value);
     e.target.style.height = 'auto';
@@ -363,7 +447,7 @@ export function ChatGPTView({
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      setAttachedFiles((prev) => [...prev, ...files]);
+      setAttachedFiles((prev) => [...prev, ...enrichFilesWithPreviews(files)]);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -406,7 +490,7 @@ export function ChatGPTView({
       if (pastedFiles.length > 0) {
         e.preventDefault();
         e.stopPropagation();
-        setAttachedFiles((prev) => [...prev, ...pastedFiles]);
+        setAttachedFiles((prev) => [...prev, ...enrichFilesWithPreviews(pastedFiles)]);
         return;
       }
     }
@@ -416,7 +500,7 @@ export function ChatGPTView({
       e.preventDefault();
       e.stopPropagation();
       const files = Array.from(clipboardData.files);
-      setAttachedFiles((prev) => [...prev, ...files]);
+      setAttachedFiles((prev) => [...prev, ...enrichFilesWithPreviews(files)]);
       return;
     }
 
@@ -1115,11 +1199,60 @@ export function ChatGPTView({
               </div>
             )}
 
+            {/* Batch Milestone Auto-Sequence Bar (rendered if >= 2 images attached) */}
+            {(() => {
+              const imageCount = attachedFiles.filter((f) => getFileCardMeta(f).kind === 'image').length;
+              if (imageCount >= 2) {
+                return (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '4px 8px',
+                    marginBottom: '6px',
+                    background: 'rgba(56, 189, 248, 0.08)',
+                    borderRadius: '8px',
+                    border: '1px dashed rgba(56, 189, 248, 0.25)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: '#cbd5e1' }}>
+                      <Layers size={13} color="#38bdf8" />
+                      <span><strong>{imageCount} Specimen Images Attached</strong> (Multi-Iteration Sequence)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAutoSequenceDays}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(139, 92, 246, 0.2))',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        color: '#38bdf8',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      title="Automatically sequence Day 1, Day 10, Day 20... across images"
+                    >
+                      <Sliders size={11} />
+                      <span>Auto-Sequence Days</span>
+                    </button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             {/* Attached Files Cards */}
             {attachedFiles.map((file, idx) => {
               const meta = getFileCardMeta(file);
+              const isImg = meta.kind === 'image';
+              const saarMeta = file._saarMeta;
               return (
-                <div key={idx} className={`context-pill-card file-card file-card-${meta.kind}`}>
+                <div key={idx} className={`context-pill-card file-card file-card-${meta.kind}`} style={{ maxWidth: isImg ? '420px' : '360px' }}>
                   <div className="card-icon-wrapper">
                     {meta.kind === 'presentation' ? (
                       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="presentation-glyph">
@@ -1131,6 +1264,12 @@ export function ChatGPTView({
                       <PieChart size={22} color="#10b981" />
                     ) : meta.kind === 'video' ? (
                       <Film size={22} color="#38bdf8" />
+                    ) : isImg && file._previewUrl ? (
+                      <img
+                        src={file._previewUrl}
+                        alt="specimen preview"
+                        style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '6px', border: '1px solid rgba(167, 139, 250, 0.35)' }}
+                      />
                     ) : meta.kind === 'image' ? (
                       <ImageIcon size={22} color="#a78bfa" />
                     ) : (
@@ -1139,10 +1278,66 @@ export function ChatGPTView({
                   </div>
                   <div className="pill-card-text">
                     <div className="pill-card-title" title={file.name}>
-                      {formatCardTitle(file.name, 32)}
+                      {saarMeta?.label || formatCardTitle(file.name, 28)}
                     </div>
-                    <div className="pill-card-subtitle">{meta.label}</div>
+                    <div className="pill-card-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                      {saarMeta?.day != null && (
+                        <span style={{
+                          fontSize: '0.64rem',
+                          fontWeight: 700,
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: saarMeta.color || '#0284c7',
+                          color: '#fff',
+                          letterSpacing: '0.02em'
+                        }}>
+                          DAY {saarMeta.day}
+                        </span>
+                      )}
+                      {saarMeta?.stage && (
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                          {saarMeta.stage}
+                        </span>
+                      )}
+                      {saarMeta?.viewAngle && (
+                        <span style={{ fontSize: '0.66rem', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', color: '#cbd5e1' }}>
+                          {saarMeta.viewAngle}
+                        </span>
+                      )}
+                      {!saarMeta && <span>{meta.label}</span>}
+                    </div>
                   </div>
+
+                  {/* Image Milestone Tag Button */}
+                  {isImg && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openMetaModal(idx);
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        padding: '3px 7px',
+                        borderRadius: '6px',
+                        background: saarMeta ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.12)',
+                        border: saarMeta ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(56, 189, 248, 0.25)',
+                        color: saarMeta ? '#34d399' : '#38bdf8',
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        marginRight: '2px'
+                      }}
+                      title="Tag milestone, day, stage, and view perspective"
+                    >
+                      <Tag size={10} />
+                      <span>{saarMeta ? 'Edit Tag' : 'Tag'}</span>
+                    </button>
+                  )}
+
                   <button
                     className="pill-dismiss-btn"
                     onClick={(e) => {
@@ -1335,6 +1530,227 @@ export function ChatGPTView({
           }
         }}
       />
+
+      {/* Image Milestone & Longitudinal Metadata Modal */}
+      {metaModalFileIdx !== null && attachedFiles[metaModalFileIdx] && (
+        <div className="term-modal-backdrop" style={{ zIndex: 9999 }} onClick={() => setMetaModalFileIdx(null)}>
+          <div
+            className="term-modal-card"
+            style={{
+              maxWidth: '500px',
+              width: '92%',
+              borderRadius: '16px',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              background: 'var(--bg-dark, #18181b)',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.65)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="term-modal-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Tag size={16} color="#38bdf8" />
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
+                  Tag Milestone & Image Metadata
+                </h3>
+              </div>
+              <button
+                className="term-modal-close-btn"
+                onClick={() => setMetaModalFileIdx(null)}
+                title="Close modal"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="term-modal-body" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Thumbnail & File Details */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                {attachedFiles[metaModalFileIdx]._previewUrl ? (
+                  <img
+                    src={attachedFiles[metaModalFileIdx]._previewUrl}
+                    alt="Preview"
+                    style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.4)' }}
+                  />
+                ) : (
+                  <ImageIcon size={36} color="#a78bfa" />
+                )}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {attachedFiles[metaModalFileIdx].name}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                    Annotate this specimen photo for chronological milestones, cross-iteration tracking, and VLM comparative grounding.
+                  </div>
+                </div>
+              </div>
+
+              {/* Day # and Stage inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>
+                    Milestone Day #
+                  </label>
+                  <input
+                    type="text"
+                    value={metaDay}
+                    onChange={(e) => setMetaDay(e.target.value)}
+                    placeholder="e.g. 1, 10, 30"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: 'rgba(0,0,0,0.3)',
+                      color: '#fff',
+                      fontSize: '0.82rem',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>
+                    Developmental Stage / Action
+                  </label>
+                  <input
+                    type="text"
+                    value={metaStage}
+                    onChange={(e) => setMetaStage(e.target.value)}
+                    placeholder="e.g. Scion Attached, Callus Union"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: 'rgba(0,0,0,0.3)',
+                      color: '#fff',
+                      fontSize: '0.82rem',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Quick stage suggestions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Presets:</span>
+                {['Incision / Graft', 'Callus Bridge', 'Shoot Expansion', 'Foliar Bloom', 'Root Collar', 'Baseline / Pre-Op'].map((stageName) => (
+                  <button
+                    key={stageName}
+                    type="button"
+                    onClick={() => {
+                      setMetaStage(stageName);
+                      if (!metaLabel) setMetaLabel(`Day ${metaDay || '1'} - ${stageName}`);
+                    }}
+                    style={{
+                      fontSize: '0.68rem',
+                      padding: '2px 7px',
+                      borderRadius: '4px',
+                      background: metaStage === stageName ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+                      border: metaStage === stageName ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                      color: metaStage === stageName ? '#38bdf8' : '#cbd5e1',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {stageName}
+                  </button>
+                ))}
+              </div>
+
+              {/* View / Perspective angle */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>
+                  Camera Perspective / Anatomical Angle
+                </label>
+                <select
+                  value={metaViewAngle}
+                  onChange={(e) => setMetaViewAngle(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    background: '#27272a',
+                    color: '#fff',
+                    fontSize: '0.82rem',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="Lateral (Side View)">Lateral (Side View)</option>
+                  <option value="Apical (Top View)">Apical (Top View)</option>
+                  <option value="Macro Cut Surface">Macro Cut Surface / Cross-Section</option>
+                  <option value="Frontal (Anterior)">Frontal (Anterior View)</option>
+                  <option value="Sagittal (Profile)">Sagittal (Profile View)</option>
+                  <option value="Substrate / Root Zone">Substrate / Root Zone</option>
+                  <option value="Wide Canopy">Wide Canopy / Field Scale</option>
+                </select>
+              </div>
+
+              {/* Clinical / Field Notes */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>
+                  Specimen Notes / Physiological Observations (Optional)
+                </label>
+                <textarea
+                  value={metaNotes}
+                  onChange={(e) => setMetaNotes(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Sealed with parafilm, 95% sub-tape RH, active cambial callus visible under 10x lens."
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    background: 'rgba(0,0,0,0.3)',
+                    color: '#fff',
+                    fontSize: '0.8rem',
+                    outline: 'none',
+                    resize: 'none'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="term-modal-footer" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', padding: '12px 18px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setMetaModalFileIdx(null)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  background: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#cbd5e1',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveMeta}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 16px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(14, 165, 233, 0.35)'
+                }}
+              >
+                <Check size={14} />
+                <span>Save Milestone Tag</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -36,6 +36,7 @@ class DynamicWorkflowOrchestrator:
         image_url: Optional[str] = None,
         image_data: Optional[str] = None,
         images: Optional[List[str]] = None,
+        image_metadata: Optional[List[Dict[str, Any]]] = None,
         vlm_provider: str = "auto",
         api_key: Optional[str] = None
     ) -> InvestigationResponse:
@@ -69,7 +70,8 @@ class DynamicWorkflowOrchestrator:
             preset_id=preset_id,
             vlm_provider=vlm_provider,
             api_key=api_key,
-            images=effective_images
+            images=effective_images,
+            image_metadata=image_metadata
         )
 
         # If VLM fell back to synthesized mode and the plugin provides its own

@@ -15,6 +15,7 @@
 6. [Backend Service Orchestration & Port Architecture](#6-backend-service-orchestration--port-architecture)
 7. [Clean Response Formatting: Thought Process Capsule for Dataset Ingestion](#7-clean-response-formatting-thought-process-capsule-for-dataset-ingestion)
 8. [Authentic Photographic Milestones & Bi-Directional Visual Grounding](#8-authentic-photographic-milestones--bi-directional-visual-grounding)
+9. [Image Metadata Tagging & Multi-Iteration Milestone Architecture](#9-image-metadata-tagging--multi-iteration-milestone-architecture)
 
 ---
 
@@ -201,6 +202,44 @@ In [`frontend/src/App.jsx:812`](file:///d:/bytebuild/frontend/src/App.jsx#L812) 
    - In `App.jsx` and `ToolCanvasDrawer.jsx`, `onPasteImageUrl` supports `preserveTelemetry=true`, ensuring switching milestone photographs does not erase active CSV telemetry.
 6. **Local Asset Architecture & Backend VLM Resolution**:
    - All 8 images reside in `frontend/public/rose_graft_milestones/` for instant, offline-resilient loading. `vlm_service.py` resolves local filesystem paths to feed raw bytes directly to Gemini, Groq, or OpenAI VLMs.
+
+---
+
+## 9. Image Metadata Tagging & Multi-Iteration Milestone Architecture
+- **Date Solved**: 2026-09-13
+- **Primary Files**:
+  - [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+  - [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+  - [`backend/app/schemas.py`](file:///d:/bytebuild/backend/app/schemas.py)
+  - [`backend/app/vlm_service.py`](file:///d:/bytebuild/backend/app/vlm_service.py)
+  - [`backend/app/dynamic_loop.py`](file:///d:/bytebuild/backend/app/dynamic_loop.py)
+  - [`backend/app/main.py`](file:///d:/bytebuild/backend/app/main.py)
+  - [`frontend/src/api/client.js`](file:///d:/bytebuild/frontend/src/api/client.js)
+
+### Problem Description & User Goal
+Users uploading images for multi-iteration botanical or clinical analysis (e.g. Day 1 incision photo, Day 15 callus photo, Day 30 vegetative shoot photo) had no mechanism to annotate or label images with metadata. Images were treated as anonymous, unlabelled blobs. Furthermore, when users uploaded new photos across subsequent conversation iterations, the system lacked a mechanism to accumulate and sequence them chronologically into active investigation milestones.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Interactive Image Metadata Tagging Modal (`ChatGPTView.jsx`)**:
+   - Thumbnail previews for all attached image files in the chat composer.
+   - Interactive `🏷️ Tag` button on each image pill, opening a glassmorphic metadata modal configuring:
+     - **Milestone Day #**: (e.g. `1`, `10`, `30`).
+     - **Developmental Stage / Action**: (e.g. `Scion Bud Attached`, `Callus Bridge`, `First Foliar Expansion`).
+     - **Camera Perspective / Angle**: (`Lateral (Side View)`, `Apical (Top View)`, `Macro Cut Surface`, `Sagittal`, `Frontal`, `Substrate/Root Zone`).
+     - **Clinical / Empirical Notes**: (e.g. `Parafilm wrap intact, 95% sub-tape RH`).
+     - **Stage Quick Chips**: Instant presets for rapid tagging.
+   - Colored badge chips (`DAY 1`, `DAY 15`) and stage labels displayed directly on attachment pills in real time.
+2. **Batch Auto-Sequence Helper**:
+   - When $\ge 2$ images are attached simultaneously, an auto-sequence bar allows one-click assignment of sequential days (`Day 1, Day 10, Day 20...`) across all attached frames.
+3. **Multi-Iteration Accumulation Protocol (`App.jsx`)**:
+   - `executeImageInvestigation` extracts metadata and converts user-tagged images into canonical `DynamicMilestone` objects.
+   - Merges newly uploaded milestone frames with existing session milestones rather than overwriting them, preserving historical iterations across multi-turn chats.
+4. **Backend Comparative Multi-Image Reasoning (`vlm_service.py` & `schemas.py`)**:
+   - `InvestigationRequest` accepts `image_metadata: List[ImageMetadataItem]`.
+   - `vlm_service.py` embeds milestone headers directly alongside inline image parts in VLM payloads, enabling Gemini/Groq/OpenAI to run comparative temporal and cross-stage differential analysis.
+5. **Universal UI Synchronization**:
+   - `ImageInspector.jsx`: The milestone dropdown immediately lists user-uploaded photos by their tagged stages, allowing instant switching between iterations.
+   - `PlotlyGraphViewer.jsx`: The photostrip and timeline chart render user milestone cards and badges.
 
 ---
 

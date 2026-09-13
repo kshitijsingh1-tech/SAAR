@@ -1796,3 +1796,112 @@ The assistant output text focuses exclusively on the substantive scientific and 
 - Key physiological or structural inflection points.
 - Actionable next steps or recommended tool investigations.
 Practitioners can expand the Thought Process capsule anytime they need to audit the mathematical and algorithmic pipeline, achieving the ideal balance between conciseness and transparency.
+
+---
+
+## 24. Image Metadata Tagging & Multi-Iteration Milestone Architecture
+
+Scientific investigations often involve comparing photographic evidence recorded across multiple days, weeks, or experimental iterations (e.g. Day 1 incision, Day 15 callus formation, Day 30 shoot elongation). Without structured metadata, uploaded photographs remain anonymous pixel arrays, preventing chronological alignment and comparative longitudinal AI reasoning.
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                      IMAGE METADATA TAGGING & MULTI-ITERATION ARCHITECTURE                     │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                │
+│  1. Chat Composer Tagging (`ChatGPTView.jsx`)                                                  │
+│     ┌──────────────────────────────────────────────────────────────────────────────────────┐   │
+│     │ [Thumbnail Preview]  IMG_8392.jpg                                                    │   │
+│     │ Badge: [ DAY 10 ]  Callus Union · Lateral View                                       │   │
+│     │ [ 🏷️ Edit Tag ] ──> Opens Glassmorphic Metadata Editor Modal:                        │   │
+│     │                      • Milestone Day #: 10                                           │   │
+│     │                      • Stage / Action: Callus Formation & Vascular Bridge            │   │
+│     │                      • Perspective Angle: Lateral (Side View)                        │   │
+│     │                      • Field Notes: Parafilm intact, 95% sub-tape RH                 │   │
+│     │                      • Presets: [Incision] [Callus] [Shoot] [Bloom]                  │   │
+│     └──────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                           │                                                    │
+│               ┌───────────────────────────┴───────────────────────────┐                        │
+│               ▼                                                       ▼                        │
+│  2. Batch Auto-Sequence Helper                        3. Multi-Iteration Accumulation          │
+│     When >= 2 images uploaded at once:                   When user uploads in Turn 2 / Turn 3: │
+│     Auto-sequences Day 1, 10, 20, 30...                  Merges new milestones with historical │
+│     across all attached specimen frames                  milestones without overwriting        │
+│                                           │                                                    │
+│                                           ▼                                                    │
+│  4. Backend Comparative Multi-Image Reasoning (`vlm_service.py` & `schemas.py`)               │
+│     ┌──────────────────────────────────────────────────────────────────────────────────────┐   │
+│     │ InvestigationRequest.image_metadata: [ ImageMetadataItem, ... ]                      │   │
+│     │ Prompt Parts:                                                                        │   │
+│     │ • [Specimen Frame 1 Metadata: Day: 1; Stage: Incision; Angle: Lateral]               │   │
+│     │ • [Specimen Frame 2 Metadata: Day: 15; Stage: Callus Bridge; Angle: Lateral]         │   │
+│     │ • Inline image data bytes                                                            │   │
+│     │ VLM performs comparative differential analysis tracking morphological progression    │   │
+│     └──────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                           │                                                    │
+│                                           ▼                                                    │
+│  5. Universal UI Milestone Synchronization                                                     │
+│     • ImageInspector.jsx: Milestone dropdown instantly populated with user iterations      │
+│     • PlotlyGraphViewer.jsx: Photostrip & timeline markers render user-tagged images       │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### A. The Image Metadata Data Contract (`backend/app/schemas.py`)
+To formalize per-image annotations, SAAR defines the canonical `ImageMetadataItem` schema:
+```python
+class ImageMetadataItem(BaseModel):
+    filename: Optional[str] = None
+    day: Optional[float] = None
+    timestamp: Optional[str] = None
+    label: Optional[str] = None
+    stage: Optional[str] = None
+    view_angle: Optional[str] = None # e.g. Lateral, Apical, Frontal, Sagittal
+    description: Optional[str] = None
+    color: Optional[str] = None
+
+class InvestigationRequest(BaseModel):
+    ...
+    images: Optional[List[str]] = None
+    image_metadata: Optional[List[ImageMetadataItem]] = None
+```
+
+### B. Interactive Client Tagging & Batch Sequencing (`ChatGPTView.jsx`)
+1. **Thumbnail Previews**: Image attachments automatically generate secure object URLs (`URL.createObjectURL`), displaying visual thumbnails within composer pill cards.
+2. **Interactive Metadata Modal**: Clicking `🏷️ Tag` opens a glassmorphic editor allowing researchers to assign exact timeline parameters:
+   - **Day Number / Offset**: Numerical or alphanumeric day index.
+   - **Stage / Action**: Precise biological or clinical description.
+   - **Camera Perspective / Angle**: Normalized anatomical or directional orientation.
+   - **Empirical Notes**: Environmental or physiological field observations.
+3. **Batch Auto-Sequencing**: When uploading multi-photo trial batches, the `Auto-Sequence Days` action computes sequential timeline intervals automatically (`Day 1, Day 10, Day 20...`), eliminating tedious manual input.
+
+### C. Multi-Turn Milestone Accumulation Protocol (`frontend/src/App.jsx`)
+In real-world scientific monitoring, users frequently return to an active investigation to upload follow-up observations (e.g. Day 45 or Day 90 photographs). Traditional systems overwrite prior session assets. SAAR enforces a non-destructive accumulation protocol:
+```javascript
+// App.jsx: Non-destructive milestone accumulation across conversation turns
+const mergedMilestones = [...existingMilestones];
+for (const nm of newMilestones) {
+  const existIdx = mergedMilestones.findIndex(
+    (em) => em.url === nm.url || (em.day === nm.day && em.label === nm.label)
+  );
+  if (existIdx >= 0) {
+    mergedMilestones[existIdx] = nm;
+  } else {
+    mergedMilestones.push(nm);
+  }
+}
+mergedMilestones.sort((a, b) => (Number(a.day) || 0) - (Number(b.day) || 0));
+```
+Both `ImageInspector.jsx` and `PlotlyGraphViewer.jsx` consume `mergedMilestones`, ensuring the milestone dropdown and timeline continuously expand as the longitudinal experiment progresses.
+
+### D. Comparative VLM Grounding (`backend/app/vlm_service.py`)
+When multi-image or metadata-tagged payloads are transmitted, `vlm_service.py` embeds structural milestone headers directly into the model's multimodal prompt parts:
+```python
+# vlm_service.py: Embedding milestone metadata into multimodal parts
+for idx, img in enumerate(image_inputs):
+    meta = image_metadata[idx] if (image_metadata and idx < len(image_metadata)) else None
+    if meta:
+        meta_bits = [f"Day: {meta['day']}", f"Stage: {meta['stage']}", f"Angle: {meta['view_angle']}"]
+        parts.append({"text": f"[Specimen Frame {idx + 1} Metadata: {'; '.join(meta_bits)}]"})
+    parts.append({"inlineData": {"mimeType": mime_type, "data": b64_img}})
+```
+This enables frontier models (Gemini 2.5 Flash / Pro, Groq Qwen 2.5-VL, OpenAI GPT-4o) to recognize temporal sequences, contrast tissue differentiation between frames, identify healing rates, and ground changes directly within the causal knowledge graph.
+
