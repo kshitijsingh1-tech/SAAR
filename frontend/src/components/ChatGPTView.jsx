@@ -388,17 +388,36 @@ export function ChatGPTView({
       const target = next[metaModalFileIdx];
       if (target) {
         const text = metaContextText.trim();
-        const dayMatch = text.match(/(?:day|milestone|timepoint|d)\s*[:#-]?\s*(\d+)/i);
+        let infoPart = text;
+        let messagePart = text;
+
+        // Find separator colon (skipping time colons like 14:00)
+        let splitIdx = null;
+        for (let i = 0; i < text.length; i++) {
+          if (text[i] === ':') {
+            if (i > 0 && i < text.length - 1 && /\d/.test(text[i - 1]) && /\d/.test(text[i + 1])) {
+              continue;
+            }
+            splitIdx = i;
+            break;
+          }
+        }
+        if (splitIdx !== null) {
+          infoPart = text.slice(0, splitIdx).trim();
+          messagePart = text.slice(splitIdx + 1).trim();
+        }
+
+        const dayMatch = text.match(/(?:day|milestone|timepoint|d|week)\s*[:#-]?\s*(\d+)/i);
         const parsedDay = dayMatch ? Number(dayMatch[1]) : (metaModalFileIdx + 1);
-        const snippet = text.slice(0, 35) + (text.length > 35 ? '...' : '');
-        const generatedLabel = text ? (dayMatch ? `Day ${parsedDay}: ${snippet}` : snippet) : `Milestone ${metaModalFileIdx + 1}`;
+        const cleanLabel = infoPart ? (infoPart.length > 32 ? infoPart.slice(0, 30) + '...' : infoPart) : `Day ${parsedDay}`;
 
         target._saarMeta = {
           day: parsedDay,
           context: text,
-          notes: text,
-          label: generatedLabel,
-          stage: dayMatch ? `Day ${parsedDay}` : 'Specimen Context',
+          info: infoPart,
+          notes: messagePart || text,
+          label: cleanLabel,
+          stage: infoPart || `Day ${parsedDay}`,
           color: metaColor
         };
       }
@@ -417,11 +436,12 @@ export function ChatGPTView({
           imgIdx++;
           const dayOffsets = [1, 10, 20, 30, 45, 60, 90, 120];
           const assignedDay = imgIdx <= dayOffsets.length ? dayOffsets[imgIdx - 1] : imgIdx * 10;
-          const defaultContext = `Day ${assignedDay} specimen observation. Track developmental progression and tissue status.`;
+          const defaultContext = `Day ${assignedDay}, Stage ${imgIdx} : Track developmental progression and tissue status.`;
           f._saarMeta = {
             day: assignedDay,
             context: f._saarMeta?.context || defaultContext,
-            notes: f._saarMeta?.notes || defaultContext,
+            info: f._saarMeta?.info || `Day ${assignedDay}, Stage ${imgIdx}`,
+            notes: f._saarMeta?.notes || 'Track developmental progression and tissue status.',
             label: `Day ${assignedDay}: Specimen ${imgIdx}`,
             stage: `Day ${assignedDay}`,
             color: f._saarMeta?.color || palette[(imgIdx - 1) % palette.length]
@@ -1307,7 +1327,7 @@ export function ChatGPTView({
                           fontWeight: 700,
                           padding: '1px 5px',
                           borderRadius: '4px',
-                          background: saarMeta.color || '#0284c7',
+                          background: saarMeta.color || 'var(--primary)',
                           color: '#fff',
                           letterSpacing: '0.02em'
                         }}>
@@ -1315,16 +1335,16 @@ export function ChatGPTView({
                         </span>
                       )}
                       {saarMeta?.context ? (
-                        <span style={{ fontSize: '0.7rem', color: '#cbd5e1', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={saarMeta.context}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={saarMeta.context}>
                           {saarMeta.context}
                         </span>
                       ) : isImg ? (
-                        <span style={{ fontSize: '0.68rem', color: '#a78bfa', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                           <Tag size={10} />
-                          <span>Click to add context for AI (analyzed first)</span>
+                          <span>Click to add metadata (info : message)</span>
                         </span>
                       ) : (
-                        <span>{meta.label}</span>
+                        <span style={{ color: 'var(--text-dim)' }}>{meta.label}</span>
                       )}
                     </div>
                   </div>
@@ -1526,30 +1546,32 @@ export function ChatGPTView({
       {metaModalFileIdx !== null && attachedFiles[metaModalFileIdx] && (
         <div className="term-modal-backdrop" style={{ zIndex: 9999 }} onClick={() => setMetaModalFileIdx(null)}>
           <div
-            className="term-modal-card"
+            className="term-modal-card metadata-theme-modal"
             style={{
-              maxWidth: '500px',
-              width: '92%',
+              maxWidth: '520px',
+              width: '94%',
               borderRadius: '16px',
-              border: '1px solid rgba(56, 189, 248, 0.35)',
-              background: 'var(--bg-dark, #18181b)',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.65)'
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-card)',
+              color: 'var(--text-main)',
+              boxShadow: '0 20px 50px -10px rgba(0, 0, 0, 0.4), 0 0 1px var(--border-color)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="term-modal-header" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="term-modal-header" style={{ borderBottom: '1px solid var(--border-color)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Tag size={16} color="#38bdf8" />
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
-                  Tag Specimen Context (Analyzed First)
+                <Tag size={16} color="var(--primary)" />
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  Specimen Metadata & AI Instructions
                 </h3>
               </div>
               <button
                 className="term-modal-close-btn"
                 onClick={() => setMetaModalFileIdx(null)}
                 title="Close modal"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
               >
-                <X size={15} />
+                <X size={16} />
               </button>
             </div>
 
@@ -1565,21 +1587,21 @@ export function ChatGPTView({
                   } catch (e) {}
                 }
                 return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '10px', background: 'var(--bg-card-hover)', border: '1px solid var(--border-color)' }}>
                     {modalPreview ? (
                       <img
                         src={modalPreview}
                         alt="Preview"
-                        style={{ width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.4)' }}
+                        style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-color)' }}
                       />
                     ) : (
-                      <ImageIcon size={32} color="#a78bfa" />
+                      <ImageIcon size={32} color="var(--primary)" />
                     )}
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {targetFile?.name}
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Sliders size={11} />
                         <span>Two-Stage Pipeline: Text analyzed first → attached to image findings</span>
                       </div>
@@ -1588,38 +1610,73 @@ export function ChatGPTView({
                 );
               })()}
 
-              {/* Single Context Text Box */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
-                  Specimen Context, Milestone & Analytical Instructions
-                </label>
-                <div style={{ fontSize: '0.71rem', color: '#94a3b8', marginBottom: '8px', lineHeight: 1.4 }}>
-                  Enter any chronological milestones (e.g. <em>Day 10</em>, <em>Pre-Op Baseline</em>), physical conditions, or focal targets. The AI analyzes this text first, extracts milestones for dynamic graph pinning, and guides the visual reasoning engine.
+              {/* Format Specification Banner */}
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: '10px',
+                background: 'var(--primary-bg)',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '5px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Required Format:
+                  </span>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                    No extra info or fields needed
+                  </span>
                 </div>
+                <div style={{
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  background: 'var(--bg-card)',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-color)',
+                  letterSpacing: '0.01em',
+                  display: 'inline-block'
+                }}>
+                  info(example: data,name,time etc) : message for ai
+                </div>
+                <div style={{ fontSize: '0.71rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>
+                  Put your specimen data (day, milestone, timestamp, or condition) before the colon <code>:</code>, and your specific instructions or question for the AI after it.
+                </div>
+              </div>
+
+              {/* Text Area */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>
+                  Metadata & Message for AI
+                </label>
                 <textarea
                   value={metaContextText}
                   onChange={(e) => setMetaContextText(e.target.value)}
                   rows={5}
                   autoFocus
-                  placeholder="e.g. Day 10 post-incision specimen. Parafilm sealed, high humidity. Focus on scion junction: inspect for parenchymal callus bridging, vascular connection, or necrosis."
+                  placeholder="Day 10, Incision Specimen, 14:00 : Inspect callus bridge and check vascular reconnection"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
-                    background: 'rgba(0,0,0,0.35)',
-                    color: '#fff',
-                    fontSize: '0.82rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--input-bg, var(--bg-dark))',
+                    color: 'var(--text-main)',
+                    fontSize: '0.84rem',
                     lineHeight: 1.45,
                     outline: 'none',
                     resize: 'vertical',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'var(--font-sans)'
                   }}
                 />
               </div>
             </div>
 
-            <div className="term-modal-footer" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', padding: '12px 18px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div className="term-modal-footer" style={{ borderTop: '1px solid var(--border-color)', padding: '12px 18px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button
                 type="button"
                 onClick={() => setMetaModalFileIdx(null)}
@@ -1627,8 +1684,8 @@ export function ChatGPTView({
                   padding: '7px 14px',
                   borderRadius: '8px',
                   background: 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#cbd5e1',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-main)',
                   fontSize: '0.8rem',
                   cursor: 'pointer'
                 }}
@@ -1644,13 +1701,13 @@ export function ChatGPTView({
                   gap: '6px',
                   padding: '7px 16px',
                   borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+                  background: 'var(--primary)',
                   border: 'none',
-                  color: '#fff',
+                  color: '#ffffff',
                   fontSize: '0.8rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(14, 165, 233, 0.35)'
+                  boxShadow: '0 2px 8px var(--primary-glow)'
                 }}
               >
                 <Check size={14} />

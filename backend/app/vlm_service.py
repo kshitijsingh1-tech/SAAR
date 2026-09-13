@@ -280,9 +280,24 @@ Structure:
 
         clean_text = context_text.strip()
 
-        # Step A: Deterministic baseline parsing (regex & semantic keywords)
+        # Step A: Parse info(example: data,name,time etc) : message for ai format
+        info_part = clean_text
+        message_part = clean_text
+        colon_indices = [m.start() for m in re.finditer(r':', clean_text)]
+        split_idx = None
+        for c_idx in colon_indices:
+            # Skip time pattern (e.g. 14:00) where digits are on both sides
+            if c_idx > 0 and c_idx < len(clean_text) - 1 and clean_text[c_idx - 1].isdigit() and clean_text[c_idx + 1].isdigit():
+                continue
+            split_idx = c_idx
+            break
+        if split_idx is not None:
+            info_part = clean_text[:split_idx].strip()
+            message_part = clean_text[split_idx + 1:].strip()
+
+        # Step B: Deterministic baseline parsing (regex & semantic keywords)
         day_val = None
-        day_match = re.search(r'(?:day|milestone|timepoint|d|week)\s*[:#-]?\s*(\d+)', clean_text, re.IGNORECASE)
+        day_match = re.search(r'(?:day|milestone|timepoint|d|week)\s*[:#-]?\s*(\d+)', info_part or clean_text, re.IGNORECASE)
         if day_match:
             val = int(day_match.group(1))
             if "week" in day_match.group(0).lower():
@@ -298,18 +313,26 @@ Structure:
         # Deterministic fallback if offline
         fallback_targets = []
         for term in ["junction", "callus", "scion", "rootstock", "cambium", "vascular", "necrosis", "chlorosis", "leaf", "stem", "root", "crack", "gait", "joint", "posture"]:
-            if term in clean_text.lower():
+            if term in message_part.lower() or term in info_part.lower():
                 fallback_targets.append(term)
         if not fallback_targets:
             fallback_targets = ["primary anatomical region", "specimen interface"]
 
-        fallback_hypotheses = [f"Specimen aligns with user-reported condition: {clean_text[:60]}..."]
+        stage_name = info_part if info_part else (f"Day {day_val}" if day_val else "Specimen Context")
+        if len(stage_name) > 35:
+            stage_name = stage_name[:32] + "..."
+
+        m_label = stage_name
+        if day_val and not stage_name.lower().startswith("day"):
+            m_label = f"Day {day_val} - {stage_name}"
+
+        fallback_hypotheses = [f"Specimen aligns with reported condition: {message_part[:60]}..."]
 
         res = {
             "milestone": {
                 "day": day_val or 1,
-                "stage": f"Day {day_val or 1} Observation",
-                "milestone_label": f"Day {day_val or 1} - Milestone" if day_val else "Specimen Context"
+                "stage": stage_name,
+                "milestone_label": m_label
             },
             "focus_targets": fallback_targets,
             "hypotheses": fallback_hypotheses,
@@ -323,13 +346,14 @@ Structure:
         """Call Gemini or Groq fast text model to analyze context text before image analysis."""
         prompt = (
             f"You are the Stage-1 Context Analysis Engine of SAAR (Scientific Automated Analysis & Reasoning).\n"
-            f"The user uploaded a specimen image with the following contextual notes for domain '{domain}':\n\n"
+            f"The user provided contextual metadata in the format: 'info(example: data, name, time etc) : message for ai'.\n"
+            f"No extra information or fields are needed.\n\n"
             f"User Context:\n\"{text}\"\n\n"
-            f"Analyze this text BEFORE image perception to extract:\n"
-            f"1. 'milestone': {{ 'day': <number or null>, 'stage': '<developmental or temporal stage name>', 'milestone_label': '<concise badge label e.g. Day 10 - Callus Union>' }}\n"
-            f"2. 'focus_targets': [list of 2-5 specific physical/anatomical entities the VLM must ground with bounding boxes]\n"
-            f"3. 'hypotheses': [list of 1-3 scientific hypotheses to test against visual evidence]\n"
-            f"4. 'context_summary': '<concise 1-sentence synthesis of user context>'\n\n"
+            f"Analyze the 'info' part before the colon as the specimen metadata/milestone, and the 'message' after the colon as instructions for visual perception. Extract:\n"
+            f"1. 'milestone': {{ 'day': <number or null>, 'stage': '<developmental stage, time, or specimen condition from info part>', 'milestone_label': '<concise badge label e.g. Day 10 - Callus Union>' }}\n"
+            f"2. 'focus_targets': [list of 2-5 specific physical/anatomical entities the VLM must ground with bounding boxes based on the message]\n"
+            f"3. 'hypotheses': [list of 1-3 scientific hypotheses to test against visual evidence based on the message]\n"
+            f"4. 'context_summary': '<concise 1-sentence synthesis combining metadata info and message directive>'\n\n"
             f"Return valid JSON ONLY matching this structure. Start with {{ and end with }}."
         )
 

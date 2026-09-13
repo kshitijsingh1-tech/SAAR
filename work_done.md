@@ -266,11 +266,12 @@ The initial metadata modal presented multiple segregated input fields (Day #, De
 Rigid input fields assumed specific biological or architectural forms and could not accommodate arbitrary instructions, clinical summaries, or variable multi-domain scenarios. Furthermore, text context previously was merely passed as metadata tags without an explicit, structured preliminary analysis phase prior to VLM visual perception.
 
 ### Implemented Solution & Non-Regression Invariants
-1. **Single Spacious Context Text Area (`ChatGPTView.jsx`)**:
+1. **Single Spacious Context Text Area & Canonical Format Specification (`ChatGPTView.jsx`)**:
    - Eliminated all segregated inputs, presets, and perspective dropdowns from the modal.
-   - Replaced with a single, spacious context textarea (`metaContextText`) where users freely input natural language notes, developmental milestones (e.g. *"Day 10 post-incision"*), physical conditions (*"Parafilm sealed, 95% RH"*), or analytical focal points (*"Inspect callus bridge and vascular reconnection"*).
-   - Thumbnail preview and a clear explanation banner highlight the sequential two-stage pipeline.
-   - Attached pill cards render the dynamic Day badge (e.g. `DAY 10`) and a truncated context preview snippet.
+   - **Canonical Format Instruction**: Explicitly specifies the required syntax: `info(example: data,name,time etc) : message for ai`. Clarifies that no extra fields or info are needed. Specimen metadata (day, milestone, timestamp, or condition) goes before the colon, and instructions/questions for the AI go after.
+   - **Smart Delimiter Engine**: Implemented a timestamp-resilient colon finder on both frontend and backend that skips internal time colons (e.g. `14:00`, `12:30:45`) so time values in the info part do not falsely trigger separation.
+   - **Full Page Theme Matching**: Overhauled the modal card styling to strictly utilize the design system's CSS tokens (`var(--bg-card)`, `var(--border-color)`, `var(--text-main)`, `var(--input-bg)`, `var(--primary)`, `var(--primary-bg)`). The modal, textarea, thumbnail container, and buttons seamlessly adapt to dark, light, and purple themes.
+   - Attached pill cards render the dynamic Day badge (e.g. `DAY 10`) and a theme-adaptive context preview snippet.
 2. **Stage 1 (Text-First Analysis Engine in `vlm_service.py`)**:
    - `VLMService.analyze_context_text` executes **before** visual image/file perception.
    - Leverages fast LLM extraction (`_call_text_analyzer_llm` across Gemini Flash / Groq LLaMA) with deterministic keyword fallback to parse:
