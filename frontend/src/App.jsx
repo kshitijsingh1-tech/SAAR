@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
   uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline,
@@ -71,24 +72,43 @@ export default function App() {
   // Processing state & Abort Controller for immediate analysis cancellation
   const [isProcessing, setIsProcessing] = useState(false);
   const abortControllerRef = useRef(null);
+  const isAbortedRef = useRef(false);
 
-  const handleStopProcessing = () => {
+  const checkIsAborted = (err = null) => {
+    if (isAbortedRef.current) return true;
+    if (abortControllerRef.current?.signal?.aborted) return true;
+    if (err) {
+      if (axios.isCancel(err)) return true;
+      if (err.name === 'AbortError' || err.name === 'CanceledError') return true;
+      if (err.code === 'ERR_CANCELED' || err.message === 'canceled') return true;
+    }
+    return false;
+  };
+
+  const handleStopProcessing = useCallback(() => {
+    isAbortedRef.current = true;
     if (abortControllerRef.current) {
       try {
         abortControllerRef.current.abort();
       } catch (e) {}
-      abortControllerRef.current = null;
     }
     setIsProcessing(false);
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'assistant',
-        text: '*Analysis cancelled by user.*',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    setIsToolDrawerOpen(false);
+    setCustomVideoFile(null);
+    setMessages((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1].text === '*Analysis stopped by user.*') {
+        return prev;
       }
-    ]);
-  };
+      return [
+        ...prev,
+        {
+          role: 'assistant',
+          text: '*Analysis stopped by user.*',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ];
+    });
+  }, [setMessages]);
 
   // Default Initial Chat Sessions & Pre-warmed Messages
   const DEFAULT_SESSIONS = [
@@ -466,15 +486,21 @@ export default function App() {
       }
     ]);
     setIsProcessing(true);
+    isAbortedRef.current = false;
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     try {
-      const res = await runInvestigation(domain, presetId, { vlmProvider: 'auto' });
+      const res = await runInvestigation(domain, presetId, { vlmProvider: 'auto', signal: abortController.signal });
+      if (checkIsAborted()) return;
       setInvestigationData(res);
 
       try {
         const baseRes = await fetchBaseline(domain, presetId);
+        if (checkIsAborted()) return;
         setBaselineData(baseRes);
       } catch (bErr) {
+        if (checkIsAborted(bErr)) return;
         console.warn("Baseline fetch warning:", bErr);
       }
 
@@ -494,6 +520,8 @@ export default function App() {
         ]
       };
 
+      if (checkIsAborted()) return;
+
       setMessages((prev) => [
         ...prev,
         {
@@ -508,6 +536,9 @@ export default function App() {
       setActiveTool('graph');
       setIsToolDrawerOpen(true);
     } catch (err) {
+      if (checkIsAborted(err)) {
+        return;
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -662,8 +693,13 @@ export default function App() {
     }
 
     setIsProcessing(true);
+    isAbortedRef.current = false;
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     try {
+      if (checkIsAborted()) return;
+
       const imageMetadataPayload = newMilestones.map((m) => ({
         filename: m.label,
         day: m.day,
@@ -681,8 +717,9 @@ export default function App() {
         images: base64DataList.length > 1 ? base64DataList : null,
         imageMetadata: imageMetadataPayload,
         vlmProvider: 'auto',
-        signal: abortControllerRef.current?.signal
+        signal: abortController.signal
       });
+      if (checkIsAborted()) return;
       setInvestigationData(res);
 
       const baseTelemetry = csvReport?.telemetry || saarData?.telemetry || res?.telemetry || {};
@@ -715,14 +752,18 @@ export default function App() {
 
       if (optionalUserText && optionalUserText.trim()) {
         try {
-          const askRes = await askSaarQuestion(res.investigation_id || 'latest', optionalUserText.trim());
+          const askRes = await askSaarQuestion(res.investigation_id || 'latest', optionalUserText.trim(), { signal: abortController.signal });
+          if (checkIsAborted()) return;
           if (askRes?.answer_summary) {
             reply += `\n\n---\n\n### Inquiry: *"${optionalUserText.trim()}"*\n${askRes.answer_summary}`;
           }
         } catch (askErr) {
+          if (checkIsAborted(askErr)) return;
           console.warn("Follow-up inquiry error:", askErr);
         }
       }
+
+      if (checkIsAborted()) return;
 
       const stage1Analysis = res.text_context_analysis;
       const thoughtSteps = [];
@@ -760,6 +801,9 @@ export default function App() {
       setActiveTool('grounded');
       setIsToolDrawerOpen(true);
     } catch (err) {
+      if (checkIsAborted(err)) {
+        return;
+      }
       const isNetworkError = err.message?.includes('Network Error') || !err.response;
       const errorDetail = isNetworkError
         ? `Could not reach the backend server at ${API_BASE_URL}. Please make sure the FastAPI backend is running.`
@@ -862,10 +906,13 @@ export default function App() {
     );
 
     setIsProcessing(true);
+    isAbortedRef.current = false;
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
     try {
+      if (checkIsAborted()) return;
+
       // 1. File Upload (CSV/XLSX or Image or Video)
       if (currentFiles.length > 0) {
         const file = currentFiles[0];
@@ -883,7 +930,7 @@ export default function App() {
               classification = await classifyVideo(file, userText, { signal: abortController.signal });
               console.log("[Autonomous Video Classifier] Response:", classification);
             } catch (cErr) {
-              if (cErr.name === 'AbortError' || cErr.name === 'CanceledError' || abortController.signal.aborted) {
+              if (checkIsAborted(cErr)) {
                 return;
               }
               console.warn("Video classification fallback to keyword heuristics:", cErr);
@@ -898,6 +945,8 @@ export default function App() {
               };
             }
 
+            if (checkIsAborted()) return;
+
             const targetDomain = classification.domain || 'pediatrics';
             const isBadminton = classification.tool === 'badminton' && targetDomain === 'sports';
 
@@ -907,8 +956,6 @@ export default function App() {
             setCustomImageUrl(null);
             setInvestigationData(null);
             setSelectedNodeId(null);
-            setActiveTool(isBadminton ? 'badminton' : 'gait');
-            setIsToolDrawerOpen(true);
             setSessions((prev) =>
               prev.map((s) => (s.id === activeSessionId ? { ...s, videoFile: file, domain: targetDomain, imageData: null, imageUrl: null } : s))
             );
@@ -918,6 +965,7 @@ export default function App() {
               // Badminton Athletic Kinematics Pipeline
               // -------------------------------------------------------------
               const badmintonResult = await analyzeBadmintonVideo(file, {}, { signal: abortController.signal });
+              if (checkIsAborted()) return;
               setSaarData(badmintonResult);
 
               let responseText = `### Badminton Athletic Kinematics (${badmintonResult.status?.toUpperCase() || 'COMPLETED'})\n\n`;
@@ -946,6 +994,8 @@ export default function App() {
                 ]
               };
 
+              if (checkIsAborted()) return;
+
               setMessages((prev) => [
                 ...prev,
                 {
@@ -965,6 +1015,7 @@ export default function App() {
               // ToddleAI Pediatric Gait Screening Pipeline
               // -------------------------------------------------------------
               const gaitResult = await analyzeGaitVideo(file, 24, { signal: abortController.signal });
+              if (checkIsAborted()) return;
               setSaarData(gaitResult);
               let responseText = `### Video Gait Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
               responseText += `- **Video Processed**: \`${fileName}\` (${gaitResult.video?.fps || 24} FPS, ${gaitResult.video?.duration_seconds || 0}s)\n`;
@@ -977,13 +1028,17 @@ export default function App() {
               if (userText && userText.trim()) {
                 try {
                   const questionReply = await askSaarQuestion(gaitResult.assessment_id || 'latest', userText.trim(), { signal: abortController.signal });
+                  if (checkIsAborted()) return;
                   if (questionReply?.answer_summary) {
                     responseText += `\n\n---\n\n### Inquiry Response: *"${userText.trim()}"*\n${questionReply.answer_summary}`;
                   }
                 } catch (qErr) {
+                  if (checkIsAborted(qErr)) return;
                   console.warn("Failed to answer question alongside video upload:", qErr);
                 }
               }
+
+              if (checkIsAborted()) return;
 
               const thoughtProcess = {
                 title: `Thought for ${(Math.random() * 0.4 + 2.2).toFixed(1)}s`,
@@ -1013,7 +1068,7 @@ export default function App() {
               return;
             }
           } catch (vErr) {
-            if (vErr.name === 'AbortError' || vErr.name === 'CanceledError' || abortController.signal.aborted) {
+            if (checkIsAborted(vErr)) {
               return;
             }
             setMessages((prev) => [
@@ -1042,6 +1097,7 @@ export default function App() {
 
         if (isCsv) {
           const report = await uploadSaarCsv(file, { signal: abortController.signal });
+          if (checkIsAborted()) return;
           setSaarData(report);
           setSessionSensorData((prev) => ({
             ...prev,
@@ -1071,13 +1127,17 @@ export default function App() {
           if (userText && userText.trim()) {
             try {
               const questionReply = await askSaarQuestion(report?.investigation_id || 'latest', userText.trim(), { signal: abortController.signal });
+              if (checkIsAborted()) return;
               if (questionReply?.answer_summary) {
                 responseText = questionReply.answer_summary;
               }
             } catch (qErr) {
+              if (checkIsAborted(qErr)) return;
               console.warn("Failed to answer question alongside CSV upload:", qErr);
             }
           }
+
+          if (checkIsAborted()) return;
 
           setMessages((prev) => [
             ...prev,
@@ -1104,6 +1164,7 @@ export default function App() {
       const active = saarData || investigationData;
       const targetInvId = active?.investigation_id || 'latest';
       const askRes = await askSaarQuestion(targetInvId, msgText, { signal: abortController.signal });
+      if (checkIsAborted()) return;
       let reply = askRes.answer_summary || `Evaluated causal evidence graph against inquiry: "${msgText}".`;
 
       if (askRes.overall_confidence) {
@@ -1127,6 +1188,8 @@ export default function App() {
         ]
       };
 
+      if (checkIsAborted()) return;
+
       setMessages((prev) => [
         ...prev,
         {
@@ -1139,8 +1202,8 @@ export default function App() {
         }
       ]);
     } catch (err) {
-      if (err.name === 'AbortError' || err.name === 'CanceledError' || (abortControllerRef.current && abortControllerRef.current.signal?.aborted)) {
-        console.log('[SAAR] Inquiry processing cancelled by user.');
+      if (checkIsAborted(err)) {
+        console.log('[SAAR] Processing cancelled by user.');
         return;
       }
       setMessages((prev) => [

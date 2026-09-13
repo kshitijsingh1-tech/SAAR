@@ -795,8 +795,46 @@ When uploading toddler walking videos (including domestic close-ups or sample to
 3. **Graceful Abort Handling ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
    - Initialized `abortControllerRef` to abort in-flight HTTP requests instantly.
    - Cleanly catches `AbortError` / `CanceledError` without rendering error toasts or red alert banners, smoothly posting `*Analysis cancelled by user.*` and resetting state.
+---
+
+## 25. [2026-09-13] Comprehensive Fix: Enter Key Send & Instant Stop Analysis Cancellation
+
+**Primary Files Modified**:
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+1. **Enter Key Not Sending File**:
+   - When a user selected an uploaded video or image from the file picker, pressing the `Enter` key on the keyboard did not press the send button. Instead, in some browsers, focus remained on the native Paperclip action button, causing pressing `Enter` to re-trigger the button's `onClick` event and re-open the file selection dialog instead of submitting the form.
+2. **Stop Button Not Working on Video Upload**:
+   - When a user clicked Send on a video upload and then clicked the Stop button (or pressed `Enter`), the video analysis continued in the background or output an Axios error notice rather than halting cleanly.
+
+### Root Cause Analysis
+1. **HTML Button Native Enter Key Dispatch**:
+   - In HTML5, pressing `Enter` while focused on a `<button>` synthesizes an `onClick` event on that button. If focus remained on the Paperclip button, pressing `Enter` executed `fileInputRef.current?.click()`.
+   - The global keyboard event listener did not use the capture phase (`useCapture = true`), allowing the button's native keyboard activation to take precedence.
+   - State closures inside keyboard event listeners could hold stale `attachedFiles` or `inputText` values during rapid file attachment transitions.
+2. **Cancellation State Tracking & Error Interception**:
+   - In `App.jsx`, `abortControllerRef.current` was set to `null` inside `handleStopProcessing`, causing subsequent promise catch handlers to fail the `(abortControllerRef.current && abortControllerRef.current.signal?.aborted)` check.
+   - Axios cancel errors throw `AxiosError` with `code: 'ERR_CANCELED'`, which bypassed narrow `vErr.name === 'AbortError'` checks.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Zero-Staleness Synchronization Refs ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - Added `attachedFilesRef`, `inputTextRef`, `textSnippetRef`, `isProcessingRef`, and `onStopProcessingRef` to maintain real-time mutable references.
+   - `handleSend()` directly consumes these synchronized refs so submissions are 100% reliable even immediately following file selection.
+2. **Global Capture Phase Keyboard Interceptor & Button Keydown ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - Added `window.addEventListener('keydown', handleGlobalKeyDown, true)` with capture phase enabled, intercepting `Enter` before it reaches action buttons.
+   - Added explicit `onKeyDown={handleButtonKeyDown}` directly to the Paperclip and Camera action buttons.
+   - Automatically blurs `document.activeElement` and focuses `textareaRef.current` on file selection.
+3. **Unified `checkIsAborted` Helper & Persistent Ref ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Introduced `isAbortedRef` (persisting across teardown) and `checkIsAborted(err)` checking `isAbortedRef.current`, `signal.aborted`, `axios.isCancel(err)`, `ERR_CANCELED`, `AbortError`, and `CanceledError`.
+   - Updated all asynchronous phases in `handleSendMessage`, `executeImageInvestigation`, `handleSelectScenario`, and `uploadSaarCsv` to pass `abortController.signal` and check `checkIsAborted()` at every step.
+   - Cleanly resets UI and outputs `*Analysis stopped by user.*` without extra error messages or state corruptions.
 4. **Verification**:
-   - Frontend production build (`vite build`) succeeded in 14.27s with 0 errors.
+   - `npm run build` compiled cleanly in 53.48s with 0 errors.
+   - All 41 backend unit tests (`python -m pytest`) passed cleanly (100%).
+
 
 
 

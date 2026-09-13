@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Sparkles, ArrowUp, Square, Paperclip, Camera, FileText,
   X, Loader2, GitFork, BarChart2, ShieldCheck, Sliders,
@@ -380,6 +380,20 @@ export function ChatGPTView({
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
 
+  // Synchronization refs to prevent stale closure access in global keyboard listeners & fast events
+  const attachedFilesRef = useRef(attachedFiles);
+  attachedFilesRef.current = attachedFiles;
+  const inputTextRef = useRef(inputText);
+  inputTextRef.current = inputText;
+  const textSnippetRef = useRef(textSnippet);
+  textSnippetRef.current = textSnippet;
+  const isProcessingRef = useRef(isProcessing);
+  isProcessingRef.current = isProcessing;
+  const onStopProcessingRef = useRef(onStopProcessing);
+  onStopProcessingRef.current = onStopProcessing;
+  const onSendMessageRef = useRef(onSendMessage);
+  onSendMessageRef.current = onSendMessage;
+
   const openMetaModal = (idx) => {
     const file = attachedFiles[idx];
     if (!file) return;
@@ -618,31 +632,52 @@ export function ChatGPTView({
     return baseName;
   };
 
-  const handleSend = () => {
-    if (isProcessing) return;
-    const combinedPrompt = [textSnippet?.content, inputText].filter(Boolean).join('\n\n').trim();
-    if (!combinedPrompt && attachedFiles.length === 0) return;
-    onSendMessage(combinedPrompt || inputText, attachedFiles);
+  const handleSend = useCallback(() => {
+    if (isProcessingRef.current) return;
+    const curSnippet = textSnippetRef.current;
+    const curInput = inputTextRef.current;
+    const curFiles = attachedFilesRef.current;
+
+    const combinedPrompt = [curSnippet?.content, curInput].filter(Boolean).join('\n\n').trim();
+    if (!combinedPrompt && curFiles.length === 0) return;
+
+    onSendMessageRef.current?.(combinedPrompt || curInput, curFiles);
     setInputText('');
     setTextSnippet(null);
     setAttachedFiles([]);
+    attachedFilesRef.current = [];
+    inputTextRef.current = '';
+    textSnippetRef.current = null;
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  };
+  }, []);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (isProcessing) {
-        onStopProcessing?.();
+      e.stopPropagation();
+      if (isProcessingRef.current) {
+        onStopProcessingRef.current?.();
       } else {
         handleSend();
       }
     }
   };
 
-  // Global keydown listener so that pressing Enter anywhere when a video/file is attached triggers send (or cancel if running)
+  const handleButtonKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isProcessingRef.current) {
+        onStopProcessingRef.current?.();
+      } else {
+        handleSend();
+      }
+    }
+  };
+
+  // Global capture keydown listener so that pressing Enter anywhere when a video/file is attached triggers send (or cancel if running)
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -656,31 +691,35 @@ export function ChatGPTView({
           return;
         }
 
+        // If currently processing, Enter cancels the analysis immediately
+        if (isProcessingRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          onStopProcessingRef.current?.();
+          return;
+        }
+
         // If target is already the textarea, handleKeyDown handles it
         if (e.target === textareaRef.current) {
           return;
         }
 
-        // If currently processing, Enter cancels the analysis
-        if (isProcessing) {
-          e.preventDefault();
-          onStopProcessing?.();
-          return;
-        }
-
         // If we have attached files or typed text, trigger send on Enter
-        if (attachedFiles.length > 0 || (inputText && inputText.trim().length > 0)) {
+        const curFiles = attachedFilesRef.current;
+        const curInput = inputTextRef.current;
+        if (curFiles.length > 0 || (curInput && curInput.trim().length > 0)) {
           e.preventDefault();
+          e.stopPropagation();
           handleSend();
         }
       }
     };
 
-    window.addEventListener('keydown', handleGlobalKeyDown);
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
     return () => {
-      window.removeEventListener('keydown', handleGlobalKeyDown);
+      window.removeEventListener('keydown', handleGlobalKeyDown, true);
     };
-  }, [attachedFiles, inputText, textSnippet, isProcessing, onStopProcessing]);
+  }, [handleSend]);
 
   const handleTextareaChange = (e) => {
     setInputText(e.target.value);
@@ -691,11 +730,16 @@ export function ChatGPTView({
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      setAttachedFiles((prev) => [...prev, ...files]);
+      const updatedFiles = [...attachedFilesRef.current, ...files];
+      attachedFilesRef.current = updatedFiles;
+      setAttachedFiles(updatedFiles);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
       setTimeout(() => {
         textareaRef.current?.focus();
-      }, 50);
+      }, 20);
     }
   };
 
@@ -1571,6 +1615,7 @@ export function ChatGPTView({
             type="button"
             className="composer-action-btn"
             onClick={() => fileInputRef.current?.click()}
+            onKeyDown={handleButtonKeyDown}
             title="Attach dataset, image, or video"
           >
             <Paperclip size={18} />
@@ -1581,6 +1626,7 @@ export function ChatGPTView({
             type="button"
             className={`composer-action-btn ${isCameraModalOpen || cameraConnected ? 'camera-live' : ''}`}
             onClick={() => setIsCameraModalOpen(true)}
+            onKeyDown={handleButtonKeyDown}
             title="Open camera & record video clip (up to 10s)"
           >
             <Camera size={18} />
@@ -1604,7 +1650,11 @@ export function ChatGPTView({
             <button
               type="button"
               className="composer-send-arrow composer-stop-btn"
-              onClick={onStopProcessing}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onStopProcessingRef.current?.();
+              }}
               title="Stop generating / Cancel analysis"
             >
               <Square size={13} fill="currentColor" />
