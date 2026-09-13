@@ -332,7 +332,11 @@ class BadmintonSpeedAnalyzer:
                 is_calibrated=is_calibrated,
                 is_tracking_usable=racket_usable
             )
-            shot_copy.racket_speed = r_peak
+            shot_copy.racket_speed = (
+                racket_summary.racket_speed_peak
+                if ((not r_peak.available or r_peak.value is None) and racket_summary and racket_summary.racket_speed_peak and racket_summary.racket_speed_peak.available)
+                else r_peak
+            )
 
             # Shuttle points within shot window (contact..end or start..end)
             shot_shuttle_pts = [
@@ -352,10 +356,14 @@ class BadmintonSpeedAnalyzer:
                 is_calibrated=is_calibrated,
                 is_tracking_usable=shuttle_usable
             )
-            shot_copy.shuttle_speed = s_peak
+            shot_copy.shuttle_speed = (
+                shuttle_summary.shuttle_speed_peak
+                if ((not s_peak.available or s_peak.value is None) and shuttle_summary and shuttle_summary.shuttle_speed_peak and shuttle_summary.shuttle_speed_peak.available)
+                else s_peak
+            )
 
             # Store traceability metadata in trajectory_features
-            shot_copy.trajectory_features["racket_speed_km_h"] = r_peak.value
+            shot_copy.trajectory_features["racket_speed_km_h"] = shot_copy.racket_speed.value
             shot_copy.trajectory_features["racket_uncertainty_range"] = r_range
             shot_copy.trajectory_features["racket_segments_used"] = r_n
             shot_copy.trajectory_features["racket_supporting_points"] = [
@@ -364,7 +372,7 @@ class BadmintonSpeedAnalyzer:
             ]
             shot_copy.trajectory_features["racket_valid_segments"] = [s.to_dict() for s in r_val_segs]
 
-            shot_copy.trajectory_features["shuttle_speed_km_h"] = s_peak.value
+            shot_copy.trajectory_features["shuttle_speed_km_h"] = shot_copy.shuttle_speed.value
             shot_copy.trajectory_features["shuttle_uncertainty_range"] = s_range
             shot_copy.trajectory_features["shuttle_segments_used"] = s_n
             shot_copy.trajectory_features["shuttle_supporting_points"] = [
@@ -390,6 +398,14 @@ class BadmintonSpeedAnalyzer:
             is_tracking_usable=racket_usable
         )
 
+        # Fallback to racket tracker summary metrics if optical inter-frame points are sparse
+        if (not r_peak_m.available or r_peak_m.value is None) and racket_summary and racket_summary.racket_speed_peak and racket_summary.racket_speed_peak.available:
+            r_peak_m = racket_summary.racket_speed_peak
+            r_mean_m = racket_summary.racket_speed_mean
+            if r_peak_m.value is not None:
+                r_peak_range = [round(max(0.0, r_peak_m.value * 0.9), 1), round(r_peak_m.value * 1.1, 1)]
+                r_segs_used = max(r_segs_used, racket_summary.detected_frames_count)
+
         clip_s_val, clip_s_rej = self.compute_segment_velocities(
             tracked_points=clip_shuttle_pts,
             max_speed_km_h=SHUTTLE_MAX_SPEED_KM_H
@@ -401,6 +417,14 @@ class BadmintonSpeedAnalyzer:
             is_calibrated=is_calibrated,
             is_tracking_usable=shuttle_usable
         )
+
+        # Fallback to shuttle tracker summary metrics if optical inter-frame points are sparse
+        if (not s_peak_m.available or s_peak_m.value is None) and shuttle_summary and shuttle_summary.shuttle_speed_peak and shuttle_summary.shuttle_speed_peak.available:
+            s_peak_m = shuttle_summary.shuttle_speed_peak
+            s_mean_m = shuttle_summary.shuttle_speed_mean
+            if s_peak_m.value is not None:
+                s_peak_range = [round(max(0.0, s_peak_m.value * 0.9), 1), round(s_peak_m.value * 1.1, 1)]
+                s_segs_used = max(s_segs_used, shuttle_summary.verified_frames_count)
 
         wrist_speed_metric = (
             racket_summary.wrist_speed_peak

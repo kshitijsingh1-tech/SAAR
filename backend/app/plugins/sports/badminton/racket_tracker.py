@@ -177,7 +177,7 @@ class BadmintonRacketTracker:
 
             # 2. Classical candidate contour search around wrist ROI
             # Forearm direction vector
-            roi_radius = int(min(w, h) * 0.18)  # ~130px on 720p
+            roi_radius = int(min(w, h) * 0.25)  # Expanded window to prevent clipping racket head
             x_min = max(0, int(wx_px - roi_radius))
             x_max = min(w, int(wx_px + roi_radius))
             y_min = max(0, int(wy_px - roi_radius))
@@ -197,7 +197,7 @@ class BadmintonRacketTracker:
 
             roi_gray = cv2.cvtColor(frame_img[y_min:y_max, x_min:x_max], cv2.COLOR_BGR2GRAY)
             blurred = cv2.GaussianBlur(roi_gray, (5, 5), 0)
-            edges = cv2.Canny(blurred, 40, 120)
+            edges = cv2.Canny(blurred, 35, 110)
 
             contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             best_candidate = None
@@ -205,22 +205,22 @@ class BadmintonRacketTracker:
 
             for cnt in contours:
                 area = cv2.contourArea(cnt)
-                if area < MIN_CONTOUR_AREA or area > MAX_CONTOUR_AREA:
+                if area < 15.0 or area > MAX_CONTOUR_AREA:
                     continue
 
                 rect = cv2.minAreaRect(cnt)
                 rw, rh = rect[1]
-                if rw < 10 or rh < 10:
+                if rw < 8 or rh < 8:
                     continue
 
                 aspect = max(rw, rh) / max(1.0, min(rw, rh))
-                # Racket head oval aspect ratio typically 1.15 to 2.8
-                if 1.1 <= aspect <= 3.2:
+                # Racket head oval aspect ratio typically 1.0 to 3.8
+                if 1.0 <= aspect <= 3.8:
                     # Distance from wrist
                     cx_roi, cy_roi = rect[0]
                     dist_to_wrist = math.hypot(cx_roi - (wx_px - x_min), cy_roi - (wy_px - y_min))
-                    # Racket head is offset from wrist by shaft length (approx 40px to 160px)
-                    if 30 <= dist_to_wrist <= roi_radius:
+                    # Racket head is offset from wrist by shaft length (approx 15px to roi_radius)
+                    if 15 <= dist_to_wrist <= roi_radius:
                         score = float(area / (1.0 + abs(aspect - 1.8)))
                         if score > best_score:
                             best_score = score
@@ -275,11 +275,11 @@ class BadmintonRacketTracker:
             name="wrist_speed_peak",
             value=peak_wrist,
             unit="km/h",
-            confidence="HIGH" if (peak_wrist is not None and len(wrist_speeds_km_h) >= 10) else "LOW",
+            confidence="HIGH" if (peak_wrist is not None and len(wrist_speeds_km_h) >= 10) else "MEDIUM" if peak_wrist is not None else "LOW",
             method="mediapipe_blazepose_wrist_landmark",
             available=(peak_wrist is not None),
             unavailable_reason=None if peak_wrist is not None else (
-                "Court not calibrated" if not H_np is not None else "Insufficient wrist landmark displacement."
+                "Court not calibrated" if H_np is None else "Insufficient wrist landmark displacement."
             )
         )
 

@@ -202,8 +202,20 @@ class BadmintonCourtDetector:
             theta=np.pi / 180,
             threshold=self.hough_threshold,
             minLineLength=self.min_line_length,
-            maxLineGap=25
+            maxLineGap=30
         )
+
+        if lines is None or len(lines) < 4:
+            # Sensitive fallback pass for low-contrast courts or compressed mobile clips
+            sensitive_edges = cv2.Canny(blurred, 30, 100, apertureSize=3)
+            lines = cv2.HoughLinesP(
+                sensitive_edges,
+                rho=1,
+                theta=np.pi / 180,
+                threshold=max(35, self.hough_threshold - 20),
+                minLineLength=max(30, self.min_line_length - 15),
+                maxLineGap=45
+            )
 
         if lines is None or len(lines) < 4:
             return CourtCalibration(
@@ -260,7 +272,7 @@ class BadmintonCourtDetector:
             )
 
         # 4. Compute intersections between transverse and longitudinal lines
-        margin = 30
+        margin = max(80, int(0.35 * max(w, h)))
         intersections: List[Tuple[float, float]] = []
         for t_line in transverse_lines:
             for l_line in longitudinal_lines:
@@ -318,9 +330,11 @@ class BadmintonCourtDetector:
 
         sorted_corners = sort_quadrilateral_corners(candidate_corners)
 
-        # Validate corners are inside visible frame bounds
+        # Validate corners are inside visible or near-boundary frame bounds (up to 35% margin extrapolation)
+        margin_x = float(w) * 0.35
+        margin_y = float(h) * 0.35
         for pt in sorted_corners:
-            if pt[0] < -10.0 or pt[0] > w + 10.0 or pt[1] < -10.0 or pt[1] > h + 10.0:
+            if pt[0] < -margin_x or pt[0] > w + margin_x or pt[1] < -margin_y or pt[1] > h + margin_y:
                 return CourtCalibration(
                     is_calibrated=False,
                     calibration_source=None,

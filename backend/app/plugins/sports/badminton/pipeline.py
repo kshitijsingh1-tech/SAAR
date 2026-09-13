@@ -334,9 +334,27 @@ class BadmintonPipeline:
             court_mode = "doubles"
             if player_metadata and player_metadata.match_type:
                 court_mode = "singles" if "singles" in player_metadata.match_type.lower() else "doubles"
-            keyframe_idx = len(processing_frames) // 2 if processing_frames else 0
-            keyframe = processing_frames[keyframe_idx] if processing_frames else None
-            court_calibration = self.court_detector.detect_court(keyframe, court_mode=court_mode)
+            
+            # Multi-keyframe candidate sweep (mid, quarter, three-quarter, start, end)
+            candidate_indices = [
+                len(processing_frames) // 2,
+                len(processing_frames) // 4,
+                (3 * len(processing_frames)) // 4,
+                0,
+                max(0, len(processing_frames) - 1)
+            ] if processing_frames else [0]
+
+            best_calibration = None
+            for c_idx in candidate_indices:
+                if c_idx < len(processing_frames):
+                    calib = self.court_detector.detect_court(processing_frames[c_idx], court_mode=court_mode)
+                    if calib.is_calibrated:
+                        best_calibration = calib
+                        break
+                    elif best_calibration is None:
+                        best_calibration = calib
+
+            court_calibration = best_calibration or self.court_detector.detect_court(None, court_mode=court_mode)
 
         if court_calibration.is_calibrated:
             quality.court_visibility = Metric(

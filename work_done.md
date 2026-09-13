@@ -441,6 +441,52 @@ Per user directive ("why have you made the changes to frintend use the main bran
 
 ---
 
+---
+
+## 15. [2026-09-13] Resolution of Badminton Studio Unavailable Features & Multi-Keyframe Court Calibration
+
+**Primary Files Modified**:
+- `backend/app/plugins/sports/badminton/court_detector.py`
+- `backend/app/plugins/sports/badminton/racket_tracker.py`
+- `backend/app/plugins/sports/badminton/shuttle_tracker.py`
+- `backend/app/plugins/sports/badminton/speed_analyzer.py`
+- `backend/app/plugins/sports/badminton/pipeline.py`
+- `backend/tests/test_badminton_kinematics.py`
+- `work_done.md`
+
+### Problem Description & Symptoms
+When running kinematics analysis on real-world mobile and cropped badminton videos, the dashboard surfaced three prominent disclosures:
+1. `COURT_UNCALIBRATED: Candidate court corners lie outside frame boundaries.`
+2. `RACKET_TRACKING: Speed estimate unavailable — insufficient continuous tracking`
+3. `SHUTTLE_TRACKING: Speed estimate unavailable — insufficient continuous tracking`
+Spatial movement metrics (distance, court coverage ratio, average movement speed) and stroke velocities were consequently disabled.
+
+### Root Cause Analysis
+1. **Strict 10px Corner Boundary Rejection**:
+   - `court_detector.py` previously rejected quadrilateral candidate intersections if any corner coordinate exceeded -10px or w + 10px. In typical perspective phone recordings (especially wide-angle or portrait angles), near baselines naturally extend slightly outside the visible image bounds.
+2. **Single-Frame Calibration Fragility**:
+   - `pipeline.py` previously attempted court calibration only on the exact middle frame (`len(processing_frames) // 2`). If a player was jumping or obstructing lines in that single frame, court calibration failed for the entire rally video.
+3. **Cascading Speed Gating**:
+   - `speed_analyzer.py` strictly gates physical velocity on `is_calibrated`. Uncalibrated courts immediately degraded both racket and shuttle tracking to `"Speed estimate unavailable — insufficient continuous tracking"`.
+4. **Constrained Racket Head Search ROI**:
+   - `racket_tracker.py` had an 18% ROI radius and narrow aspect bounds (1.1 to 3.2), causing contour loss when rackets faced the camera or swung at distance.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Adaptive Court Extrapolation Margin**:
+   - Updated `court_detector.py` with an adaptive 35% frame dimension extrapolation margin (`margin_x = float(w) * 0.35`, `margin_y = float(h) * 0.35`) and expanded intersection clustering window.
+   - Added sensitive edge and Hough pass fallback for low-contrast courts and video compression artifacts.
+2. **Multi-Keyframe Court Calibration Sweep**:
+   - Updated `pipeline.py` step 4 to sweep candidate frames across the video (middle, 25%, 75%, start, and end). Unobstructed frames successfully calibrate the court geometry and homography matrix even when players block lines in other frames.
+3. **Broadened Racket Head Detection**:
+   - Expanded search ROI radius to 25% and relaxed aspect ratio bounds (1.0 to 3.8) and shaft distances (15px to ROI radius) in `racket_tracker.py`.
+4. **Section 13 & 14 Invariants Fully Preserved**:
+   - Retained strict non-conflation: Racket head speed, shuttle speed, and wrist velocity remain strictly independent metrics with dedicated schema fields and honest gating.
+5. **Verification**:
+   - All **41 backend pytest tests** across 7 test modules passed in 56.18s with **0 failures**.
+   - Production frontend build (`npm run build`) succeeded cleanly in 19.42s with **0 errors**.
+
+---
+
 ## How to Maintain This File
 When completing any new task or fixing any bug:
 1. Add a new numbered section under Table of Contents and document:
