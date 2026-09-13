@@ -315,5 +315,8 @@ class InvestigationState(BaseModel):
     iteration: int = 0
     overall_confidence: float = 0.0
     status: str = "active"  # active, concluded, insufficient_data
+    visual_conclusion: Optional[str] = None
+    text_context: Optional[Dict[str, Any]] = None
+    vlm_provider: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 

@@ -289,6 +289,49 @@ Rigid input fields assumed specific biological or architectural forms and could 
 
 ---
 
+## 11. Overhaul of Analytical Inquiry Reasoning Engine ("Help Me With This Analysis") & Multi-Provider Model Resilience
+- **Date Solved**: 2026-09-13
+- **Primary Files**:
+  - [`backend/app/services/reasoning_service.py`](file:///d:/bytebuild/backend/app/services/reasoning_service.py)
+  - [`backend/app/vlm_service.py`](file:///d:/bytebuild/backend/app/vlm_service.py)
+  - [`backend/app/models/saar_models.py`](file:///d:/bytebuild/backend/app/models/saar_models.py)
+  - [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+
+### Problem Description & User Goal
+When users submitted broad analytical inquiries such as `"help me with this analysis"`, `"explain the findings"`, or `"what is the root cause?"`, the system previously produced jarring, suboptimal responses stating:
+> *"The uploaded dataset does not contain a column matching 'help, me, this, analysis'..."*
+with an empty table and meaningless "COLUMN DATA GAP" notices.
+
+### Root Cause Analysis
+1. **False Column Match Heuristic in `reasoning_service.py`**:
+   The engine naively split user queries into tokens and searched for matching CSV column names. When no column was literally named `"help"` or `"analysis"`, it treated the high-level analytical request as a failed column lookup.
+2. **Missing Structured State Registration in `register_visual_investigation`**:
+   Visual investigations from `/api/investigate` previously left `state.features` and `state.observations` empty, depriving downstream reasoning tasks of structured knowledge about grounded visual entities and their confidence scores.
+3. **Outdated API Candidate Models in `vlm_service.py`**:
+   `synthesize_reasoning_explanation` and VLM callers had outdated model candidate lists (e.g. attempting deprecated `gemini-1.5-flash` or non-existent Groq names), causing live calls to fail with 404/429 and forcing rudimentary fallbacks.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Explicit Analytical Inquiry Intent Detection (`reasoning_service.py`)**:
+   - Implemented regex intent recognition (`r'\bhelp\b'`, `r'\banalyze\b'`, `r'\banalysis\b'`, `r'\bsummar(?:y|ize)\b'`, `r'\broot\s*cause\b'`, etc.) and expanded conversational stop-words (`help`, `me`, `please`, `this`, `that`, `analysis`, `analyze`, `explain`, `overview`).
+   - Meta-inquiries bypass column-name searching and instead trigger the construction of a comprehensive multi-modal **Investigation Brief**.
+2. **Complete State Representation for Visual Investigations (`register_visual_investigation`)**:
+   - Transforms all grounded visual nodes into structured `Feature` (with `SemanticRole.STATE`) and `Observation` items (with confidence %, status, category, and bounding box coordinates).
+   - Records `visual_conclusion`, `text_context` (Stage 1 milestones/hypotheses), and `vlm_provider` on `InvestigationState`.
+   - Stores active state under `self._investigations[inv_id]` and `self._investigations["latest"]`.
+3. **Multi-Model Provider Realignment & Thinking-Safe Payloads (`vlm_service.py`)**:
+   - Realigned Gemini candidates to active Google AI Studio models: `gemini-3.5-flash`, `gemini-3.6-flash`, `gemini-3.1-flash-lite`, `gemini-flash-latest`.
+   - Realigned Groq candidates to active endpoint models: `qwen/qwen3.8-27b`, `qwen/qwen3.6-27b`, `openai/gpt-oss-120b`, `llama-3.3-70b-versatile` with required `User-Agent` headers.
+   - Added OpenRouter backstop for maximum uptime resilience.
+4. **Structured Scientific Diagnostic Matrix**:
+   - Both live LLM prompts and deterministic offline fallbacks now produce a structured 5-part scientific report:
+     1. Executive Diagnostic Summary (root cause isolation)
+     2. Grounded Evidence & Parameter Matrix (markdown table of entities, categories, confidence, and significance)
+     3. Causal Mechanism Chain (`Root Cause -> Intermediate State -> Observable Symptom`)
+     4. Prescriptive Action Plan & Next Steps (domain-specific interventions)
+     5. Definitive Bottom Line.
+
+---
+
 ## How to Maintain This File
 When completing any new task or fixing any bug:
 1. Add a new numbered section under Table of Contents and document:
@@ -298,3 +341,4 @@ When completing any new task or fixing any bug:
    - Root Causes
    - Implemented Solution & Non-Regression Rules
 2. Keep entries chronological and concise.
+

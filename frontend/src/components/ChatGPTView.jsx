@@ -414,8 +414,8 @@ export function ChatGPTView({
         target._saarMeta = {
           day: parsedDay,
           context: text,
-          info: infoPart,
-          notes: messagePart || text,
+          info: infoPart || `Day ${parsedDay}`,
+          notes: messagePart || infoPart || text,
           label: cleanLabel,
           stage: infoPart || `Day ${parsedDay}`,
           color: metaColor

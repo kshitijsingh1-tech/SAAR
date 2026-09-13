@@ -326,7 +326,8 @@ Structure:
         if day_val and not stage_name.lower().startswith("day"):
             m_label = f"Day {day_val} - {stage_name}"
 
-        fallback_hypotheses = [f"Specimen aligns with reported condition: {message_part[:60]}..."]
+        display_part = message_part if message_part else (info_part if info_part else clean_text)
+        fallback_hypotheses = [f"Specimen aligns with reported condition: {display_part[:60]}..."]
 
         res = {
             "milestone": {
@@ -349,11 +350,13 @@ Structure:
             f"The user provided contextual metadata in the format: 'info(example: data, name, time etc) : message for ai'.\n"
             f"No extra information or fields are needed.\n\n"
             f"User Context:\n\"{text}\"\n\n"
-            f"Analyze the 'info' part before the colon as the specimen metadata/milestone, and the 'message' after the colon as instructions for visual perception. Extract:\n"
+            f"Analyze the 'info' part before the colon as specimen metadata/milestone, and any 'message' after the colon as visual perception directives.\n"
+            f"Note: If the portion after ':' is empty or omitted, extract the milestone from the info part and infer focus targets and general inspection hypotheses from the metadata info.\n\n"
+            f"Extract:\n"
             f"1. 'milestone': {{ 'day': <number or null>, 'stage': '<developmental stage, time, or specimen condition from info part>', 'milestone_label': '<concise badge label e.g. Day 10 - Callus Union>' }}\n"
-            f"2. 'focus_targets': [list of 2-5 specific physical/anatomical entities the VLM must ground with bounding boxes based on the message]\n"
-            f"3. 'hypotheses': [list of 1-3 scientific hypotheses to test against visual evidence based on the message]\n"
-            f"4. 'context_summary': '<concise 1-sentence synthesis combining metadata info and message directive>'\n\n"
+            f"2. 'focus_targets': [list of 2-5 specific physical/anatomical entities the VLM must ground with bounding boxes]\n"
+            f"3. 'hypotheses': [list of 1-3 scientific hypotheses to test against visual evidence]\n"
+            f"4. 'context_summary': '<concise 1-sentence synthesis combining metadata info and inspection directive>'\n\n"
             f"Return valid JSON ONLY matching this structure. Start with {{ and end with }}."
         )
 
@@ -363,7 +366,7 @@ Structure:
             gemini_keys = [os.getenv("GEMINI_API_KEY")]
 
         for g_key in gemini_keys:
-            for model_name in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"]:
+            for model_name in ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={g_key}"
                 payload = {
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -395,34 +398,38 @@ Structure:
 
         for gr_key in groq_keys:
             url = "https://api.groq.com/openai/v1/chat/completions"
-            payload = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": "You are SAAR Context Analyzer. Output valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-                "response_format": {"type": "json_object"},
-                "temperature": 0.2
-            }
-            try:
-                req = urllib.request.Request(
-                    url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {gr_key}"}
-                )
-                with urllib.request.urlopen(req, timeout=4) as response:
-                    raw = json.loads(response.read().decode("utf-8"))
-                    res_text = raw["choices"][0]["message"]["content"]
-                    parsed = json.loads(res_text)
-                    if isinstance(parsed, dict) and ("focus_targets" in parsed or "milestone" in parsed):
-                        if not parsed.get("milestone"):
-                            parsed["milestone"] = {"day": fallback_day, "stage": f"Day {fallback_day}", "milestone_label": f"Day {fallback_day} Milestone"}
-                        elif parsed["milestone"].get("day") is None:
-                            parsed["milestone"]["day"] = fallback_day
-                        return parsed
-            except Exception as e:
-                print(f"[VLMService] Groq context text analysis failed: {e}")
-                continue
+            for model_name in ["qwen/qwen3.6-27b", "openai/gpt-oss-120b", "llama-3.3-70b-versatile"]:
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": "You are SAAR Context Analyzer. Output valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.2
+                }
+                try:
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {gr_key}",
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                        }
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as response:
+                        raw = json.loads(response.read().decode("utf-8"))
+                        res_text = raw["choices"][0]["message"]["content"]
+                        parsed = json.loads(res_text)
+                        if isinstance(parsed, dict) and ("focus_targets" in parsed or "milestone" in parsed):
+                            if not parsed.get("milestone"):
+                                parsed["milestone"] = {"day": fallback_day, "stage": f"Day {fallback_day}", "milestone_label": f"Day {fallback_day} Milestone"}
+                            elif parsed["milestone"].get("day") is None:
+                                parsed["milestone"]["day"] = fallback_day
+                            return parsed
+                except Exception as e:
+                    continue
 
         return None
 
@@ -621,12 +628,9 @@ Structure:
 
         # Try active generation models with vision capabilities
         candidate_models = [
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-3.1-flash-lite",
-            "gemini-3.6-flash",
             "gemini-3.5-flash",
+            "gemini-3.6-flash",
+            "gemini-3.1-flash-lite",
             "gemini-flash-latest",
             "gemini-3.7-flash"
         ]
@@ -1380,41 +1384,36 @@ Structure:
 
         # 1. Primary: Google Gemini Pool
         gemini_candidates = [k.key for k in key_pool.get_available_keys("gemini")]
+        if not gemini_candidates and os.getenv("GEMINI_API_KEY"):
+            gemini_candidates = [os.getenv("GEMINI_API_KEY")]
+
         for g_key in gemini_candidates:
-            for gemini_model in ["gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.7-flash"]:
+            for gemini_model in ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={g_key}"
                 payload = {
-                    # P0 Action 1: Dedicated systemInstruction for persona
                     "systemInstruction": {
                         "parts": [{"text": synthesis_system_prompt}]
                     },
                     "contents": [{"parts": [{"text": prompt}]}],
                     "generationConfig": {
                         "temperature": 0.2,
-                        "maxOutputTokens": 4096,
-                        # P0 Action 3: Enable extended thinking for deep scientific reasoning
-                        "thinkingConfig": {
-                            "thinkingBudget": 8192
-                        }
+                        "maxOutputTokens": 3072
                     }
                 }
                 try:
                     req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
-                    # Extended timeout for thinking mode (model needs time to reason)
-                    with urllib.request.urlopen(req, timeout=25) as resp:
+                    with urllib.request.urlopen(req, timeout=16) as resp:
                         res = json.loads(resp.read().decode("utf-8"))
-                        # With thinking mode, response may have thinking parts before the text
                         candidate_parts = res["candidates"][0]["content"]["parts"]
                         text = ""
                         for part in candidate_parts:
                             if "text" in part and not part.get("thought", False):
                                 text = part["text"].strip()
-                        # Fallback: strip think tags if model emits them in text
                         text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE).strip()
                         text = re.sub(r"<think>[\s\S]*", "", text, flags=re.IGNORECASE).strip()
                         if text:
                             key_pool.record_success("gemini", g_key)
-                            print(f"[VLMService] Successfully synthesized scientific explanation using Gemini '{gemini_model}' (thinking mode) on key {g_key[:6]}...")
+                            print(f"[VLMService] Successfully synthesized scientific explanation using Gemini '{gemini_model}' on key {g_key[:6]}...")
                             return text
                 except Exception as e:
                     err_msg = str(e)
@@ -1429,17 +1428,20 @@ Structure:
 
         # 2. Alternative: Groq API Pool
         groq_candidates = [k.key for k in key_pool.get_available_keys("groq")]
+        if not groq_candidates and os.getenv("GROQ_API_KEY"):
+            groq_candidates = [os.getenv("GROQ_API_KEY")]
+
         groq_url = "https://api.groq.com/openai/v1/chat/completions"
         for gr_key in groq_candidates:
-            for model in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "groq/compound", "qwen/qwen3.6-27b"]:
+            for model in ["qwen/qwen3.6-27b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "groq/compound", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
                 payload = {
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": "You are SAAR, an elite scientific reasoning engine. You synthesize evidence-backed, structured scientific diagnoses with clear markdown headings, causal mechanisms, and actionable recommendations."},
+                        {"role": "system", "content": synthesis_system_prompt},
                         {"role": "user", "content": prompt}
                     ],
                     "temperature": max(0.1, min(1.0, temperature)),
-                    "max_tokens": 900
+                    "max_tokens": 1600
                 }
                 try:
                     req = urllib.request.Request(groq_url, data=json.dumps(payload).encode("utf-8"), headers={
@@ -1447,7 +1449,7 @@ Structure:
                         "Authorization": f"Bearer {gr_key}",
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     })
-                    with urllib.request.urlopen(req, timeout=8) as resp:
+                    with urllib.request.urlopen(req, timeout=12) as resp:
                         res = json.loads(resp.read().decode("utf-8"))
                         text = res["choices"][0]["message"]["content"]
                         text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE).strip()
@@ -1462,6 +1464,34 @@ Structure:
                     if "429" in err_msg or "Too Many Requests" in err_msg or "Rate limit" in err_msg:
                         key_pool.record_quota_exhausted("groq", gr_key, cooldown_sec=60.0)
                         break
+
+        # 3. Alternative: OpenRouter Fallback
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        if openrouter_key:
+            or_url = "https://openrouter.ai/api/v1/chat/completions"
+            for or_model in ["meta-llama/llama-3.3-70b-instruct", "google/gemini-flash-1.5"]:
+                payload = {
+                    "model": or_model,
+                    "messages": [
+                        {"role": "system", "content": synthesis_system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": 1600
+                }
+                try:
+                    req = urllib.request.Request(or_url, data=json.dumps(payload).encode("utf-8"), headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {openrouter_key}"
+                    })
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        res = json.loads(resp.read().decode("utf-8"))
+                        text = res["choices"][0]["message"]["content"]
+                        if text:
+                            print(f"[VLMService] Successfully synthesized scientific explanation using OpenRouter '{or_model}'")
+                            return text.strip()
+                except Exception as e:
+                    print(f"[VLMService] OpenRouter synthesis failed: {e}")
 
         return None
 
