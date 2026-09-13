@@ -13,6 +13,7 @@ import { ToolRolloutBar } from './ToolRolloutBar';
 import { MediaAttachmentPreview } from './MediaAttachmentPreview';
 import { ChatCameraRecorder } from './ChatCameraRecorder';
 import { API_BASE_URL } from '../api/client';
+import MoltenMetal from './MoltenMetal';
 
 // Built-in grounded domain lexicon for automatic chat dictionary linking
 const SCIENTIFIC_LEXICON = [
@@ -895,6 +896,59 @@ export function ChatGPTView({
 
   return (
     <div className="chatgpt-container">
+      {/* Full-screen Ambient MoltenMetal Canvas (Theme-Aware & Non-Intrusive) */}
+      <div
+        className="molten-metal-fullscreen"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 0,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+          background: 'transparent',
+          border: 'none',
+          outline: 'none',
+          boxShadow: 'none'
+        }}
+      >
+        <MoltenMetal
+          color1={
+            theme === 'purple' ? '#581c87' :
+            theme === 'light'  ? '#1e3a8a' :
+            '#4338ca'
+          }
+          color2={
+            theme === 'purple' ? '#9333ea' :
+            theme === 'light'  ? '#0284c7' :
+            '#0284c7'
+          }
+          color3={
+            theme === 'purple' ? '#c084fc' :
+            theme === 'light'  ? '#0ea5e9' :
+            '#38bdf8'
+          }
+          speed={0.25}
+          scale={3.8}
+          detail={3}
+          glow={1.4}
+          coreSize={0.09}
+          swirl={0.8}
+          fold={-0.18}
+          blackPoint={0.06}
+          brightness={isLightMode ? 1.0 : 1.2}
+          colorMode="molten"
+          grain={true}
+          grainIntensity={0.04}
+          mouseInteraction={true}
+          mouseStrength={0.3}
+          opacity={isLightMode ? 0.85 : 0.95}
+          backgroundColor={theme === 'purple' ? '#faf7ff' : '#ffffff'}
+          lightMode={isLightMode}
+        />
+      </div>
+
       {/* Top Navbar */}
       <header className="chatgpt-header">
         <div className="header-left">

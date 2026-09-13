@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from .schemas import (
     NodeModel, EdgeModel, GraphStateModel, WorkflowStepModel,
     ToolExecutionModel, InvestigationResponse, BaselineComparisonModel

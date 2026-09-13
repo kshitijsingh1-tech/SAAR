@@ -8,6 +8,7 @@ import {
   TrendingDown, TrendingUp, AlertTriangle, Crosshair, Clock, Atom
 } from 'lucide-react';
 import { SocialContributorsNav } from './SocialContributorsNav';
+import MoltenMetal from './MoltenMetal';
 
 export function LandingPage({
   onEnterStudio,
@@ -292,8 +293,61 @@ export function LandingPage({
         <div className="cyber-grid" />
       </div>
 
+      {/* Full-screen Ambient MoltenMetal Canvas */}
+      <div
+        className="molten-metal-fullscreen"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 0,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+          background: 'transparent',
+          border: 'none',
+          outline: 'none',
+          boxShadow: 'none'
+        }}
+      >
+        <MoltenMetal
+          color1={
+            theme === 'purple' ? '#581c87' :
+            theme === 'light'  ? '#1e3a8a' :
+            '#4338ca'
+          }
+          color2={
+            theme === 'purple' ? '#9333ea' :
+            theme === 'light'  ? '#0284c7' :
+            '#0284c7'
+          }
+          color3={
+            theme === 'purple' ? '#c084fc' :
+            theme === 'light'  ? '#0ea5e9' :
+            '#38bdf8'
+          }
+          speed={0.25}
+          scale={3.8}
+          detail={3}
+          glow={1.4}
+          coreSize={0.09}
+          swirl={0.8}
+          fold={-0.18}
+          blackPoint={0.06}
+          brightness={isLightMode ? 1.0 : 1.2}
+          colorMode="molten"
+          grain={true}
+          grainIntensity={0.04}
+          mouseInteraction={true}
+          mouseStrength={0.3}
+          opacity={isLightMode ? 0.85 : 0.95}
+          backgroundColor={theme === 'purple' ? '#faf7ff' : '#ffffff'}
+          lightMode={isLightMode}
+        />
+      </div>
+
       {/* 1. Glassmorphic Navigation Header */}
-      <nav className="landing-navbar">
+      <nav className="landing-navbar" style={{ position: 'relative', zIndex: 10 }}>
         <div className="landing-nav-content">
           <div className="landing-brand-group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <img
@@ -374,7 +428,7 @@ export function LandingPage({
       </nav>
 
       {/* 2. Hero Section with BIG Logo & DISCOVER WHAT MATTERS */}
-      <section className="landing-hero-heroic">
+      <section className="landing-hero-heroic" style={{ position: 'relative', zIndex: 2 }}>
         {/* Big Crisp SAAR Logo on Top */}
         <div className="hero-giant-logo-wrapper">
           <img
