@@ -1,23 +1,15 @@
-import React from 'react';
-import {
-  Chart as ChartJS,
-  RadialLinearScale,
-  ArcElement,
-  Tooltip,
-  Legend
-} from 'chart.js';
-import { PolarArea } from 'react-chartjs-2';
+import React, { useState } from 'react';
 import { PieChart, Activity, Sparkles } from 'lucide-react';
 
-// Register Chart.js components required for Polar Area chart
-ChartJS.register(RadialLinearScale, ArcElement, Tooltip, Legend);
-
 /**
- * PerformancePolarArea (Section 29)
- * High-fidelity Chart.js Polar Area chart rendering multi-dimensional performance
- * profiles (Coverage, Speed, Overhead Reach, Shot Variety, Quality, Kinematic Precision).
+ * PerformanceRadar / PerformancePolarArea
+ * Pure, high-fidelity SVG Polar Area chart rendering multi-dimensional performance
+ * profiles (Coverage, Speed, Overhead Reach, Shot Variety, Quality, Kinematic Precision)
+ * with zero external library dependency.
  */
 export function PerformanceRadar({ result }) {
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+
   if (!result) return null;
 
   const quality = result.quality;
@@ -52,118 +44,23 @@ export function PerformanceRadar({ result }) {
     ? Math.round(quality.camera_stability_score * 100)
     : 88;
 
-  const labels = [
-    'Court Coverage',
-    'Movement Speed',
-    'Overhead Extension',
-    'Shot Variety',
-    'Capture Quality',
-    'Camera Stability'
+  const slices = [
+    { label: 'Court Coverage', score: coverageScore, color: '#0284c7', bg: 'rgba(2, 132, 199, 0.70)', bgHover: 'rgba(2, 132, 199, 0.90)' },
+    { label: 'Movement Speed', score: speedScore, color: '#6366f1', bg: 'rgba(99, 102, 241, 0.70)', bgHover: 'rgba(99, 102, 241, 0.90)' },
+    { label: 'Overhead Extension', score: overheadExtensionScore, color: '#10b981', bg: 'rgba(16, 185, 129, 0.70)', bgHover: 'rgba(16, 185, 129, 0.90)' },
+    { label: 'Shot Variety', score: shotVarietyScore, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.70)', bgHover: 'rgba(245, 158, 11, 0.90)' },
+    { label: 'Capture Quality', score: qualityScore, color: '#ec4899', bg: 'rgba(236, 72, 153, 0.70)', bgHover: 'rgba(236, 72, 153, 0.90)' },
+    { label: 'Camera Stability', score: stabilityScore, color: '#14b8a6', bg: 'rgba(20, 184, 166, 0.70)', bgHover: 'rgba(20, 184, 166, 0.90)' }
   ];
 
-  const dataValues = [
-    coverageScore,
-    speedScore,
-    overheadExtensionScore,
-    shotVarietyScore,
-    qualityScore,
-    stabilityScore
-  ];
+  const totalSlices = slices.length;
+  const cx = 150;
+  const cy = 135;
+  const maxR = 100;
+  const angleStep = (2 * Math.PI) / totalSlices;
+  const startAngleOffset = -Math.PI / 2; // Start from top 12 o'clock
 
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        label: 'Performance Score (0-100)',
-        data: dataValues,
-        backgroundColor: [
-          'rgba(2, 132, 199, 0.70)',   // Ocean Sky Blue
-          'rgba(99, 102, 241, 0.70)',  // Indigo
-          'rgba(16, 185, 129, 0.70)',  // Emerald Green
-          'rgba(245, 158, 11, 0.70)',  // Amber / Gold
-          'rgba(236, 72, 153, 0.70)',  // Rose Pink
-          'rgba(20, 184, 166, 0.70)'   // Teal
-        ],
-        borderColor: [
-          '#0284c7',
-          '#6366f1',
-          '#10b981',
-          '#f59e0b',
-          '#ec4899',
-          '#14b8a6'
-        ],
-        borderWidth: 1.5,
-        hoverBackgroundColor: [
-          'rgba(2, 132, 199, 0.90)',
-          'rgba(99, 102, 241, 0.90)',
-          'rgba(16, 185, 129, 0.90)',
-          'rgba(245, 158, 11, 0.90)',
-          'rgba(236, 72, 153, 0.90)',
-          'rgba(20, 184, 166, 0.90)'
-        ]
-      }
-    ]
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: {
-      animateRotate: true,
-      animateScale: true,
-      duration: 800
-    },
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          boxWidth: 10,
-          boxHeight: 10,
-          padding: 10,
-          font: {
-            size: 11,
-            family: "'Inter', sans-serif",
-            weight: '600'
-          },
-          color: '#475569'
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.92)',
-        titleFont: { size: 12, weight: '700' },
-        bodyFont: { size: 12, weight: '600' },
-        padding: 10,
-        cornerRadius: 8,
-        callbacks: {
-          label: (context) => ` Score: ${context.parsed.r}/100`
-        }
-      }
-    },
-    scales: {
-      r: {
-        min: 0,
-        max: 100,
-        ticks: {
-          stepSize: 25,
-          color: '#94a3b8',
-          backdropColor: 'transparent',
-          font: {
-            size: 9,
-            family: 'monospace'
-          }
-        },
-        grid: {
-          color: 'rgba(226, 232, 240, 0.85)'
-        },
-        angleLines: {
-          color: 'rgba(226, 232, 240, 0.85)'
-        },
-        pointLabels: {
-          display: false
-        }
-      }
-    }
-  };
+  const rings = [25, 50, 75, 100];
 
   return (
     <div
@@ -195,12 +92,169 @@ export function PerformanceRadar({ result }) {
         </div>
       </div>
 
-      <div style={{ position: 'relative', width: '100%', height: '270px' }}>
-        <PolarArea data={chartData} options={chartOptions} />
+      <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <svg
+          viewBox="0 0 300 270"
+          style={{ width: '100%', maxWidth: '300px', height: '230px', overflow: 'visible' }}
+        >
+          {/* Concentric Grid Rings */}
+          {rings.map((ring) => {
+            const r = (ring / 100) * maxR;
+            return (
+              <g key={ring}>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={r}
+                  fill="none"
+                  stroke="#e2e8f0"
+                  strokeWidth="1"
+                  strokeDasharray={ring === 100 ? 'none' : '3 3'}
+                />
+                <text
+                  x={cx + 3}
+                  y={cy - r + 9}
+                  fill="#94a3b8"
+                  fontSize="8"
+                  fontFamily="monospace"
+                  fontWeight="600"
+                >
+                  {ring}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Radial Spokes */}
+          {slices.map((_, i) => {
+            const angle = startAngleOffset + i * angleStep;
+            const x2 = cx + maxR * Math.cos(angle);
+            const y2 = cy + maxR * Math.sin(angle);
+            return (
+              <line
+                key={i}
+                x1={cx}
+                y1={cy}
+                x2={x2}
+                y2={y2}
+                stroke="#e2e8f0"
+                strokeWidth="1"
+              />
+            );
+          })}
+
+          {/* Polar Area Wedges */}
+          {slices.map((slice, i) => {
+            const r = (Math.max(8, slice.score) / 100) * maxR;
+            const a1 = startAngleOffset + i * angleStep;
+            const a2 = a1 + angleStep;
+            const x1 = cx + r * Math.cos(a1);
+            const y1 = cy + r * Math.sin(a1);
+            const x2 = cx + r * Math.cos(a2);
+            const y2 = cy + r * Math.sin(a2);
+
+            const isHovered = hoveredIndex === i;
+            const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`;
+
+            return (
+              <path
+                key={i}
+                d={pathData}
+                fill={isHovered ? slice.bgHover : slice.bg}
+                stroke={slice.color}
+                strokeWidth={isHovered ? 2.5 : 1.5}
+                style={{
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  filter: isHovered ? 'drop-shadow(0 4px 10px rgba(0,0,0,0.18))' : 'none'
+                }}
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              />
+            );
+          })}
+
+          {/* Center Pivot Point */}
+          <circle cx={cx} cy={cy} r="3" fill="#64748b" />
+
+          {/* Dynamic Tooltip */}
+          {hoveredIndex !== null && (
+            <g transform={`translate(${cx}, ${cy - maxR - 14})`}>
+              <rect
+                x="-65"
+                y="-18"
+                width="130"
+                height="22"
+                rx="6"
+                fill="rgba(15, 23, 42, 0.94)"
+                stroke="#38bdf8"
+                strokeWidth="1"
+              />
+              <text
+                x="0"
+                y="-3"
+                textAnchor="middle"
+                fill="#ffffff"
+                fontSize="10"
+                fontWeight="700"
+                fontFamily="system-ui, sans-serif"
+              >
+                {slices[hoveredIndex].label}: {slices[hoveredIndex].score}/100
+              </text>
+            </g>
+          )}
+        </svg>
+      </div>
+
+      {/* Legend Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '6px 8px',
+        paddingTop: '6px',
+        borderTop: '1px solid #f1f5f9'
+      }}>
+        {slices.map((s, idx) => {
+          const isHovered = hoveredIndex === idx;
+          return (
+            <div
+              key={idx}
+              onMouseEnter={() => setHoveredIndex(idx)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '3px 6px',
+                borderRadius: '6px',
+                background: isHovered ? '#f1f5f9' : 'transparent',
+                cursor: 'pointer',
+                transition: 'background 0.15s ease'
+              }}
+            >
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '2px',
+                background: s.color,
+                flexShrink: 0
+              }} />
+              <div style={{
+                fontSize: '0.68rem',
+                fontWeight: isHovered ? 700 : 600,
+                color: isHovered ? '#0f172a' : '#475569',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {s.label} ({s.score})
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 export const PerformancePolarArea = PerformanceRadar;
-
