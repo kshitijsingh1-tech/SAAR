@@ -288,6 +288,7 @@ export function ToolCanvasDrawer({
                 onAskQuery={(q) => onSendToChat && onSendToChat(q)}
                 onOpenGlossary={() => onSelectTool('dictionary')}
                 domain={selectedDomain}
+                investigationData={investigationData}
               />
             </div>
 

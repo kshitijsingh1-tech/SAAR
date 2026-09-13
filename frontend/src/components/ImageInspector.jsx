@@ -1,174 +1,79 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Eye, EyeOff, Radio, Upload, Sparkles, Link as LinkIcon,
-  Camera, X, Crosshair, Target, Layers, Droplets,
+  Camera, X, Crosshair, Target, Layers, Activity, Droplets,
   HelpCircle, ExternalLink, Zap, Check, Film, Play, Pause,
-  RotateCcw, AlertCircle, ArrowRight, MessageSquare
+  Sprout, RotateCcw, AlertCircle
 } from 'lucide-react';
 import { VideoTimelineScrubber } from './VideoTimelineScrubber';
+import { PlantCareCard } from './PlantCareCard';
+import { ToddlerPostureCard } from './ToddlerPostureCard';
 
-// Semantic biological & physical color palette for anatomical organs
-const SEMANTIC_ORGAN_COLORS = {
-  petals_blooms: {
-    stroke: '#f43f5e', // Vibrant rose red / coral
-    fill: 'rgba(244, 63, 94, 0.22)',
-    glow: 'rgba(244, 63, 94, 0.45)',
-    text: '#f43f5e',
-    bg: 'rgba(244, 63, 94, 0.1)',
-    border: 'rgba(244, 63, 94, 0.45)'
-  },
-  leaves_foliage: {
-    stroke: '#10b981', // Vibrant emerald green
-    fill: 'rgba(16, 185, 129, 0.2)',
-    glow: 'rgba(16, 185, 129, 0.4)',
-    text: '#10b981',
-    bg: 'rgba(16, 185, 129, 0.1)',
-    border: 'rgba(16, 185, 129, 0.45)'
-  },
-  stems_shoots: {
-    stroke: '#f59e0b', // Vibrant amber
-    fill: 'rgba(245, 158, 11, 0.2)',
-    glow: 'rgba(245, 158, 11, 0.4)',
-    text: '#f59e0b',
-    bg: 'rgba(245, 158, 11, 0.1)',
-    border: 'rgba(245, 158, 11, 0.45)'
-  },
-  root_system: {
-    stroke: '#d97706', // Deep earthy ochre
-    fill: 'rgba(217, 119, 6, 0.2)',
-    glow: 'rgba(217, 119, 6, 0.4)',
-    text: '#d97706',
-    bg: 'rgba(217, 119, 6, 0.1)',
-    border: 'rgba(217, 119, 6, 0.45)'
-  },
-  fruit_cluster: {
-    stroke: '#fb7185', // Rose coral
-    fill: 'rgba(251, 113, 133, 0.2)',
-    glow: 'rgba(251, 113, 133, 0.4)',
-    text: '#fb7185',
-    bg: 'rgba(251, 113, 133, 0.1)',
-    border: 'rgba(251, 113, 133, 0.45)'
-  },
-  telemetry_sensor: {
-    stroke: '#06b6d4', // Cyan probe
-    fill: 'rgba(6, 182, 212, 0.2)',
-    glow: 'rgba(6, 182, 212, 0.4)',
-    text: '#06b6d4',
-    bg: 'rgba(6, 182, 212, 0.1)',
-    border: 'rgba(6, 182, 212, 0.45)'
-  },
-  pathology_site: {
-    stroke: '#ef4444', // Red warning
-    fill: 'rgba(239, 68, 68, 0.22)',
-    glow: 'rgba(239, 68, 68, 0.45)',
-    text: '#ef4444',
-    bg: 'rgba(239, 68, 68, 0.1)',
-    border: 'rgba(239, 68, 68, 0.45)'
-  },
-  general: {
-    stroke: '#0284c7', // Sky blue default
-    fill: 'rgba(2, 132, 199, 0.2)',
-    glow: 'rgba(2, 132, 199, 0.4)',
-    text: '#0284c7',
-    bg: 'rgba(2, 132, 199, 0.1)',
-    border: 'rgba(2, 132, 199, 0.45)'
-  }
-};
-
+// Clean black, white & signature blue palette for visual anchors & bounding boxes
 const ANCHOR_COLORS = [
-  SEMANTIC_ORGAN_COLORS.general,
-  SEMANTIC_ORGAN_COLORS.leaves_foliage,
-  SEMANTIC_ORGAN_COLORS.petals_blooms,
-  SEMANTIC_ORGAN_COLORS.stems_shoots,
-  SEMANTIC_ORGAN_COLORS.telemetry_sensor,
-  SEMANTIC_ORGAN_COLORS.pathology_site
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' },
+  { stroke: '#38bdf8', fill: 'rgba(56, 189, 248, 0.18)', glow: 'rgba(56, 189, 248, 0.35)', text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.4)' }
 ];
 
-// Generic semantic mapping of visual entities to friendly user suggestions and analytical tools
+// Generic semantic mapping of visual entities to analytical tools & queries
 const getDynamicToolMapping = (node) => {
   if (!node) return null;
   const category = String(node.category || '').toLowerCase();
   const label = String(node.label || node.id || '').toLowerCase();
 
-  // 1. Plant Pathology, Chlorosis, Necrosis, Lesions
-  if (category.includes('patholog') || label.includes('chloros') || label.includes('lesion') || label.includes('burn') || label.includes('stain') || label.includes('necros') || label.includes('blight')) {
+  if (category.includes('patholog') || label.includes('chloros') || label.includes('lesion') || label.includes('burn') || label.includes('stain')) {
     return {
-      toolId: 'analytics',
-      toolName: 'Pathology & Foliar Health Analyzer',
-      fieldTopic: 'plant pathology & chlorosis',
-      userSuggestion: 'Want to analyze foliar disease, chlorosis, or tissue discoloration?',
-      actionText: 'Analyze Foliar Health',
-      suggestedQuery: `Analyze the tissue pathology, discoloration patterns, and chlorosis severity for ${node.label || node.id}.`
+      toolId: 'telemetry',
+      toolName: 'Diagnostic Spectral & Pathology Analyzer',
+      actionLabel: 'Analyze Foliar/Tissue Pathology',
+      suggestedQuery: `Analyze the pathology, discoloration patterns, and diagnostic indicators associated with ${node.label || node.id}.`
     };
   }
 
-  // 2. Vegetative Propagation, Cutting, Scion, Rooting, Callus, Aloe Medium
-  if (category.includes('propagation') || category.includes('rhizogen') || label.includes('root') || label.includes('cutting') || label.includes('scion') || label.includes('callus') || label.includes('aloe') || label.includes('bloom') || label.includes('bud')) {
+  if (category.includes('morpholog') || label.includes('fenestrat') || label.includes('apex') || label.includes('shoot') || label.includes('leaf') || label.includes('margin')) {
     return {
-      toolId: 'grounded',
-      toolName: 'Propagation & Rooting Evaluator',
-      fieldTopic: 'vegetative propagation & rooting',
-      userSuggestion: 'Want to evaluate cutting viability and rooting health for this field?',
-      actionText: 'Explore Propagation Analysis',
-      suggestedQuery: `Evaluate the cut geometry, rooting vitality, and propagation viability for ${node.label || node.id}.`
-    };
-  }
-
-  // 3. Leaf Morphology, Fenestrations, Shoot, Foliar Structure
-  if (category.includes('morpholog') || label.includes('fenestrat') || label.includes('apex') || label.includes('shoot') || label.includes('leaf') || label.includes('margin') || label.includes('foliage')) {
-    return {
-      toolId: 'grounded',
-      toolName: 'Morphology & Growth Profiler',
-      fieldTopic: 'plant morphology & growth vigor',
-      userSuggestion: 'Want to examine leaf shape, developmental vigor, and structure?',
-      actionText: 'Inspect Growth Structure',
+      toolId: 'telemetry',
+      toolName: 'Morphological & Phenotyping Profiler',
+      actionLabel: 'Analyze Structural Morphology',
       suggestedQuery: `Examine the anatomical structure and developmental vigor of ${node.label || node.id}.`
     };
   }
 
-  // 4. Civil Infrastructure, Road, Pavement, Cracks, Cavities, Pipes, Drains
-  if (category.includes('infrastruct') || category.includes('structur') || category.includes('obstacle') || label.includes('road') || label.includes('crack') || label.includes('pipe') || label.includes('drain') || label.includes('emitter') || label.includes('asphalt') || label.includes('void')) {
+  if (category.includes('infrastruct') || category.includes('structur') || category.includes('obstacle') || label.includes('road') || label.includes('crack') || label.includes('pipe') || label.includes('drain') || label.includes('emitter')) {
     return {
-      toolId: 'analytics',
-      toolName: 'Structural Integrity & Void Analyzer',
-      fieldTopic: 'structural integrity & pavement wear',
-      userSuggestion: 'Want to assess pavement cracking, void risks, or drainage wear?',
-      actionText: 'Inspect Structural Data',
-      suggestedQuery: `Assess the failure risk, load fatigue, and void progression affecting ${node.label || node.id}.`
+      toolId: 'telemetry',
+      toolName: 'Structural Integrity & Fluid Dynamics Analyzer',
+      actionLabel: 'Inspect Structural Entity',
+      suggestedQuery: `Assess the failure risk, load fatigue, and environmental exposure affecting ${node.label || node.id}.`
     };
   }
 
-  // 5. Biomechanics, Pediatric Gait, Posture, Lordosis, Bowing, Kinematics
   if (category.includes('biomechan') || category.includes('orthoped') || category.includes('postur') || category.includes('motor') || label.includes('lordosis') || label.includes('gait') || label.includes('stance') || label.includes('bowing')) {
     return {
-      toolId: 'gait',
-      toolName: 'Gait & Postural Alignment Screener',
-      fieldTopic: 'gait kinematics & motor posture',
-      userSuggestion: 'Want to screen toddler walking alignment and joint kinematics?',
-      actionText: 'Open Gait Screening',
+      toolId: 'telemetry',
+      toolName: 'Biomechanical & Kinematic Alignment Evaluator',
+      actionLabel: 'Evaluate Postural Alignment',
       suggestedQuery: `Evaluate the biomechanical angles, weight distribution, and developmental alignment of ${node.label || node.id}.`
     };
   }
 
-  // 6. Environmental Telemetry, Sensors, Probes, Meters, Moisture, pH
-  if (category.includes('measure') || category.includes('telemetry') || label.includes('sensor') || label.includes('probe') || label.includes('meter') || label.includes('moisture') || label.includes('ph')) {
+  if (category.includes('measure') || category.includes('telemetry') || label.includes('sensor') || label.includes('probe') || label.includes('meter')) {
     return {
-      toolId: 'analytics',
-      toolName: 'Environmental Sensor Profiler',
-      fieldTopic: 'sensor readings & environmental trends',
-      userSuggestion: 'Want to examine environmental sensor readings and trend thresholds?',
-      actionText: 'View Sensor Analytics',
+      toolId: 'telemetry',
+      toolName: 'Telemetry & Environmental Sensor Profiler',
+      actionLabel: 'Analyze Sensor Telemetry',
       suggestedQuery: `Evaluate the sensor telemetry, threshold exceedances, and environmental trends for ${node.label || node.id}.`
     };
   }
 
-  // 7. General / Unspecified Visual Entity
   return {
-    toolId: 'grounded',
-    toolName: 'Evidence & Causal Graph Inspector',
-    fieldTopic: 'evidence graph & relationships',
-    userSuggestion: 'Want to analyze this region in the evidence graph?',
-    actionText: 'Inspect in Evidence Graph',
+    toolId: 'telemetry',
+    toolName: 'Diagnostic Simulation Tool',
+    actionLabel: 'Inspect Regional Evidence',
     suggestedQuery: `Analyze the scientific implications and causal factors associated with ${node.label || node.id}.`
   };
 };
@@ -192,17 +97,16 @@ export const ImageInspector = ({
   onOpenTool,
   onAskQuery,
   onOpenGlossary,
-  domain = 'agriculture',
-  investigationData = null
+  domain,
+  investigationData
 }) => {
   const [urlInput, setUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [visibleBoxIds, setVisibleBoxIds] = useState(() => new Set());
   const [hoveredBoxId, setHoveredBoxId] = useState(null);
-  const [annotationMode, setAnnotationMode] = useState('callouts'); // 'callouts' (Diagram with Leader Lines) | 'boxes' (Traditional BBoxes)
+  const [activeHudNode, setActiveHudNode] = useState(null);
+  const [activeSpecialistTab, setActiveSpecialistTab] = useState('anchors'); // 'anchors' | 'plantCare' | 'toddlerPosture'
   const fileInputRef = useRef(null);
-  const imageContainerRef = useRef(null);
-  const [contextMenu, setContextMenu] = useState(null); // { x: number, y: number, node: object | null }
 
   // ------------------------------------------------------------------
   // Multimodal Video Playback & Timeline State (Workstream 4)
@@ -215,14 +119,99 @@ export const ImageInspector = ({
   const [customVideoUrl, setCustomVideoUrl] = useState(null);
   const videoRef = useRef(null);
 
-  // Dynamic temporal keyframe streams strictly from backend video perception payload
-  const temporalKeyframes = useMemo(() => {
-    if (Array.isArray(preset?.keyframes) && preset.keyframes.length > 0) {
-      return preset.keyframes;
-    }
-    return [];
-  }, [preset]);
+  const isPediatrics = presetId?.startsWith('toddler') || preset?.domain === 'pediatrics' || domain === 'pediatrics';
+  const isAgriculture = presetId?.startsWith('agri') || preset?.domain === 'agriculture' || presetId === 'session-3' || domain === 'agriculture';
 
+  // Pre-configured temporal keyframe streams for video analysis demonstrations
+  const temporalKeyframes = useMemo(() => {
+    if (isPediatrics) {
+      return [
+        {
+          timestamp: 0.0,
+          label: 'Initial Stance & Plumb Axis',
+          category: 'biomechanics',
+          confidence: 0.96,
+          nodes: [
+            { id: 'toddler_spine', label: 'Spinal Lumbar Curve (~38.5°)', bbox: [320, 290, 610, 520], confidence: 0.94, category: 'biomechanics', properties: { lordosis_deg: 38.5, status: 'physiologic' } },
+            { id: 'toddler_stance', label: 'Base of Support (22.4 cm)', bbox: [810, 260, 970, 740], confidence: 0.92, category: 'motor', properties: { stance: 'broad', balance: 'compensated' } }
+          ]
+        },
+        {
+          timestamp: 3.2,
+          label: 'Gait Initiation & Stance Phase',
+          category: 'gait',
+          confidence: 0.94,
+          nodes: [
+            { id: 'knee_bowing', label: 'Symmetrical Genu Varum (2.2 cm)', bbox: [600, 310, 860, 670], confidence: 0.93, category: 'orthopedic', properties: { symmetry: 'high', gap_cm: 2.2 } },
+            { id: 'flatfoot_pad', label: 'Flexible Plantar Fat Pad', bbox: [830, 360, 980, 710], confidence: 0.89, category: 'motor', properties: { arch: 'physiologic fat pad' } }
+          ]
+        },
+        {
+          timestamp: 6.8,
+          label: 'High-Guard Upper Limb Balance',
+          category: 'motor',
+          confidence: 0.95,
+          nodes: [
+            { id: 'toddler_arms', label: 'Bilateral High-Guard Balance', bbox: [240, 220, 490, 770], confidence: 0.95, category: 'motor', properties: { guard_posture: 'high-guard', stability: 'seeking' } },
+            { id: 'anterior_pelvis', label: 'Anterior Pelvic Tilt (~16°)', bbox: [460, 320, 670, 630], confidence: 0.91, category: 'biomechanics', properties: { tilt_deg: 16.2 } }
+          ]
+        },
+        {
+          timestamp: 10.2,
+          label: 'Weight Transfer & Terminal Stance',
+          category: 'biomechanics',
+          confidence: 0.92,
+          nodes: [
+            { id: 'dynamic_cop', label: 'Dynamic Center of Pressure', bbox: [770, 300, 960, 690], confidence: 0.90, category: 'biomechanics', properties: { trajectory: 'anterior-medial' } },
+            { id: 'toddler_spine', label: 'Spinal Alignment (Compensated)', bbox: [330, 290, 610, 520], confidence: 0.93, category: 'biomechanics', properties: { plumb_shift: '5.8 mm' } }
+          ]
+        }
+      ];
+    }
+
+    // Default agriculture foliar chlorosis and fenestration temporal keyframes
+    return [
+      {
+        timestamp: 0.0,
+        label: 'Canopy Overview & Apical Shoot',
+        category: 'morphology',
+        confidence: 0.97,
+        nodes: [
+          { id: 'apical_leaf', label: 'Emergent Juvenile Apical Shoot', bbox: [120, 350, 490, 690], confidence: 0.96, category: 'vegetative_vigor', properties: { turgor: 'high', meristem: 'active expansion' } },
+          { id: 'leaf_fenestrations_01', label: 'Fenestrated Leaf Margin (PCD)', bbox: [260, 150, 720, 530], confidence: 0.97, category: 'morphology', properties: { mechanism: 'PCD apoptosis', pest_damage: 'None' } }
+        ]
+      },
+      {
+        timestamp: 3.5,
+        label: 'Mid-Canopy Chlorosis Diagnostic',
+        category: 'pathology',
+        confidence: 0.95,
+        nodes: [
+          { id: 'chlorotic_zone', label: 'Interveinal Foliar Chlorosis', bbox: [210, 250, 630, 750], confidence: 0.96, category: 'pathology', properties: { pattern: 'interveinal yellowing', severity: 'moderate' } },
+          { id: 'root_zone_emitter', label: 'Drip Emitter (Visible Saturation)', bbox: [700, 490, 920, 840], confidence: 0.94, category: 'infrastructure', properties: { type: 'drip emitter', status: 'soil visibly saturated' } }
+        ]
+      },
+      {
+        timestamp: 7.2,
+        label: 'Petiole Turgor & Abaxial Stomata',
+        category: 'physiology',
+        confidence: 0.93,
+        nodes: [
+          { id: 'petiole_turgor', label: 'Petiole Angle Assessment', bbox: [390, 360, 760, 630], confidence: 0.93, category: 'physiology', properties: { posture: 'upright', turgor: 'adequate' } },
+          { id: 'fruit_01', label: 'Apical Fruit Truss', bbox: [430, 100, 640, 340], confidence: 0.94, category: 'developmental', properties: { color: 'green/immature', cluster: 'apical' } }
+        ]
+      },
+      {
+        timestamp: 10.5,
+        label: 'Root Substrate Aeration Diagnostic',
+        category: 'substrate',
+        confidence: 0.94,
+        nodes: [
+          { id: 'soil_drainage', label: 'Bark-Perlite Substrate', bbox: [580, 320, 970, 810], confidence: 0.92, category: 'substrate', properties: { texture: 'coarse chunky', drainage: 'visible perlite' } }
+        ]
+      }
+    ];
+  }, [isPediatrics]);
 
   // Compute active keyframe based on videoCurrentTime
   const activeKeyframe = useMemo(() => {
@@ -294,8 +283,6 @@ export const ImageInspector = ({
     customImageData ||
     customImageUrl ||
     preset?.image ||
-    investigationData?.imageData ||
-    investigationData?.image_url ||
     null;
 
   // Unified upload dispatcher (supports both photos and video clips)
@@ -392,351 +379,6 @@ export const ImageInspector = ({
       .filter(Boolean);
   }, [nodes, mediaMode, activeKeyframe]);
 
-  // Derive textbook anatomical callouts leading out of the image into the margins (matching botanical anatomical diagrams)
-  const anatomicalCallouts = useMemo(() => {
-    if (!groundedNodes || groundedNodes.length === 0) return [];
-
-    let candidates = [];
-
-    // If 8 or fewer grounded features, treat each distinct object as its own individual callout (like textbook diagrams)
-    if (groundedNodes.length <= 8) {
-      candidates = groundedNodes.map((node, idx) => {
-        let focalY = Math.round((node.bbox[0] + node.bbox[2]) / 2);
-        let focalX = Math.round((node.bbox[1] + node.bbox[3]) / 2);
-        if (Array.isArray(node.properties?.focal_point) && node.properties.focal_point.length === 2) {
-          focalX = node.properties.focal_point[0];
-          focalY = node.properties.focal_point[1];
-        }
-
-        const organ = (node.properties?.organ || '').toLowerCase();
-        const cat = (node.category || '').toLowerCase();
-        const labelLower = (node.label || '').toLowerCase();
-
-        // Semantic color
-        let color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
-        if (organ.includes('bloom') || organ.includes('flower') || labelLower.includes('bloom') || labelLower.includes('rose')) {
-          color = SEMANTIC_ORGAN_COLORS.petals_blooms || color;
-        } else if (organ.includes('leaf') || labelLower.includes('leaf') || labelLower.includes('foliage') || labelLower.includes('canopy')) {
-          color = SEMANTIC_ORGAN_COLORS.leaves_foliage || color;
-        } else if (organ.includes('stem') || labelLower.includes('stem') || labelLower.includes('shoot') || labelLower.includes('branch')) {
-          color = SEMANTIC_ORGAN_COLORS.stems_shoots || color;
-        } else if (organ.includes('root') || labelLower.includes('root') || labelLower.includes('substrate') || labelLower.includes('pot') || labelLower.includes('soil')) {
-          color = SEMANTIC_ORGAN_COLORS.root_system || color;
-        } else if (cat.includes('measurement') || labelLower.includes('sensor')) {
-          color = SEMANTIC_ORGAN_COLORS.telemetry_sensor || color;
-        } else if (cat.includes('pathology') || labelLower.includes('lesion')) {
-          color = SEMANTIC_ORGAN_COLORS.pathology_site || color;
-        }
-
-        const naturalLeft = focalX < 500;
-        const clearance = naturalLeft ? focalX : 1000 - focalX;
-
-        // Parse clean title and subtitle (strip noisy parentheses or count strings)
-        const rawLabel = node.label || 'Anatomical Feature';
-        let mainTitle = rawLabel;
-        let subtitle = node.properties?.phenological_stage || node.properties?.condition || node.category || 'morphology';
-
-        const parenMatch = rawLabel.match(/^([^()]+)\s*\(([^)]+)\)$/);
-        if (parenMatch) {
-          mainTitle = parenMatch[1].trim();
-          subtitle = parenMatch[2].split(' - ')[0].trim();
-        } else if (rawLabel.includes(' & ')) {
-          const parts = rawLabel.split(' & ');
-          mainTitle = parts[0].trim();
-          subtitle = parts[1].trim();
-        }
-
-        // Determine anatomical system (Shoot System vs Root System) for grouping brackets
-        let systemName = 'Shoot System';
-        if (organ.includes('root') || labelLower.includes('root') || labelLower.includes('substrate') || labelLower.includes('soil') || labelLower.includes('pot')) {
-          systemName = 'Root System';
-        } else if (cat.includes('measurement') || labelLower.includes('sensor')) {
-          systemName = 'Sensor Network';
-        } else if (cat.includes('pathology') || labelLower.includes('lesion')) {
-          systemName = 'Pathology Sites';
-        }
-
-        return {
-          id: node.id,
-          key: node.id,
-          title: mainTitle,
-          subtitle,
-          systemName,
-          node,
-          primaryNode: node,
-          nodes: [node],
-          count: Number(node.properties?.entity_count) || 1,
-          anchor: [focalX, focalY],
-          secondaryAnchors: [],
-          naturalLeft,
-          clearance,
-          color,
-          status: subtitle
-        };
-      });
-    } else {
-      // For dense detections (more than 8 nodes), cluster by anatomical organ
-      const organBuckets = {};
-      groundedNodes.forEach((node, idx) => {
-        const labelLower = (node.label || '').toLowerCase();
-        const catLower = (node.category || '').toLowerCase();
-        const organProp = (node.properties?.organ || '').toLowerCase();
-
-        let groupKey = 'general';
-        let defaultTitle = node.label || 'Anatomical Feature';
-        let systemName = 'Shoot System';
-
-        if (
-          organProp.includes('flower') || organProp.includes('bloom') ||
-          labelLower.includes('bloom') || labelLower.includes('rose') ||
-          labelLower.includes('petal') || labelLower.includes('corolla')
-        ) {
-          groupKey = 'petals_blooms';
-          defaultTitle = 'Petals & Blooms';
-          systemName = 'Shoot System';
-        } else if (
-          organProp.includes('leaf') || labelLower.includes('leaf') ||
-          labelLower.includes('leaves') || labelLower.includes('foliage') ||
-          labelLower.includes('chloros') || labelLower.includes('canopy')
-        ) {
-          groupKey = 'leaves_foliage';
-          defaultTitle = 'Leaves & Foliage';
-          systemName = 'Shoot System';
-        } else if (
-          organProp.includes('stem') || labelLower.includes('stem') ||
-          labelLower.includes('shoot') || labelLower.includes('cutting') ||
-          labelLower.includes('stalk') || labelLower.includes('branch')
-        ) {
-          groupKey = 'stems_shoots';
-          defaultTitle = 'Stems & Shoots';
-          systemName = 'Shoot System';
-        } else if (
-          organProp.includes('root') || labelLower.includes('root') ||
-          labelLower.includes('rhizome') || labelLower.includes('callus') ||
-          labelLower.includes('substrate') || labelLower.includes('soil')
-        ) {
-          groupKey = 'root_system';
-          defaultTitle = 'Root System';
-          systemName = 'Root System';
-        } else if (
-          organProp.includes('fruit') || labelLower.includes('fruit') ||
-          labelLower.includes('berry') || labelLower.includes('tomato')
-        ) {
-          groupKey = 'fruit_cluster';
-          defaultTitle = 'Fruit Clusters';
-          systemName = 'Shoot System';
-        } else if (
-          labelLower.includes('sensor') || labelLower.includes('probe') ||
-          catLower.includes('measurement')
-        ) {
-          groupKey = 'telemetry_sensor';
-          defaultTitle = 'Environmental Sensor';
-          systemName = 'Sensor Network';
-        } else if (
-          catLower.includes('pathology') || labelLower.includes('lesion') ||
-          labelLower.includes('necros') || labelLower.includes('blight')
-        ) {
-          groupKey = 'pathology_site';
-          defaultTitle = 'Pathology Site';
-          systemName = 'Pathology Sites';
-        } else {
-          groupKey = `organ_${idx}`;
-          defaultTitle = node.label;
-        }
-
-        if (!organBuckets[groupKey]) {
-          const organColor = SEMANTIC_ORGAN_COLORS[groupKey] || ANCHOR_COLORS[Object.keys(organBuckets).length % ANCHOR_COLORS.length];
-          organBuckets[groupKey] = {
-            key: groupKey,
-            title: defaultTitle,
-            systemName,
-            nodes: [],
-            color: organColor
-          };
-        }
-        organBuckets[groupKey].nodes.push(node);
-      });
-
-      Object.values(organBuckets).forEach((group) => {
-        let primaryNode = group.nodes[0];
-        let maxScore = -1;
-        group.nodes.forEach((n) => {
-          const w = Math.abs(n.bbox[3] - n.bbox[1]);
-          const h = Math.abs(n.bbox[2] - n.bbox[0]);
-          const area = w * h;
-          const conf = Number(n.confidence) || 0.9;
-          const isTooLarge = w > 480 || h > 480;
-          const isTiny = w < 30 || h < 30;
-          let score = conf * 100;
-          if (isTooLarge) score *= 0.05;
-          else if (isTiny) score *= 0.2;
-          else score *= Math.min(Math.sqrt(area) / 180, 1.4);
-          if (score > maxScore) {
-            maxScore = score;
-            primaryNode = n;
-          }
-        });
-
-        let focalY = Math.round((primaryNode.bbox[0] + primaryNode.bbox[2]) / 2);
-        let focalX = Math.round((primaryNode.bbox[1] + primaryNode.bbox[3]) / 2);
-        if (Array.isArray(primaryNode.properties?.focal_point) && primaryNode.properties.focal_point.length === 2) {
-          focalX = primaryNode.properties.focal_point[0];
-          focalY = primaryNode.properties.focal_point[1];
-        }
-
-        const naturalLeft = focalX < 500;
-        const clearance = naturalLeft ? focalX : 1000 - focalX;
-
-        candidates.push({
-          id: group.key,
-          key: group.key,
-          title: group.title,
-          subtitle: primaryNode.properties?.condition || primaryNode.category || 'morphology',
-          systemName: group.systemName,
-          primaryNode,
-          node: primaryNode,
-          nodes: group.nodes,
-          count: group.nodes.length,
-          anchor: [focalX, focalY],
-          secondaryAnchors: group.nodes.filter(n => n.id !== primaryNode.id).map(n => [
-            Math.round((n.bbox[1] + n.bbox[3]) / 2),
-            Math.round((n.bbox[0] + n.bbox[2]) / 2)
-          ]),
-          naturalLeft,
-          clearance,
-          color: group.color,
-          status: primaryNode.properties?.condition || primaryNode.category || 'morphology'
-        });
-      });
-    }
-
-    // Distribute callouts across left and right margins to balance layout and prevent clutter
-    const leftCallouts = [];
-    const rightCallouts = [];
-
-    // Sort candidates vertically from top to bottom
-    candidates.sort((a, b) => a.anchor[1] - b.anchor[1]);
-
-    if (candidates.length <= 4) {
-      // Natural side distribution for small sets
-      candidates.forEach((c) => {
-        if (c.naturalLeft) leftCallouts.push(c);
-        else rightCallouts.push(c);
-      });
-      // If all ended up on one side, move the one with deepest center to the opposite side
-      if (leftCallouts.length === 0 && rightCallouts.length > 1) {
-        leftCallouts.push(rightCallouts.shift());
-      } else if (rightCallouts.length === 0 && leftCallouts.length > 1) {
-        rightCallouts.push(leftCallouts.pop());
-      }
-    } else {
-      // Balanced distribution: alternate based on natural side with a max of 4 per side
-      candidates.forEach((c) => {
-        if (c.naturalLeft && leftCallouts.length < 4) {
-          leftCallouts.push(c);
-        } else if (!c.naturalLeft && rightCallouts.length < 4) {
-          rightCallouts.push(c);
-        } else if (leftCallouts.length < 4) {
-          leftCallouts.push(c);
-        } else if (rightCallouts.length < 4) {
-          rightCallouts.push(c);
-        }
-      });
-    }
-
-    // Leader line geometry routing to OUTSIDE margins (like a botanical textbook diagram):
-    // Left margin target: x = 0 (exact left border of specimen image)
-    // Right margin target: x = 1000 (exact right border of specimen image)
-    const layoutSide = (items, isLeft) => {
-      if (items.length === 0) return [];
-      items.sort((a, b) => a.anchor[1] - b.anchor[1]);
-
-      const minGap = Math.max(12, Math.floor(76 / Math.max(1, items.length)));
-
-      let centers = items.map((it) => Math.max(10, Math.min(90, it.anchor[1] / 10)));
-
-      // Push overlapping labels down
-      for (let i = 1; i < centers.length; i++) {
-        if (centers[i] - centers[i - 1] < minGap) {
-          centers[i] = centers[i - 1] + minGap;
-        }
-      }
-      // If bottom-most label exceeds safe boundary, push back up
-      if (centers[centers.length - 1] > 90) {
-        centers[centers.length - 1] = 90;
-        for (let i = centers.length - 2; i >= 0; i--) {
-          if (centers[i + 1] - centers[i] < minGap) {
-            centers[i] = Math.max(10, centers[i + 1] - minGap);
-          }
-        }
-      }
-
-      return items.map((item, i) => {
-        const cardCenterY_pct = centers[i];
-        const cardCenterY_1000 = Math.round(cardCenterY_pct * 10);
-
-        // Leader line exits the image frame at the border into the margin connector:
-        const targetX_1000 = isLeft ? 0 : 1000;
-        const targetY_1000 = cardCenterY_1000;
-
-        // Clean dogleg horizontal elbow geometry:
-        // Transition to horizontal line before reaching the image boundary
-        const anchorX = item.anchor[0];
-        let elbowX_1000;
-        if (isLeft) {
-          elbowX_1000 = Math.min(anchorX - 25, Math.max(40, anchorX * 0.45));
-        } else {
-          elbowX_1000 = Math.max(anchorX + 25, Math.min(960, anchorX + (1000 - anchorX) * 0.55));
-        }
-        const elbowY_1000 = targetY_1000;
-
-        return {
-          ...item,
-          isLeft,
-          id: `callout_${item.key || item.id}`,
-          cardCenterY_pct,
-          lineTarget: [targetX_1000, targetY_1000],
-          elbowPoint: [elbowX_1000, elbowY_1000]
-        };
-      });
-    };
-
-    const positionedLeft = layoutSide(leftCallouts, true);
-    const positionedRight = layoutSide(rightCallouts, false);
-
-    return [...positionedLeft, ...positionedRight];
-  }, [groundedNodes]);
-
-  // Derive vertical system grouping brackets for left margin callouts (matching Image 2's Shoot system / Root system brackets)
-  const leftSystemBrackets = useMemo(() => {
-    const leftItems = anatomicalCallouts.filter((c) => c.isLeft);
-    if (leftItems.length < 2) return [];
-
-    const groups = {};
-    leftItems.forEach((it) => {
-      const sys = it.systemName || 'Shoot System';
-      if (!groups[sys]) groups[sys] = [];
-      groups[sys].push(it);
-    });
-
-    const brackets = [];
-    Object.entries(groups).forEach(([sysName, items]) => {
-      if (items.length >= 2) {
-        const topPct = Math.min(...items.map((it) => it.cardCenterY_pct));
-        const bottomPct = Math.max(...items.map((it) => it.cardCenterY_pct));
-        brackets.push({
-          systemName: sysName,
-          topPct: Math.max(5, topPct - 3),
-          bottomPct: Math.min(95, bottomPct + 3),
-          color: items[0].color?.stroke || 'var(--primary)'
-        });
-      }
-    });
-    return brackets;
-  }, [anatomicalCallouts]);
-
-  const effectiveDomain = String(domain || preset?.domain || (presetId && presetId.startsWith('agri') ? 'agriculture' : (presetId && presetId.startsWith('pediat') ? 'pediatrics' : '')) || '').toLowerCase();
-
   // Synchronize visibleBoxIds when groundedNodes change (default: reveal all grounded anchors)
   useEffect(() => {
     if (groundedNodes && groundedNodes.length > 0) {
@@ -761,6 +403,7 @@ export const ImageInspector = ({
           next.add(match.id);
           return next;
         });
+        setActiveHudNode(match);
       }
     }
   }, [selectedNodeId, groundedNodes]);
@@ -784,48 +427,6 @@ export const ImageInspector = ({
   const hideAllBoxes = () => {
     setVisibleBoxIds(new Set());
   };
-
-  // Handle right-click on image canvas or entity to trigger "Ask SAAR" & friendly tool suggestions
-  const handleCanvasContextMenu = (e, node = null) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    let targetNode = node;
-    if (!targetNode && imageContainerRef.current && groundedNodes && groundedNodes.length > 0) {
-      const rect = imageContainerRef.current.getBoundingClientRect();
-      const rawX = e.clientX - rect.left;
-      const rawY = e.clientY - rect.top;
-      const scaleX = 1000 / Math.max(1, rect.width);
-      const scaleY = 1000 / Math.max(1, rect.height);
-      const svgX = rawX * scaleX;
-      const svgY = rawY * scaleY;
-      targetNode = groundedNodes.find((n) => {
-        if (!n.bbox || n.bbox.length !== 4) return false;
-        const [ymin, xmin, ymax, xmax] = n.bbox;
-        return svgX >= xmin && svgX <= xmax && svgY >= ymin && svgY <= ymax;
-      }) || null;
-    }
-
-    const x = Math.min(Math.max(10, e.clientX), (typeof window !== 'undefined' ? window.innerWidth : 1000) - 270);
-    const y = Math.min(Math.max(10, e.clientY), (typeof window !== 'undefined' ? window.innerHeight : 800) - 180);
-
-    setContextMenu({ x, y, node: targetNode });
-  };
-
-  // Close context menu on outside click or window scroll
-  useEffect(() => {
-    const handleCloseMenu = (e) => {
-      if (contextMenu && !e.target.closest('.image-canvas-context-menu')) {
-        setContextMenu(null);
-      }
-    };
-    window.addEventListener('click', handleCloseMenu);
-    window.addEventListener('scroll', handleCloseMenu, true);
-    return () => {
-      window.removeEventListener('click', handleCloseMenu);
-      window.removeEventListener('scroll', handleCloseMenu, true);
-    };
-  }, [contextMenu]);
 
   return (
     <div
@@ -943,90 +544,33 @@ export const ImageInspector = ({
             <span>URL</span>
           </button>
 
-          {/* Annotation Mode Switcher: Callout Diagram vs Bounding Boxes */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'var(--bg-dark)',
-            borderRadius: '6px',
-            padding: '2px',
-            border: '1px solid var(--border-color)'
-          }}>
-            <button
-              type="button"
-              onClick={() => setAnnotationMode('callouts')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '0.22rem 0.5rem',
-                borderRadius: '4px',
-                border: 'none',
-                background: annotationMode === 'callouts' ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
-                color: annotationMode === 'callouts' ? 'var(--primary)' : 'var(--text-muted)',
-                fontWeight: annotationMode === 'callouts' ? 700 : 500,
-                fontSize: '0.68rem',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              title="Botanical diagram with leader lines & consolidated counts (like textbook diagrams)"
-            >
-              <Sparkles size={11} />
-              <span>Callout Diagram</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setAnnotationMode('boxes')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '0.22rem 0.5rem',
-                borderRadius: '4px',
-                border: 'none',
-                background: annotationMode === 'boxes' ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
-                color: annotationMode === 'boxes' ? 'var(--primary)' : 'var(--text-muted)',
-                fontWeight: annotationMode === 'boxes' ? 700 : 500,
-                fontSize: '0.68rem',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              title="Traditional bounding box overlays"
-            >
-              <Crosshair size={11} />
-              <span>Boxes</span>
-            </button>
-          </div>
-
-          {/* Bounding Box Master Toggle (visible in boxes mode) */}
-          {annotationMode === 'boxes' && (
-            <button
-              onClick={() => {
-                if (visibleBoxIds.size > 0) {
-                  hideAllBoxes();
-                } else {
-                  showAllBoxes();
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '0.25rem 0.55rem',
-                borderRadius: '6px',
-                background: visibleBoxIds.size > 0 ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-dark)',
-                border: visibleBoxIds.size > 0 ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-color)',
-                fontSize: '0.72rem',
-                color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                fontWeight: 600
-              }}
-              title={visibleBoxIds.size > 0 ? 'Hide all bounding boxes' : 'Show all bounding boxes'}
-            >
-              {visibleBoxIds.size > 0 ? <Eye size={12} /> : <EyeOff size={12} />}
-              <span>{visibleBoxIds.size > 0 ? `${visibleBoxIds.size} Visible` : 'All Hidden'}</span>
-            </button>
-          )}
+          {/* Bounding Box Master Toggle */}
+          <button
+            onClick={() => {
+              if (visibleBoxIds.size > 0) {
+                hideAllBoxes();
+              } else {
+                showAllBoxes();
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '0.25rem 0.55rem',
+              borderRadius: '6px',
+              background: visibleBoxIds.size > 0 ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-dark)',
+              border: visibleBoxIds.size > 0 ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--border-color)',
+              fontSize: '0.72rem',
+              color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+            title={visibleBoxIds.size > 0 ? 'Hide all bounding boxes' : 'Show all bounding boxes'}
+          >
+            {visibleBoxIds.size > 0 ? <Eye size={12} /> : <EyeOff size={12} />}
+            <span>{visibleBoxIds.size > 0 ? `${visibleBoxIds.size} Visible` : 'All Hidden'}</span>
+          </button>
 
           {onCloseCamera && (
             <button onClick={onCloseCamera} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}>
@@ -1061,763 +605,231 @@ export const ImageInspector = ({
       )}
 
       {/* 2. Visual Evidence Container (Photo or Video Player) */}
-      <div
-        ref={imageContainerRef}
-        onContextMenu={(e) => handleCanvasContextMenu(e, null)}
-        style={{
-          position: 'relative',
-          width: '100%',
-          minHeight: '260px',
-          borderRadius: '10px',
-          border: '1px solid var(--border-color)',
-          background: 'var(--bg-card)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: annotationMode === 'callouts' ? '24px 260px' : '10px',
-          boxShadow: '0 2px 10px var(--border-glow)',
-          overflow: 'visible',
-          boxSizing: 'border-box'
-        }}>
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        minHeight: '260px',
+        maxHeight: '440px',
+        aspectRatio: '16 / 10',
+        borderRadius: '10px',
+        overflow: 'hidden',
+        border: '1px solid var(--border-color)',
+        background: '#090d16',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+      }}>
         {/* Media Rendering: Video or Image */}
-        {displayImage || customVideoUrl ? (
-          <div
-            style={{
-              position: 'relative',
-              display: 'inline-block',
-              maxWidth: '100%',
-              lineHeight: 0,
-              borderRadius: '8px',
-              overflow: 'visible',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)'
-            }}
-          >
-            {mediaMode === 'video' ? (
-              customVideoUrl ? (
-                <video
-                  ref={videoRef}
-                  src={customVideoUrl}
-                  onTimeUpdate={handleVideoTimeUpdate}
-                  playsInline
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '480px',
-                    width: 'auto',
-                    height: 'auto',
-                    display: 'block',
-                    borderRadius: '8px'
-                  }}
-                />
-              ) : (
-                <div style={{ position: 'relative', maxWidth: '100%', lineHeight: 0 }}>
-                  <img
-                    src={displayImage}
-                    alt="Temporal Video Keyframe"
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '480px',
-                      width: 'auto',
-                      height: 'auto',
-                      display: 'block',
-                      borderRadius: '8px',
-                      filter: isVideoPlaying ? 'brightness(1.05)' : 'brightness(0.95)',
-                      transition: 'filter 0.3s ease'
-                    }}
-                  />
-                  {/* Scanline / Live Video HUD Overlay */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: 'rgba(0, 0, 0, 0.7)',
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '4px',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.66rem',
-                      color: '#38bdf8',
-                      border: '1px solid rgba(56, 189, 248, 0.3)'
-                    }}
-                  >
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isVideoPlaying ? '#38bdf8' : 'var(--text-muted)' }} />
-                    <span>{isVideoPlaying ? 'PLAYING' : 'PAUSED'}</span>
-                    <span>•</span>
-                    <span>{videoCurrentTime.toFixed(1)}s / {videoDuration.toFixed(1)}s</span>
-                  </div>
-                </div>
-              )
-            ) : (
+        {mediaMode === 'video' ? (
+          customVideoUrl ? (
+            <video
+              ref={videoRef}
+              src={customVideoUrl}
+              onTimeUpdate={handleVideoTimeUpdate}
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : (
+            // Animated simulated video canvas using active frame backdrop
+            <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
               <img
                 src={displayImage}
-                alt="Visual Evidence"
-                onError={(e) => {
-                  if (!e.target.src.includes('monstera_sample.png')) {
-                    e.target.src = '/monstera_sample.png';
-                  }
-                }}
+                alt="Temporal Video Keyframe"
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: '480px',
-                  width: 'auto',
-                  height: 'auto',
-                  display: 'block',
-                  borderRadius: '8px'
-                }}
-              />
-            )}
-
-            {/* SVG Annotations Overlay: strictly mapped to 100% of the image pixels */}
-            {groundedNodes.length > 0 && (
-              <svg
-                viewBox="0 0 1000 1000"
-                preserveAspectRatio="none"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
                   width: '100%',
                   height: '100%',
-                  overflow: 'visible',
-                  pointerEvents: 'none',
-                  zIndex: 5
+                  objectFit: 'contain',
+                  filter: isVideoPlaying ? 'brightness(1.05)' : 'brightness(0.95)',
+                  transition: 'filter 0.3s ease'
                 }}
-              >
-                <defs>
-                  <filter id="box-glow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="5" result="blur" />
-                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                  </filter>
-                  <filter id="leader-shadow" x="-30%" y="-30%" width="160%" height="160%">
-                    <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="rgba(0, 0, 0, 0.55)" />
-                  </filter>
-                </defs>
-
-                {annotationMode === 'callouts' ? (
-                  // 1. Anatomical Leader Lines & Precision Reticles
-                  anatomicalCallouts.map((callout) => {
-                    const isSelected = selectedNodeId && callout.nodes.some((n) => n.id === selectedNodeId);
-                    const isHovered = hoveredBoxId === callout.id;
-                    const strokeColor = isSelected ? 'var(--text-main)' : isHovered ? 'var(--primary)' : callout.color.stroke;
-                    const [anchorX, anchorY] = callout.anchor;
-                    const [elbowX, elbowY] = callout.elbowPoint;
-                    const [targetX, targetY] = callout.lineTarget;
-                    const linePath = `M ${anchorX} ${anchorY} L ${elbowX} ${elbowY} L ${targetX} ${targetY}`;
-
-                    return (
-                      <g key={callout.id}>
-                        {/* Secondary instance markers on other detected members of this organ */}
-                        {callout.secondaryAnchors && callout.secondaryAnchors.map(([secX, secY], sIdx) => (
-                          <g key={`sec_${callout.id}_${sIdx}`}>
-                            <circle
-                              cx={secX}
-                              cy={secY}
-                              r="6"
-                              fill="transparent"
-                              stroke={callout.color.stroke}
-                              strokeWidth="1.3"
-                              strokeDasharray="2 2"
-                              opacity={isSelected || isHovered ? 0.95 : 0.7}
-                              filter="url(#leader-shadow)"
-                            />
-                            <circle cx={secX} cy={secY} r="2" fill={callout.color.stroke} opacity={0.8} />
-                          </g>
-                        ))}
-
-                        {/* High-contrast background outline for universal visibility over any image background */}
-                        <path
-                          d={linePath}
-                          fill="none"
-                          stroke="var(--bg-dark)"
-                          strokeWidth={isSelected ? 4.8 : isHovered ? 4.2 : 3.6}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          opacity="0.95"
-                        />
-                        {/* Leader line with textbook dogleg horizontal landing */}
-                        <path
-                          d={linePath}
-                          fill="none"
-                          stroke={strokeColor}
-                          strokeWidth={isSelected ? 2.6 : isHovered ? 2.2 : 1.8}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-
-                        {/* Terminal pin at card connector edge */}
-                        <circle cx={targetX} cy={targetY} r="4.5" fill="var(--bg-dark)" />
-                        <circle cx={targetX} cy={targetY} r="3" fill={strokeColor} />
-
-                        {/* Primary focal anchor precision reticle */}
-                        <circle
-                          cx={anchorX}
-                          cy={anchorY}
-                          r={isSelected ? 11 : isHovered ? 9.5 : 8}
-                          fill={callout.color.fill}
-                          stroke="var(--bg-dark)"
-                          strokeWidth={isSelected ? 4.2 : 3.4}
-                        />
-                        <circle
-                          cx={anchorX}
-                          cy={anchorY}
-                          r={isSelected ? 11 : isHovered ? 9.5 : 8}
-                          fill="none"
-                          stroke={strokeColor}
-                          strokeWidth={isSelected ? 2.4 : 1.8}
-                        />
-                        {/* Solid center focal point */}
-                        <circle cx={anchorX} cy={anchorY} r="4" fill="var(--bg-dark)" />
-                        <circle cx={anchorX} cy={anchorY} r="2.8" fill={strokeColor} />
-
-                        {/* Precision crosshair tick marks (N, S, E, W) */}
-                        <line x1={anchorX - 8} y1={anchorY} x2={anchorX - 4} y2={anchorY} stroke={strokeColor} strokeWidth="1.6" strokeLinecap="round" />
-                        <line x1={anchorX + 4} y1={anchorY} x2={anchorX + 8} y2={anchorY} stroke={strokeColor} strokeWidth="1.6" strokeLinecap="round" />
-                        <line x1={anchorX} y1={anchorY - 8} x2={anchorX} y2={anchorY - 4} stroke={strokeColor} strokeWidth="1.6" strokeLinecap="round" />
-                        <line x1={anchorX} y1={anchorY + 4} x2={anchorX} y2={anchorY + 8} stroke={strokeColor} strokeWidth="1.6" strokeLinecap="round" />
-                      </g>
-                    );
-                  })
-                ) : (
-                  // 2. Traditional Bounding Box Overlay
-                  groundedNodes.map((node, idx) => {
-                    if (!visibleBoxIds.has(node.id)) return null;
-
-                    const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
-                    const [ymin, xmin, ymax, xmax] = node.bbox;
-                    const width = Math.max(30, xmax - xmin);
-                    const height = Math.max(30, ymax - ymin);
-                    const isSelected = Boolean(
-                      selectedNodeId &&
-                        (node.id === selectedNodeId ||
-                          node.id.toLowerCase() === selectedNodeId.toLowerCase() ||
-                          node.label?.toLowerCase().includes(selectedNodeId.toLowerCase()))
-                    );
-                    const isHovered = hoveredBoxId === node.id;
-                    const labelWidth = Math.min(Math.max(width, 130), 220);
-
-                    return (
-                      <g
-                        key={node.id}
-                        style={{ pointerEvents: 'auto', cursor: 'pointer', transition: 'all 0.15s ease-out' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onSelectNode) onSelectNode(isSelected ? null : node.id);
-                        }}
-                        onContextMenu={(e) => handleCanvasContextMenu(e, node)}
-                        onMouseEnter={() => setHoveredBoxId(node.id)}
-                        onMouseLeave={() => setHoveredBoxId(null)}
-                      >
-                        <rect
-                          x={xmin}
-                          y={ymin}
-                          width={width}
-                          height={height}
-                          rx="6"
-                          fill={
-                            isSelected
-                              ? color.fill.replace('0.18', '0.35')
-                              : isHovered
-                              ? color.fill.replace('0.18', '0.26')
-                              : color.fill
-                          }
-                          stroke={isSelected ? '#ffffff' : color.stroke}
-                          strokeWidth={isSelected ? 3.5 : isHovered ? 2.8 : 2}
-                          strokeDasharray={isSelected ? '7,3' : 'none'}
-                          filter={isSelected || isHovered ? 'url(#box-glow)' : 'none'}
-                        />
-                        <g transform={`translate(${xmin}, ${Math.max(6, ymin - 26)})`}>
-                          <rect
-                            x="0"
-                            y="0"
-                            width={labelWidth}
-                            height="24"
-                            rx="5"
-                            fill={isSelected ? color.stroke : isHovered ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.88)'}
-                          />
-                          <text x="8" y="16" fill="#ffffff" fontSize="11" fontWeight="600">
-                            {node.label}
-                          </text>
-                        </g>
-                      </g>
-                    );
-                  })
-                )}
-              </svg>
-            )}
-
-            {/* 3. HTML Outside Callout Labels Overlay (Outside the specimen image, matching textbook diagram) */}
-            {annotationMode === 'callouts' && (
+              />
+              {/* Scanline / Live Video HUD Overlay */}
               <div
                 style={{
                   position: 'absolute',
-                  inset: 0,
-                  pointerEvents: 'none',
-                  zIndex: 10
+                  top: 8,
+                  right: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(0, 0, 0, 0.7)',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.66rem',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.3)'
                 }}
               >
-                {/* Anatomical System Brackets (inspired by Image 2's Shoot system / Root system brackets) */}
-                {leftSystemBrackets && leftSystemBrackets.map((bracket) => (
-                  <div
-                    key={`bracket_${bracket.systemName}`}
-                    style={{
-                      position: 'absolute',
-                      top: `${bracket.topPct}%`,
-                      height: `${Math.max(12, bracket.bottomPct - bracket.topPct)}%`,
-                      right: 'calc(100% + 228px)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      pointerEvents: 'none',
-                      zIndex: 8
-                    }}
-                  >
-                    <span
-                      style={{
-                        writingMode: 'vertical-rl',
-                        transform: 'rotate(180deg)',
-                        fontSize: '0.62rem',
-                        fontWeight: 700,
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
-                        color: bracket.color,
-                        marginRight: '6px',
-                        opacity: 0.85
-                      }}
-                    >
-                      {bracket.systemName}
-                    </span>
-                    <div
-                      style={{
-                        position: 'relative',
-                        width: '7px',
-                        height: '100%',
-                        borderLeft: `1.8px solid ${bracket.color}`,
-                        borderTop: `1.8px solid ${bracket.color}`,
-                        borderBottom: `1.8px solid ${bracket.color}`,
-                        borderRadius: '2px 0 0 2px',
-                        opacity: 0.75
-                      }}
-                    />
-                  </div>
-                ))}
-
-                {anatomicalCallouts.map((callout) => {
-                  const isSelected = selectedNodeId && callout.nodes.some((n) => n.id === selectedNodeId);
-                  const isHovered = hoveredBoxId === callout.id;
-                  const accentColor = callout.color.stroke;
-
-                  return (
-                    <div
-                      key={callout.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onSelectNode) onSelectNode(isSelected ? null : callout.primaryNode.id);
-                      }}
-                      onContextMenu={(e) => handleCanvasContextMenu(e, callout.primaryNode)}
-                      onMouseEnter={() => setHoveredBoxId(callout.id)}
-                      onMouseLeave={() => setHoveredBoxId(null)}
-                      style={{
-                        position: 'absolute',
-                        top: `${callout.cardCenterY_pct}%`,
-                        transform: 'translateY(-50%)',
-                        right: callout.isLeft ? '100%' : 'auto',
-                        left: callout.isLeft ? 'auto' : '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexDirection: 'row',
-                        pointerEvents: 'auto',
-                        cursor: 'pointer',
-                        zIndex: isSelected || isHovered ? 25 : 12,
-                        transition: 'all 0.16s ease'
-                      }}
-                    >
-                      {/* Left Callout Layout: [Card] ---> [Leader Stem Line] ---> (touches image border) */}
-                      {callout.isLeft ? (
-                        <>
-                          {/* The Textbook Callout Card */}
-                          <div
-                            style={{
-                              width: '200px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'flex-end',
-                              textAlign: 'right',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              background: isSelected ? 'var(--primary-bg)' : isHovered ? 'var(--bg-card-hover)' : 'var(--bg-card)',
-                              backdropFilter: 'blur(16px)',
-                              WebkitBackdropFilter: 'blur(16px)',
-                              color: 'var(--text-main)',
-                              border: isSelected
-                                ? `1.5px solid ${accentColor}`
-                                : isHovered
-                                ? `1px solid ${accentColor}`
-                                : `1px solid var(--border-color)`,
-                              borderRight: `3.5px solid ${accentColor}`,
-                              boxShadow: isSelected
-                                ? `0 0 0 2px ${callout.color.glow}, 0 4px 14px rgba(0,0,0,0.12)`
-                                : isHovered
-                                ? `0 4px 12px rgba(0,0,0,0.1)`
-                                : '0 2px 8px rgba(0,0,0,0.06)',
-                              userSelect: 'none',
-                              boxSizing: 'border-box'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', width: '100%' }}>
-                              <span
-                                style={{
-                                  fontFamily: 'var(--font-heading)',
-                                  fontWeight: 700,
-                                  fontSize: '0.82rem',
-                                  color: isSelected ? accentColor : 'var(--text-main)',
-                                  lineHeight: 1.2
-                                }}
-                                title={callout.title}
-                              >
-                                {callout.title}
-                              </span>
-                              <span
-                                style={{
-                                  width: '6px',
-                                  height: '6px',
-                                  minWidth: '6px',
-                                  borderRadius: '50%',
-                                  background: accentColor,
-                                  boxShadow: `0 0 5px ${accentColor}`
-                                }}
-                              />
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '2px', width: '100%' }}>
-                              <span
-                                style={{
-                                  fontSize: '0.62rem',
-                                  color: 'var(--text-dim)',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.04em',
-                                  fontWeight: 600,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  maxWidth: '125px'
-                                }}
-                                title={callout.subtitle || callout.status}
-                              >
-                                {callout.subtitle || callout.status}
-                              </span>
-                              {callout.count > 1 && (
-                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 800, padding: '0.5px 4px', borderRadius: '3px', background: 'var(--primary-bg)', color: 'var(--primary)', border: '1px solid var(--primary-glow)' }}>
-                                  {callout.count}×
-                                </span>
-                              )}
-                              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 700, flexShrink: 0 }}>
-                                {Math.round((callout.primaryNode?.confidence || 0.95) * 100)}%
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Seamless Horizontal Leader Stem Line touching image border */}
-                          <div
-                            style={{
-                              width: '28px',
-                              height: isSelected ? '2.4px' : isHovered ? '2px' : '1.8px',
-                              background: accentColor,
-                              boxShadow: `0 0 4px ${callout.color.glow}`,
-                              flexShrink: 0
-                            }}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          {/* Right Callout Layout: (touches image border) ---> [Leader Stem Line] ---> [Card] */}
-                          <div
-                            style={{
-                              width: '28px',
-                              height: isSelected ? '2.4px' : isHovered ? '2px' : '1.8px',
-                              background: accentColor,
-                              boxShadow: `0 0 4px ${callout.color.glow}`,
-                              flexShrink: 0
-                            }}
-                          />
-
-                          {/* The Textbook Callout Card */}
-                          <div
-                            style={{
-                              width: '200px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'flex-start',
-                              textAlign: 'left',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              background: isSelected ? 'var(--primary-bg)' : isHovered ? 'var(--bg-card-hover)' : 'var(--bg-card)',
-                              backdropFilter: 'blur(16px)',
-                              WebkitBackdropFilter: 'blur(16px)',
-                              color: 'var(--text-main)',
-                              border: isSelected
-                                ? `1.5px solid ${accentColor}`
-                                : isHovered
-                                ? `1px solid ${accentColor}`
-                                : `1px solid var(--border-color)`,
-                              borderLeft: `3.5px solid ${accentColor}`,
-                              boxShadow: isSelected
-                                ? `0 0 0 2px ${callout.color.glow}, 0 4px 14px rgba(0,0,0,0.12)`
-                                : isHovered
-                                ? `0 4px 12px rgba(0,0,0,0.1)`
-                                : '0 2px 8px rgba(0,0,0,0.06)',
-                              userSelect: 'none',
-                              boxSizing: 'border-box'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '6px', width: '100%' }}>
-                              <span
-                                style={{
-                                  width: '6px',
-                                  height: '6px',
-                                  minWidth: '6px',
-                                  borderRadius: '50%',
-                                  background: accentColor,
-                                  boxShadow: `0 0 5px ${accentColor}`
-                                }}
-                              />
-                              <span
-                                style={{
-                                  fontFamily: 'var(--font-heading)',
-                                  fontWeight: 700,
-                                  fontSize: '0.82rem',
-                                  color: isSelected ? accentColor : 'var(--text-main)',
-                                  lineHeight: 1.2
-                                }}
-                                title={callout.title}
-                              >
-                                {callout.title}
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '6px', marginTop: '2px', width: '100%' }}>
-                              <span
-                                style={{
-                                  fontSize: '0.62rem',
-                                  color: 'var(--text-dim)',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.04em',
-                                  fontWeight: 600,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  maxWidth: '125px'
-                                }}
-                                title={callout.subtitle || callout.status}
-                              >
-                                {callout.subtitle || callout.status}
-                              </span>
-                              {callout.count > 1 && (
-                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 800, padding: '0.5px 4px', borderRadius: '3px', background: 'var(--primary-bg)', color: 'var(--primary)', border: '1px solid var(--primary-glow)' }}>
-                                  {callout.count}×
-                                </span>
-                              )}
-                              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 700, flexShrink: 0 }}>
-                                {Math.round((callout.primaryNode?.confidence || 0.95) * 100)}%
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isVideoPlaying ? '#38bdf8' : 'var(--text-muted)', boxShadow: isVideoPlaying ? '0 0 6px #38bdf8' : 'none' }} />
+                <span>{isVideoPlaying ? 'PLAYING' : 'PAUSED'}</span>
+                <span>•</span>
+                <span>{videoCurrentTime.toFixed(1)}s / {videoDuration.toFixed(1)}s</span>
               </div>
-            )}
-          </div>
-        ) : (
-          <div
-            onClick={() => fileInputRef.current?.click()}
+            </div>
+          )
+        ) : displayImage ? (
+          <img
+            src={displayImage}
+            alt="Visual Evidence"
+            onError={(e) => {
+              if (!e.target.src.includes('monstera_sample.png')) {
+                e.target.src = '/monstera_sample.png';
+              }
+            }}
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2.5rem 1rem',
-              cursor: 'pointer',
               width: '100%',
               height: '100%',
-              minHeight: '260px',
-              background: 'radial-gradient(ellipse at center, rgba(56, 189, 248, 0.05) 0%, rgba(9, 13, 22, 0.95) 75%)',
-              border: '2px dashed rgba(56, 189, 248, 0.25)',
-              borderRadius: '8px',
-              boxSizing: 'border-box'
+              objectFit: 'contain',
+              display: 'block'
             }}
-          >
-            <div style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '12px',
-              background: 'rgba(56, 189, 248, 0.12)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '0.75rem'
-            }}>
-              <Upload size={20} color="var(--primary)" />
-            </div>
-            <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)', marginBottom: '0.25rem' }}>
-              Upload Specimen Photo or Video
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', maxWidth: '280px' }}>
-              Drop an image here, click to browse, or paste an image URL for anatomical grounding & causal reasoning
-            </div>
+          />
+        ) : (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+            <Camera size={32} style={{ opacity: 0.5, marginBottom: '0.4rem' }} />
+            <div style={{ fontSize: '0.8rem' }}>No visual evidence loaded</div>
           </div>
         )}
 
-      </div>
+        {/* SVG Bounding Boxes Overlay - Multi-box rendering based on visibleBoxIds & Video Keyframe */}
+        {(displayImage || customVideoUrl) && groundedNodes.length > 0 && (
+          <svg
+            viewBox="0 0 1000 1000"
+            preserveAspectRatio="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 5
+            }}
+          >
+            <defs>
+              <filter id="box-glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="6" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
 
-      {/* Theme-Aware Full-Width Bottom Bar with Right-Click Hint */}
-      {displayImage && (
+            {groundedNodes.map((node, idx) => {
+              if (!visibleBoxIds.has(node.id)) return null;
+
+              const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
+              const [ymin, xmin, ymax, xmax] = node.bbox;
+              const width = Math.max(30, xmax - xmin);
+              const height = Math.max(30, ymax - ymin);
+              const isSelected =
+                (selectedNodeId &&
+                  (node.id === selectedNodeId ||
+                    node.id.toLowerCase() === selectedNodeId.toLowerCase() ||
+                    node.label?.toLowerCase().includes(selectedNodeId.toLowerCase()))) ||
+                (activeHudNode && activeHudNode.id === node.id);
+              const isHovered = hoveredBoxId === node.id;
+              const labelWidth = Math.min(Math.max(width, 130), 220);
+
+              return (
+                <g
+                  key={node.id}
+                  style={{ pointerEvents: 'auto', cursor: 'pointer', transition: 'all 0.15s ease-out' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next = activeHudNode?.id === node.id ? null : node;
+                    setActiveHudNode(next);
+                    if (onSelectNode) onSelectNode(next ? node.id : null);
+                  }}
+                  onMouseEnter={() => setHoveredBoxId(node.id)}
+                  onMouseLeave={() => setHoveredBoxId(null)}
+                >
+                  {/* Bounding Box Rectangle */}
+                  <rect
+                    x={xmin}
+                    y={ymin}
+                    width={width}
+                    height={height}
+                    rx="6"
+                    fill={
+                      isSelected
+                        ? color.fill.replace('0.18', '0.35')
+                        : isHovered
+                        ? color.fill.replace('0.18', '0.26')
+                        : color.fill
+                    }
+                    stroke={isSelected ? '#ffffff' : color.stroke}
+                    strokeWidth={isSelected ? 3.5 : isHovered ? 2.8 : 2}
+                    strokeDasharray={isSelected ? '7,3' : 'none'}
+                    filter={isSelected || isHovered ? 'url(#box-glow)' : 'none'}
+                  />
+
+                  {/* Corner Target Reticles */}
+                  {isSelected && (
+                    <>
+                      <circle cx={xmin} cy={ymin} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                      <circle cx={xmax} cy={ymin} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                      <circle cx={xmin} cy={ymax} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                      <circle cx={xmax} cy={ymax} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                    </>
+                  )}
+
+                  {/* Compact Grounded Entity Badge */}
+                  <g transform={`translate(${xmin}, ${Math.max(6, ymin - 26)})`}>
+                    <rect
+                      x="0"
+                      y="0"
+                      width={labelWidth}
+                      height="24"
+                      rx="5"
+                      fill={isSelected ? color.stroke : isHovered ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.88)'}
+                      stroke={color.stroke}
+                      strokeWidth="1.2"
+                    />
+
+                    <circle cx="12" cy="12" r="4.5" fill={isSelected ? '#ffffff' : color.stroke} />
+                    <text
+                      x="22"
+                      y="16"
+                      fill={isSelected ? '#0f172a' : '#ffffff'}
+                      fontSize="11px"
+                      fontFamily="Outfit, sans-serif"
+                      fontWeight="600"
+                    >
+                      {node.label.length > 22 ? node.label.substring(0, 20) + '…' : node.label}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
+          </svg>
+        )}
+
+        {/* Minimal subtle bottom bar */}
         <div style={{
-          width: '100%',
-          marginTop: '10px',
+          position: 'absolute',
+          bottom: 6,
+          left: 8,
+          right: 8,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          boxShadow: '0 1px 4px var(--border-glow)',
-          padding: '0.4rem 0.9rem',
-          borderRadius: '7px',
-          color: 'var(--text-main)',
-          fontSize: '0.7rem',
-          boxSizing: 'border-box'
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(6px)',
+          padding: '0.25rem 0.6rem',
+          borderRadius: '5px',
+          color: '#ffffff',
+          fontSize: '0.68rem',
+          zIndex: 10,
+          pointerEvents: 'none'
         }}>
-          <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-            {mediaMode === 'video' ? `Keyframe @ ${videoCurrentTime.toFixed(1)}s: ${activeKeyframe?.label || 'Continuous Track'}` : preset?.title || "Visual Evidence Grounding"}
+          <span style={{ fontWeight: 500, opacity: 0.9 }}>
+            {mediaMode === 'video' ? `Keyframe @ ${videoCurrentTime.toFixed(1)}s: ${activeKeyframe?.label || 'Continuous Track'}` : preset?.title || "Visual Evidence"}
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <span style={{ fontSize: '0.66rem', color: 'var(--primary)', fontWeight: 600 }}>
-              💡 Click any label to trace leader line on specimen
-            </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>
-              {visibleBoxIds.size} of {groundedNodes.length} Active
-            </span>
-          </div>
+          <span style={{ fontFamily: 'var(--font-mono)', color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>
+            {visibleBoxIds.size} of {groundedNodes.length} Rectangles Active
+          </span>
         </div>
-      )}
-
-        {/* Right-Click Context Menu: Ask SAAR & Field Suggestions */}
-        {contextMenu && (
-          <div
-            className="image-canvas-context-menu animate-fade-in"
-            style={{
-              position: 'fixed',
-              top: `${contextMenu.y}px`,
-              left: `${contextMenu.x}px`,
-              zIndex: 9999,
-              minWidth: '220px',
-              maxWidth: '280px',
-              background: 'rgba(15, 23, 42, 0.97)',
-              backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(56, 189, 248, 0.45)',
-              borderRadius: '8px',
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.25)',
-              padding: '6px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
-              pointerEvents: 'auto'
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            {/* Header / Target indicator */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '3px 6px 5px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-              fontSize: '0.67rem',
-              color: 'var(--text-muted)'
-            }}>
-              <span style={{ fontWeight: 700, color: '#38bdf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
-                {contextMenu.node ? contextMenu.node.label : 'Visual Region'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setContextMenu(null)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '1px' }}
-              >
-                <X size={12} />
-              </button>
-            </div>
-
-            {/* 1. Primary: Ask SAAR */}
-            <button
-              type="button"
-              className="context-menu-item"
-              onClick={() => {
-                const prompt = contextMenu.node
-                  ? `Can you explain the causal findings, physical characteristics, and diagnostic relevance of "${contextMenu.node.label}"?`
-                  : `Can you analyze the visual evidence and physical mechanisms visible in this region?`;
-                if (onAskQuery) onAskQuery(prompt);
-                setContextMenu(null);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '7px 9px',
-                borderRadius: '5px',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                background: 'rgba(56, 189, 248, 0.12)',
-                color: '#ffffff',
-                fontSize: '0.74rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                textAlign: 'left',
-                width: '100%'
-              }}
-            >
-              <Sparkles size={14} color="#38bdf8" />
-              <span>Ask SAAR about this {contextMenu.node ? 'entity' : 'area'}</span>
-            </button>
-
-            {/* 2. Suggested Field Analysis (if entity selected) */}
-            {contextMenu.node && (() => {
-              const mapping = getToolMapping(contextMenu.node.id);
-              return (
-                <div style={{ marginTop: '2px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', padding: '2px 6px', marginBottom: '2px' }}>
-                    {mapping.userSuggestion}
-                  </div>
-                  <button
-                    type="button"
-                    className="context-menu-item"
-                    onClick={() => {
-                      if (onOpenTool) onOpenTool(mapping.toolId, contextMenu.node);
-                      setContextMenu(null);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      width: '100%',
-                      padding: '6px 8px',
-                      borderRadius: '5px',
-                      border: 'none',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      color: 'var(--primary)',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <span>{mapping.actionText}</span>
-                    <ArrowRight size={12} />
-                  </button>
-                </div>
-              );
-            })()}
-          </div>
-        )}
+      </div>
 
       {/* 3. Interactive Video Timeline Scrubber (Rendered when in Video Mode) */}
       {mediaMode === 'video' && (
@@ -1834,357 +846,388 @@ export const ImageInspector = ({
         />
       )}
 
-
-
-      {/* 4. Detected Visual Objects Directory (Consolidated Anatomical Systems vs Granular Boxes) */}
-      {groundedNodes.length > 0 ? (
-        annotationMode === 'callouts' ? (
-          <div style={{ marginTop: '0.85rem' }}>
-            {/* Section Header: Anatomical Organ Systems */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '0.55rem',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-              padding: '0 0.1rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sparkles size={15} color="var(--primary)" />
-                <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-main)', letterSpacing: '0.2px' }}>
-                  Anatomical Systems Directory
-                </span>
-                <span style={{
-                  fontSize: '0.68rem',
-                  fontFamily: 'var(--font-mono)',
-                  padding: '0.12rem 0.45rem',
-                  borderRadius: '10px',
-                  background: 'var(--primary-bg)',
-                  color: 'var(--primary)',
-                  fontWeight: 700,
-                  border: '1px solid var(--border-color)'
-                }}>
-                  {anatomicalCallouts.length} Organ Systems · {groundedNodes.length} Anchors Grounded
-                </span>
+      {/* 4. Dedicated Inspector Card (Rendered cleanly below the media container) */}
+      {activeHudNode && (
+        <div
+          className="animate-fade-in"
+          style={{
+            marginTop: '0.75rem',
+            background: 'var(--bg-dark)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '10px',
+            padding: '0.75rem 0.85rem',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+          }}
+        >
+          {/* Card Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{
+                width: '26px',
+                height: '26px',
+                borderRadius: '6px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)'
+              }}>
+                <Zap size={14} />
+              </div>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)', lineHeight: 1.2 }}>
+                  {activeHudNode.label}
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                  <span style={{ textTransform: 'uppercase', fontWeight: 600, color: 'var(--primary)' }}>
+                    {activeHudNode.category || 'entity'}
+                  </span>
+                  <span>•</span>
+                  <span style={{ color: 'var(--primary)', fontFamily: 'var(--font-mono)' }}>
+                    {Math.round((activeHudNode.confidence || 0.9) * 100)}% Confidence
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
-              Consolidated anatomical diagram view. Click any organ system to highlight its leader line on the specimen or explore in chat.
+            <button
+              onClick={() => setActiveHudNode(null)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '3px' }}
+              title="Close inspection card"
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          {/* Properties / Attributes Row */}
+          {activeHudNode.properties && Object.keys(activeHudNode.properties).length > 0 && (
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.35rem',
+              marginBottom: '0.6rem'
+            }}>
+              {Object.entries(activeHudNode.properties).slice(0, 4).map(([k, v]) => (
+                <div
+                  key={k}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.08)',
+                    border: '1px solid rgba(56, 189, 248, 0.2)',
+                    borderRadius: '5px',
+                    padding: '0.2rem 0.45rem',
+                    fontSize: '0.68rem',
+                    fontFamily: 'var(--font-mono)',
+                    display: 'flex',
+                    gap: '4px'
+                  }}
+                >
+                  <span style={{ color: 'var(--text-muted)' }}>{k.replace(/_/g, ' ')}:</span>
+                  <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{String(v)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Action Row */}
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                const mapping = getToolMapping(activeHudNode.id);
+                if (onOpenTool) onOpenTool(mapping.toolId, activeHudNode);
+                setActiveHudNode(null);
+              }}
+              style={{
+                flex: 2,
+                fontSize: '0.74rem',
+                padding: '0.4rem 0.6rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px'
+              }}
+            >
+              <Sparkles size={13} />
+              <span>Launch {getToolMapping(activeHudNode.id).toolName}</span>
+            </button>
+
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                const mapping = getToolMapping(activeHudNode.id);
+                if (onAskQuery) onAskQuery(mapping.suggestedQuery || `Analyze the physical implications of ${activeHudNode.label}`);
+                setActiveHudNode(null);
+              }}
+              style={{
+                flex: 1,
+                fontSize: '0.72rem',
+                padding: '0.4rem 0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}
+            >
+              <Crosshair size={12} color="var(--primary)" />
+              <span>Ask SAAR</span>
+            </button>
+
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                if (onOpenGlossary) onOpenGlossary(activeHudNode.label);
+                setActiveHudNode(null);
+              }}
+              style={{
+                fontSize: '0.72rem',
+                padding: '0.4rem 0.55rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}
+            >
+              <Layers size={12} color="var(--primary)" />
+              <span>Glossary</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Domain Specialist Navigation Tabs */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        marginTop: '0.85rem',
+        borderBottom: '1px solid var(--border-color)',
+        paddingBottom: '0.4rem'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveSpecialistTab('anchors')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '0.35rem 0.7rem',
+            borderRadius: '6px',
+            background: activeSpecialistTab === 'anchors' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+            border: activeSpecialistTab === 'anchors' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+            color: activeSpecialistTab === 'anchors' ? 'var(--primary)' : 'var(--text-muted)',
+            fontSize: '0.74rem',
+            fontWeight: activeSpecialistTab === 'anchors' ? 700 : 500,
+            cursor: 'pointer'
+          }}
+        >
+          <Target size={13} />
+          <span>Visual Anchors ({groundedNodes.length})</span>
+        </button>
+
+        {isAgriculture && (
+          <button
+            type="button"
+            onClick={() => setActiveSpecialistTab('plantCare')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '0.35rem 0.7rem',
+              borderRadius: '6px',
+              background: activeSpecialistTab === 'plantCare' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+              border: activeSpecialistTab === 'plantCare' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+              color: activeSpecialistTab === 'plantCare' ? 'var(--primary)' : 'var(--text-muted)',
+              fontSize: '0.74rem',
+              fontWeight: activeSpecialistTab === 'plantCare' ? 700 : 500,
+              cursor: 'pointer'
+            }}
+          >
+            <Sprout size={13} />
+            <span>Botanical Care & Treatment Plan</span>
+          </button>
+        )}
+
+        {isPediatrics && (
+          <button
+            type="button"
+            onClick={() => setActiveSpecialistTab('toddlerPosture')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '0.35rem 0.7rem',
+              borderRadius: '6px',
+              background: activeSpecialistTab === 'toddlerPosture' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+              border: activeSpecialistTab === 'toddlerPosture' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+              color: activeSpecialistTab === 'toddlerPosture' ? 'var(--primary)' : 'var(--text-muted)',
+              fontSize: '0.74rem',
+              fontWeight: activeSpecialistTab === 'toddlerPosture' ? 700 : 500,
+              cursor: 'pointer'
+            }}
+          >
+            <Activity size={13} />
+            <span>Toddler Posture & Screening</span>
+          </button>
+        )}
+      </div>
+
+      {/* 6. Active Tab Pane Content */}
+      {activeSpecialistTab === 'plantCare' && isAgriculture && (
+        <PlantCareCard
+          presetId={presetId}
+          onAskAgronomist={(q) => onAskQuery && onAskQuery(q)}
+        />
+      )}
+
+      {activeSpecialistTab === 'toddlerPosture' && isPediatrics && (
+        <ToddlerPostureCard
+          presetId={presetId}
+          onAskSpecialist={(q) => onAskQuery && onAskQuery(q)}
+        />
+      )}
+
+      {activeSpecialistTab === 'anchors' && groundedNodes.length > 0 && (
+        <div style={{ marginTop: '0.65rem' }}>
+          {/* Section Header with Bulk Actions & Guidance */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '0.5rem',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+            padding: '0 0.1rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                Regional Bounding Box Directory
+              </span>
+              <span style={{
+                fontSize: '0.68rem',
+                fontFamily: 'var(--font-mono)',
+                padding: '0.12rem 0.45rem',
+                borderRadius: '10px',
+                background: visibleBoxIds.size > 0 ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)',
+                fontWeight: 600,
+                border: visibleBoxIds.size > 0 ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid var(--border-color)'
+              }}>
+                {visibleBoxIds.size} of {groundedNodes.length} visible
+              </span>
             </div>
 
-            {/* Consolidated Organ System Cards (Only 3-4 clean cards total, never 20+ repetitive items!) */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))',
-              gap: '0.55rem',
-              paddingBottom: '2rem'
-            }}>
-              {anatomicalCallouts.map((callout) => {
-                const isSelected = selectedNodeId && callout.nodes.some((n) => n.id === selectedNodeId);
-                const isHovered = hoveredBoxId === callout.id;
-                const toolMapping = getToolMapping(callout.primaryNode?.id);
+            {/* Quick Bulk Action Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button
+                type="button"
+                onClick={showAllBoxes}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '0.22rem 0.55rem',
+                  borderRadius: '6px',
+                  background: visibleBoxIds.size === groundedNodes.length ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-dark)',
+                  border: '1px solid var(--border-color)',
+                  color: visibleBoxIds.size === groundedNodes.length ? 'var(--primary)' : 'var(--text-main)',
+                  fontSize: '0.7rem',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+                title="Display all bounding boxes on the media canvas"
+              >
+                <Eye size={12} />
+                <span>Show All</span>
+              </button>
 
-                return (
-                  <div
-                    key={callout.id}
-                    onClick={() => {
-                      if (onSelectNode) onSelectNode(isSelected ? null : callout.primaryNode.id);
-                    }}
-                    onMouseEnter={() => setHoveredBoxId(callout.id)}
-                    onMouseLeave={() => setHoveredBoxId(null)}
-                    onContextMenu={(e) => handleCanvasContextMenu(e, callout.primaryNode)}
-                    style={{
-                      borderRadius: '8px',
-                      border: isSelected
-                        ? '1.5px solid var(--primary)'
-                        : isHovered
-                        ? '1px solid var(--primary)'
-                        : '1px solid var(--border-color)',
-                      background: isSelected ? 'var(--bg-card-hover)' : 'var(--bg-card)',
-                      boxShadow: isSelected
-                        ? '0 0 0 1px var(--primary), 0 2px 8px rgba(0,0,0,0.06)'
-                        : '0 1px 2px rgba(0,0,0,0.03)',
-                      padding: '0.65rem 0.8rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.45rem',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {/* Left accent bar */}
-                    <div style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '3.5px',
-                      background: callout.color.stroke
-                    }} />
-
-                    {/* Header: Title + Plural Quantity Badge + Confidence */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                        <div style={{
-                          width: '8px',
-                          height: '8px',
-                          minWidth: '8px',
-                          borderRadius: '50%',
-                          background: callout.color.stroke,
-                          boxShadow: `0 0 6px ${callout.color.stroke}`
-                        }} />
-                        <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {callout.title}
-                        </span>
-                        {callout.count > 1 && (
-                          <span style={{
-                            background: 'rgba(56, 189, 248, 0.18)',
-                            color: 'var(--primary)',
-                            border: '1px solid rgba(56, 189, 248, 0.4)',
-                            fontSize: '0.64rem',
-                            fontWeight: 800,
-                            padding: '0.08rem 0.4rem',
-                            borderRadius: '4px'
-                          }}>
-                            {callout.count}× Items
-                          </span>
-                        )}
-                      </div>
-
-                      <span style={{
-                        fontSize: '0.62rem',
-                        fontFamily: 'var(--font-mono)',
-                        fontWeight: 700,
-                        padding: '0.12rem 0.42rem',
-                        borderRadius: '4px',
-                        background: 'rgba(5, 150, 105, 0.1)',
-                        color: '#059669'
-                      }}>
-                        {Math.round((callout.primaryNode?.confidence || 0.95) * 100)}%
-                      </span>
-                    </div>
-
-                    {/* Properties summary row */}
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px', paddingLeft: '4px' }}>
-                      <span style={{
-                        fontSize: '0.62rem',
-                        textTransform: 'uppercase',
-                        fontWeight: 700,
-                        padding: '0.08rem 0.35rem',
-                        borderRadius: '4px',
-                        background: 'var(--primary-bg)',
-                        color: 'var(--primary)'
-                      }}>
-                        {callout.key.replace(/_/g, ' ')}
-                      </span>
-                      <span style={{
-                        fontSize: '0.62rem',
-                        padding: '0.08rem 0.38rem',
-                        borderRadius: '4px',
-                        background: 'var(--bg-dark)',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--text-muted)'
-                      }}>
-                        Status: <strong style={{ color: 'var(--text-main)' }}>{callout.status}</strong>
-                      </span>
-                      <span style={{
-                        fontSize: '0.62rem',
-                        padding: '0.08rem 0.38rem',
-                        borderRadius: '4px',
-                        background: 'var(--bg-dark)',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--text-muted)'
-                      }}>
-                        {callout.nodes.length} Grounded Points
-                      </span>
-                    </div>
-
-                    {/* Action Footer: Ask SAAR & Diagnostic Tool shortcut */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginTop: '2px',
-                      paddingTop: '0.35rem',
-                      borderTop: '1px solid var(--border-color)',
-                      paddingLeft: '4px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
-                          Click callout to highlight on canvas
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onAskQuery) {
-                            onAskQuery(`Analyze the anatomical condition, turgor, and causal factors affecting ${callout.title}.`);
-                          }
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '0.2rem 0.45rem',
-                          borderRadius: '5px',
-                          background: 'var(--primary-bg)',
-                          border: '1px solid var(--primary)',
-                          color: 'var(--primary)',
-                          fontSize: '0.65rem',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <MessageSquare size={10} />
-                        <span>Ask SAAR</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              <button
+                type="button"
+                onClick={hideAllBoxes}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '0.22rem 0.55rem',
+                  borderRadius: '6px',
+                  background: visibleBoxIds.size === 0 ? 'rgba(255, 255, 255, 0.08)' : 'var(--bg-dark)',
+                  border: '1px solid var(--border-color)',
+                  color: visibleBoxIds.size === 0 ? 'var(--text-main)' : 'var(--text-muted)',
+                  fontSize: '0.7rem',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+                title="Hide all bounding boxes for an unobstructed view"
+              >
+                <EyeOff size={12} />
+                <span>Hide All</span>
+              </button>
             </div>
           </div>
-        ) : (
-          <div style={{ marginTop: '0.85rem' }}>
-            {/* Section Header with Bulk Actions & Guidance */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '0.55rem',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-              padding: '0 0.1rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Target size={15} color="var(--primary)" />
-                <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-main)', letterSpacing: '0.2px' }}>
-                  Detected Objects
-                </span>
-                <span style={{
-                  fontSize: '0.68rem',
-                  fontFamily: 'var(--font-mono)',
-                  padding: '0.12rem 0.45rem',
-                  borderRadius: '10px',
-                  background: visibleBoxIds.size > 0 ? 'var(--primary-bg)' : 'var(--bg-dark)',
-                  color: visibleBoxIds.size > 0 ? 'var(--primary)' : 'var(--text-muted)',
-                  fontWeight: 700,
-                  border: '1px solid var(--border-color)'
-                }}>
-                  {visibleBoxIds.size} of {groundedNodes.length} visible
-                </span>
+
+          <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
+            Click any label card to toggle its rectangle on/off on the canvas. Multiple rectangles can be viewed simultaneously.
+          </div>
+
+          {/* Cards Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '0.6rem',
+            paddingBottom: '2.5rem'
+          }}>
+            {groundedNodes.length === 0 ? (
+              <div style={{
+                gridColumn: '1 / -1',
+                padding: '1.5rem',
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                background: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '8px',
+                border: '1px dashed var(--border-color)',
+                fontSize: '0.78rem'
+              }}>
+                <Crosshair size={24} style={{ opacity: 0.4, margin: '0 auto 0.5rem auto' }} />
+                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>No visual bounding boxes detected</div>
+                <div style={{ fontSize: '0.72rem', opacity: 0.7 }}>
+                  Visual anchors appear when an image is analyzed by the perception layer.
+                </div>
               </div>
+            ) : (
+              groundedNodes.map((node, idx) => {
+                const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
+                const isVisible = visibleBoxIds.has(node.id);
+                const isHovered = hoveredBoxId === node.id;
+                const mapping = getToolMapping(node.id);
 
-              {/* Quick Bulk Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <button
-                  type="button"
-                  onClick={showAllBoxes}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '0.22rem 0.55rem',
-                    borderRadius: '6px',
-                    background: visibleBoxIds.size === groundedNodes.length ? 'var(--primary-bg)' : 'var(--bg-card)',
-                    border: visibleBoxIds.size === groundedNodes.length ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                    color: visibleBoxIds.size === groundedNodes.length ? 'var(--primary)' : 'var(--text-main)',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Display all bounding boxes on the media canvas"
-                >
-                  <Eye size={12} />
-                  <span>Show All</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={hideAllBoxes}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '0.22rem 0.55rem',
-                    borderRadius: '6px',
-                    background: visibleBoxIds.size === 0 ? 'var(--primary-bg)' : 'var(--bg-card)',
-                    border: visibleBoxIds.size === 0 ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                    color: visibleBoxIds.size === 0 ? 'var(--primary)' : 'var(--text-muted)',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Hide all bounding boxes for an unobstructed view"
-                >
-                  <EyeOff size={12} />
-                  <span>Hide All</span>
-                </button>
-              </div>
-            </div>
-
-            <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
-              Click any object to focus its bounding box. Right-click canvas or use Ask SAAR to explore details in chat.
-            </div>
-
-            {/* Cards List / Grid (Responsive 1-column in split pane, multi-column in wide mode) */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))',
-              gap: '0.55rem',
-              paddingBottom: '2rem'
-            }}>
-            {groundedNodes.map((node, idx) => {
-              const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
-              const isVisible = visibleBoxIds.has(node.id);
-              const isHovered = hoveredBoxId === node.id;
-              const isSelected = Boolean(
-                selectedNodeId && (
-                  node.id === selectedNodeId ||
-                  node.id.toLowerCase() === selectedNodeId.toLowerCase() ||
-                  node.label?.toLowerCase().includes(selectedNodeId.toLowerCase())
-                )
-              );
-
-              return (
+                return (
                 <div
                   key={node.id}
                   onClick={() => {
-                    if (onSelectNode) {
-                      onSelectNode(isSelected ? null : node.id);
-                    }
+                    toggleBoxVisibility(node.id);
                     if (!isVisible) {
-                      toggleBoxVisibility(node.id);
+                      setActiveHudNode(node);
+                      if (onSelectNode) onSelectNode(node.id);
                     }
                   }}
                   onMouseEnter={() => setHoveredBoxId(node.id)}
                   onMouseLeave={() => setHoveredBoxId(null)}
-                  onContextMenu={(e) => handleCanvasContextMenu(e, node)}
                   style={{
-                    borderRadius: '8px',
-                    border: isSelected
-                      ? '1.5px solid var(--primary)'
+                    borderRadius: '9px',
+                    border: isVisible
+                      ? `1.5px solid ${color.stroke}`
                       : isHovered
-                      ? '1px solid var(--primary)'
+                      ? '1px solid rgba(255, 255, 255, 0.25)'
                       : '1px solid var(--border-color)',
-                    background: isSelected
-                      ? 'var(--bg-card-hover)'
-                      : 'var(--bg-card)',
-                    boxShadow: isSelected
-                      ? '0 0 0 1px var(--primary), 0 2px 8px rgba(0,0,0,0.06)'
-                      : isHovered
-                      ? '0 2px 8px rgba(0,0,0,0.06)'
-                      : '0 1px 2px rgba(0,0,0,0.03)',
-                    padding: '0.65rem 0.8rem',
+                    background: isVisible
+                      ? 'rgba(15, 23, 42, 0.82)'
+                      : 'rgba(15, 23, 42, 0.4)',
+                    boxShadow: isVisible
+                      ? `0 4px 14px ${color.glow}`
+                      : 'none',
+                    padding: '0.65rem 0.75rem',
                     cursor: 'pointer',
-                    transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.45rem',
@@ -2192,38 +1235,38 @@ export const ImageInspector = ({
                     overflow: 'hidden'
                   }}
                 >
-                  {/* Left accent indicator bar */}
-                  <div style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '3.5px',
-                    background: isVisible ? color.stroke : 'var(--border-color)',
-                    opacity: isVisible || isSelected ? 1 : 0.4
-                  }} />
+                  {/* Top accent line when rectangle is visible */}
+                  {isVisible && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '2.5px',
+                      background: color.stroke,
+                      boxShadow: `0 0 8px ${color.stroke}`
+                    }} />
+                  )}
 
-                  {/* Card Header: Indicator dot, Object Label, Category, Confidence, and Toggle Pill */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingLeft: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                  {/* Card Top Row: Color indicator dot, Title, and Toggle pill */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
                       <span
                         style={{
-                          width: '8px',
-                          height: '8px',
-                          minWidth: '8px',
+                          width: '10px',
+                          height: '10px',
+                          minWidth: '10px',
                           borderRadius: '50%',
-                          background: color.stroke,
-                          opacity: isVisible ? 1 : 0.4,
-                          boxShadow: isVisible ? `0 0 6px ${color.stroke}` : 'none',
+                          background: isVisible ? color.stroke : 'var(--text-muted)',
+                          boxShadow: isVisible ? `0 0 7px ${color.stroke}` : 'none',
                           transition: 'all 0.15s ease'
                         }}
                       />
                       <span
                         style={{
                           fontWeight: 700,
-                          fontSize: '0.82rem',
-                          color: 'var(--text-main)',
-                          lineHeight: 1.3,
+                          fontSize: '0.83rem',
+                          color: isVisible ? '#ffffff' : 'var(--text-muted)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis'
@@ -2234,164 +1277,164 @@ export const ImageInspector = ({
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                      {/* Category Badge */}
-                      <span style={{
-                        textTransform: 'uppercase',
-                        fontWeight: 700,
-                        fontSize: '0.6rem',
-                        padding: '0.12rem 0.42rem',
-                        borderRadius: '4px',
-                        background: 'var(--primary-bg)',
-                        color: 'var(--primary)',
-                        letterSpacing: '0.3px'
-                      }}>
-                        {node.category || 'entity'}
-                      </span>
-
-                      {/* Confidence Score */}
-                      <span style={{
-                        fontSize: '0.62rem',
-                        fontFamily: 'var(--font-mono)',
-                        fontWeight: 700,
-                        padding: '0.12rem 0.42rem',
-                        borderRadius: '4px',
-                        background: 'rgba(5, 150, 105, 0.1)',
-                        color: '#059669'
-                      }}>
-                        {Math.round((node.confidence || 0.9) * 100)}%
-                      </span>
-
-                      {/* Toggle State Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleBoxVisibility(node.id);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          padding: '0.15rem 0.42rem',
-                          borderRadius: '5px',
-                          fontSize: '0.63rem',
-                          fontWeight: 700,
-                          background: isVisible ? 'var(--primary-bg)' : 'var(--bg-dark)',
-                          border: isVisible ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                          color: isVisible ? 'var(--primary)' : 'var(--text-muted)',
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                          transition: 'all 0.12s ease'
-                        }}
-                        title={isVisible ? "Hide bounding box on canvas" : "Show bounding box on canvas"}
-                      >
-                        {isVisible ? <Eye size={10} /> : <EyeOff size={10} />}
-                        <span>{isVisible ? 'ON' : 'OFF'}</span>
-                      </button>
+                    {/* Toggle State Pill */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '0.2rem 0.45rem',
+                        borderRadius: '10px',
+                        fontSize: '0.66rem',
+                        fontWeight: 600,
+                        background: isVisible ? color.bg : 'rgba(255, 255, 255, 0.04)',
+                        border: isVisible ? `1px solid ${color.border}` : '1px solid var(--border-color)',
+                        color: isVisible ? color.text : 'var(--text-muted)',
+                        flexShrink: 0,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {isVisible ? <Eye size={11} /> : <EyeOff size={11} />}
+                      <span>{isVisible ? 'ON' : 'OFF'}</span>
                     </div>
                   </div>
 
-                  {/* Sub-row: Position tag + Property preview pills */}
-                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px', paddingLeft: '4px' }}>
-                    <span style={{
-                      fontSize: '0.62rem',
-                      fontFamily: 'var(--font-mono)',
-                      color: 'var(--text-dim)',
-                      background: 'var(--bg-dark)',
-                      border: '1px solid var(--border-color)',
-                      padding: '0.08rem 0.35rem',
-                      borderRadius: '4px'
-                    }}>
+                  {/* Card Sub-row: Category badge, Confidence % and Dimensions */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.68rem', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{
+                        textTransform: 'uppercase',
+                        fontWeight: 600,
+                        fontSize: '0.62rem',
+                        padding: '0.1rem 0.35rem',
+                        borderRadius: '4px',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        color: 'var(--text-muted)'
+                      }}>
+                        {node.category || 'feature'}
+                      </span>
+                      <span style={{
+                        color: 'var(--primary)',
+                        fontFamily: 'var(--font-mono)',
+                        fontWeight: 600
+                      }}>
+                        {Math.round((node.confidence || 0.9) * 100)}% Conf.
+                      </span>
+                    </div>
+
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', opacity: 0.8 }}>
                       pos: {Math.round(node.bbox[1] / 10)}%,{Math.round(node.bbox[0] / 10)}% · {Math.max(1, Math.round((node.bbox[3] - node.bbox[1]) / 10))}×{Math.max(1, Math.round((node.bbox[2] - node.bbox[0]) / 10))}%
                     </span>
+                  </div>
 
-                    {node.properties && Object.keys(node.properties).length > 0 &&
-                      Object.entries(node.properties).slice(0, 3).map(([k, v]) => (
+                  {/* Optional Properties preview */}
+                  {node.properties && Object.keys(node.properties).length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '1px' }}>
+                      {Object.entries(node.properties).slice(0, 2).map(([k, v]) => (
                         <span
                           key={k}
                           style={{
-                            fontSize: '0.62rem',
-                            padding: '0.08rem 0.38rem',
-                            borderRadius: '4px',
-                            background: 'var(--bg-dark)',
-                            border: '1px solid var(--border-color)',
-                            color: 'var(--text-dim)',
+                            fontSize: '0.63rem',
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '3px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            color: 'var(--text-muted)',
                             fontFamily: 'var(--font-mono)'
                           }}
                         >
-                          <span style={{ color: 'var(--text-muted)' }}>{k.replace(/_/g, ' ')}:</span>{' '}
-                          <strong style={{ color: 'var(--text-main)', fontWeight: 600 }}>{String(v)}</strong>
+                          {k.replace(/_/g, ' ')}: <strong style={{ color: isVisible ? color.text : 'var(--text-main)' }}>{String(v)}</strong>
                         </span>
-                      ))
-                    }
-                  </div>
+                      ))}
+                    </div>
+                  )}
 
-                  {/* Action Footer: Ask SAAR in Chat */}
+                  {/* Card Action Buttons */}
                   <div
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
+                      gap: '4px',
                       marginTop: '2px',
                       paddingTop: '0.35rem',
-                      borderTop: '1px solid var(--border-color)',
-                      paddingLeft: '4px'
+                      borderTop: '1px solid rgba(255, 255, 255, 0.05)'
                     }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>
-                      Right-click canvas or ask in chat
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenTool) onOpenTool(mapping.toolId, node);
+                      }}
+                      style={{
+                        flex: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '3px',
+                        padding: '0.25rem 0.45rem',
+                        borderRadius: '5px',
+                        background: isVisible ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-dark)',
+                        border: isVisible ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid var(--border-color)',
+                        color: isVisible ? 'var(--primary)' : 'var(--text-muted)',
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      title={`Launch ${mapping.toolName}`}
+                    >
+                      <Sparkles size={11} />
+                      <span>{mapping.actionLabel?.split(' ')[0] || 'Analyze'}</span>
+                    </button>
 
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onAskQuery) {
-                          onAskQuery(`Can you explain the causal findings, physical characteristics, and diagnostic relevance of "${node.label}"?`);
-                        }
+                      onClick={() => {
+                        if (onAskQuery) onAskQuery(mapping.suggestedQuery || `Analyze ${node.label}`);
                       }}
                       style={{
-                        display: 'inline-flex',
+                        flex: 1,
+                        display: 'flex',
                         alignItems: 'center',
-                        gap: '5px',
-                        padding: '0.22rem 0.58rem',
-                        borderRadius: '6px',
-                        background: 'var(--primary-bg)',
-                        border: '1px solid var(--primary)',
-                        color: 'var(--primary)',
-                        fontSize: '0.67rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
+                        justifyContent: 'center',
+                        gap: '3px',
+                        padding: '0.25rem 0.45rem',
+                        borderRadius: '5px',
+                        background: 'var(--bg-dark)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-main)',
+                        fontSize: '0.68rem',
+                        cursor: 'pointer'
                       }}
-                      title="Ask SAAR about this entity in chat"
+                      title="Ask SAAR Chat about this region"
                     >
-                      <MessageSquare size={11} />
-                      <span>Ask SAAR</span>
+                      <Crosshair size={11} color="var(--primary)" />
+                      <span>Ask</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenGlossary) onOpenGlossary(node.label);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0.25rem 0.45rem',
+                        borderRadius: '5px',
+                        background: 'var(--bg-dark)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-muted)',
+                        fontSize: '0.68rem',
+                        cursor: 'pointer'
+                      }}
+                      title="Open Glossary Definition"
+                    >
+                      <Layers size={11} color="var(--primary)" />
                     </button>
                   </div>
                 </div>
               );
-            })}
-          </div>
-        </div>
-        )
-      ) : (
-        <div style={{
-          marginTop: '1rem',
-          padding: '1.75rem',
-          textAlign: 'center',
-          color: 'var(--text-muted)',
-          background: 'var(--bg-card)',
-          borderRadius: '8px',
-          border: '1px dashed var(--border-color)',
-          fontSize: '0.78rem'
-        }}>
-          <Crosshair size={24} style={{ opacity: 0.4, margin: '0 auto 0.5rem auto' }} />
-          <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-main)' }}>No visual objects detected</div>
-          <div style={{ fontSize: '0.72rem', opacity: 0.7 }}>
-            Visual entities and regional bounding boxes will appear here when an image is analyzed.
+            }))}
           </div>
         </div>
       )}
