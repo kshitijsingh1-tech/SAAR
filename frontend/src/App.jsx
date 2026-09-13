@@ -71,44 +71,6 @@ export default function App() {
 
   // Processing state & Abort Controller for immediate analysis cancellation
   const [isProcessing, setIsProcessing] = useState(false);
-  const abortControllerRef = useRef(null);
-  const isAbortedRef = useRef(false);
-
-  const checkIsAborted = (err = null) => {
-    if (isAbortedRef.current) return true;
-    if (abortControllerRef.current?.signal?.aborted) return true;
-    if (err) {
-      if (axios.isCancel(err)) return true;
-      if (err.name === 'AbortError' || err.name === 'CanceledError') return true;
-      if (err.code === 'ERR_CANCELED' || err.message === 'canceled') return true;
-    }
-    return false;
-  };
-
-  const handleStopProcessing = useCallback(() => {
-    isAbortedRef.current = true;
-    if (abortControllerRef.current) {
-      try {
-        abortControllerRef.current.abort();
-      } catch (e) {}
-    }
-    setIsProcessing(false);
-    setIsToolDrawerOpen(false);
-    setCustomVideoFile(null);
-    setMessages((prev) => {
-      if (prev.length > 0 && prev[prev.length - 1].text === '*Analysis stopped by user.*') {
-        return prev;
-      }
-      return [
-        ...prev,
-        {
-          role: 'assistant',
-          text: '*Analysis stopped by user.*',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ];
-    });
-  }, [setMessages]);
 
   // Default Initial Chat Sessions & Pre-warmed Messages
   const DEFAULT_SESSIONS = [
@@ -345,6 +307,46 @@ export default function App() {
       return nextAll;
     });
   }, [activeSessionId]);
+
+  // Abort Controller & persistent cancellation refs (declared after setMessages)
+  const abortControllerRef = useRef(null);
+  const isAbortedRef = useRef(false);
+
+  const checkIsAborted = useCallback((err = null) => {
+    if (isAbortedRef.current) return true;
+    if (abortControllerRef.current?.signal?.aborted) return true;
+    if (err) {
+      if (axios.isCancel(err)) return true;
+      if (err.name === 'AbortError' || err.name === 'CanceledError') return true;
+      if (err.code === 'ERR_CANCELED' || err.message === 'canceled') return true;
+    }
+    return false;
+  }, []);
+
+  const handleStopProcessing = useCallback(() => {
+    isAbortedRef.current = true;
+    if (abortControllerRef.current) {
+      try {
+        abortControllerRef.current.abort();
+      } catch (e) {}
+    }
+    setIsProcessing(false);
+    setIsToolDrawerOpen(false);
+    setCustomVideoFile(null);
+    setMessages((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1].text === '*Analysis stopped by user.*') {
+        return prev;
+      }
+      return [
+        ...prev,
+        {
+          role: 'assistant',
+          text: '*Analysis stopped by user.*',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ];
+    });
+  }, [setMessages]);
 
   // Sync sessions list to localStorage whenever updated
   useEffect(() => {

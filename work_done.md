@@ -832,8 +832,29 @@ When uploading toddler walking videos (including domestic close-ups or sample to
    - Updated all asynchronous phases in `handleSendMessage`, `executeImageInvestigation`, `handleSelectScenario`, and `uploadSaarCsv` to pass `abortController.signal` and check `checkIsAborted()` at every step.
    - Cleanly resets UI and outputs `*Analysis stopped by user.*` without extra error messages or state corruptions.
 4. **Verification**:
-   - `npm run build` compiled cleanly in 53.48s with 0 errors.
-   - All 41 backend unit tests (`python -m pytest`) passed cleanly (100%).
+---
+
+## 26. [2026-09-13] Fix TDZ Initialization Ordering for `setMessages` and `handleStopProcessing`
+
+**Primary Files Modified**:
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+- After refactoring `handleStopProcessing` with `useCallback([setMessages])`, the frontend crashed during initial component render with:
+  `Cannot access 'setMessages' before initialization`
+
+### Root Cause Analysis
+- `handleStopProcessing` was placed near the top of the `App` component body (lines 88–111) and included `setMessages` in its dependency array.
+- In JavaScript ES6, `const setMessages = useCallback(...)` was declared further down in the component body (line 345). Because `const` declarations are in the Temporal Dead Zone (TDZ) before execution reaches line 345, evaluating `handleStopProcessing` at the top threw a ReferenceError during component evaluation.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Re-ordered Hook Definitions ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Moved `abortControllerRef`, `isAbortedRef`, `checkIsAborted`, and `handleStopProcessing` immediately below the definition of `setMessages`.
+2. **Verification**:
+   - `npm run build` compiled cleanly in 54.85s with 0 errors.
+   - All 41 backend tests pass.
+
 
 
 
