@@ -14,6 +14,7 @@
 5. [Strict Zero-Hardcoding & Single Source of Truth Alignment](#5-strict-zero-hardcoding--single-source-of-truth-alignment)
 6. [Backend Service Orchestration & Port Architecture](#6-backend-service-orchestration--port-architecture)
 7. [Clean Response Formatting: Thought Process Capsule for Dataset Ingestion](#7-clean-response-formatting-thought-process-capsule-for-dataset-ingestion)
+8. [Authentic Photographic Milestones & Bi-Directional Visual Grounding](#8-authentic-photographic-milestones--bi-directional-visual-grounding)
 
 ---
 
@@ -163,6 +164,45 @@ In [`frontend/src/App.jsx:812`](file:///d:/bytebuild/frontend/src/App.jsx#L812) 
 
 ---
 
+## 8. Authentic Photographic Milestones & Bi-Directional Visual Grounding
+- **Date Solved**: 2026-09-13
+- **Primary Files**:
+  - [`frontend/src/data/roseMilestones.js`](file:///d:/bytebuild/frontend/src/data/roseMilestones.js)
+  - [`frontend/src/components/PlotlyGraphViewer.jsx`](file:///d:/bytebuild/frontend/src/components/PlotlyGraphViewer.jsx)
+  - [`frontend/src/components/ImageInspector.jsx`](file:///d:/bytebuild/frontend/src/components/ImageInspector.jsx)
+  - [`frontend/src/components/ToolCanvasDrawer.jsx`](file:///d:/bytebuild/frontend/src/components/ToolCanvasDrawer.jsx)
+  - [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+  - [`backend/app/vlm_service.py`](file:///d:/bytebuild/backend/app/vlm_service.py)
+
+### Problem Description & User Goal
+1. The user provided the authentic Wikimedia Commons rose chip budding propagation series (`User: Eiku`, 2018–2019) containing 8 documented chronological photographs (Day 0 through Day 192).
+2. The user requested:
+   - On the sensor telemetry graph (`PlotlyGraphViewer.jsx`), clicking the labelled milestones on the timeline or photostrip must display those authentic photographs and botanical evidence cards.
+   - On the Image Analysis screen (`ImageInspector.jsx`), a dropdown list must allow users to switch between any milestone photograph directly on the screen without leaving the tool.
+   - Switching or inspecting milestone photos must NOT wipe or reset active CSV dataset telemetry.
+
+### Root Causes
+1. **Telemetry Clearing on Image Switch**: In `App.jsx`, `onPasteImageUrl` previously called `setSaarData(null)` unconditionally, discarding the 192-day CSV sensor stream when opening an image.
+2. **Missing Local Asset Resolution**: In `backend/app/vlm_service.py`, `_prepare_image_data` only handled `http://`, `https://`, and raw base64 strings, returning `None` for local relative public paths (`/rose_graft_milestones/...`).
+3. **No Milestone Photo Strip or Selector**: Neither `PlotlyGraphViewer.jsx` nor `ImageInspector.jsx` possessed UI controls to browse the 8 documented developmental photographic milestones.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Curated & Downloaded High-Res Local Assets**:
+   - Downloaded all 8 authentic Wikimedia Commons images locally into `frontend/public/rose_graft_milestones/` (`day_000_just_grafted.jpg` to `day_192_union_healed_front.jpg`) to ensure zero-latency, offline-resilient loading without Wikimedia HTTP 429 rate-limiting.
+   - Created `frontend/src/data/roseMilestones.js` containing timestamps, stage tags, descriptions, and botanical telemetry correlations.
+2. **Interactive Milestone Photostrip & Preview in `PlotlyGraphViewer.jsx`**:
+   - Rendered a horizontal scrollable photostrip (`Developmental Milestones & Authentic Photographic Evidence`) with real thumbnails, day badges, and stage indicators.
+   - Clicking any milestone badge or timeline marker opens an inspection card with full photo preview, botanical details, an **"Inquire in Chat"** button, and an **"Open in Image Analysis Screen"** button.
+3. **Milestone Image Dropdown in `ImageInspector.jsx`**:
+   - Added a `Milestone:` dropdown selector directly in the Image Analysis toolbar.
+   - Selecting any milestone dynamically displays the authentic photo on screen, renders a botanical context ribbon, and triggers autonomous visual grounding.
+4. **State Isolation & Telemetry Preservation**:
+   - In `App.jsx` and `ToolCanvasDrawer.jsx`, `onPasteImageUrl` now supports `preserveTelemetry=true`, ensuring that switching or inspecting milestone photos never wipes active CSV telemetry.
+5. **Backend Local Path Support**:
+   - Updated `_prepare_image_data` in `backend/app/vlm_service.py` to resolve and read local files from `frontend/public/` when passed relative URLs, supplying raw bytes directly to Gemini, Groq, or OpenAI VLMs.
+
+---
+
 ## How to Maintain This File
 When completing any new task or fixing any bug:
 1. Add a new numbered section under Table of Contents and document:
@@ -172,3 +212,4 @@ When completing any new task or fixing any bug:
    - Root Causes
    - Implemented Solution & Non-Regression Rules
 2. Keep entries chronological and concise.
+

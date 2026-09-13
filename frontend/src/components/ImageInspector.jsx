@@ -8,6 +8,7 @@ import {
 import { VideoTimelineScrubber } from './VideoTimelineScrubber';
 import { PlantCareCard } from './PlantCareCard';
 import { ToddlerPostureCard } from './ToddlerPostureCard';
+import { ROSE_CHIP_BUDDING_MILESTONES } from '../data/roseMilestones';
 
 // Clean black, white & signature blue palette for visual anchors & bounding boxes
 const ANCHOR_COLORS = [
@@ -359,6 +360,12 @@ export const ImageInspector = ({
     preset?.image ||
     null;
 
+  const activeMilestone = useMemo(() => {
+    const currentUrl = customImageUrl || displayImage;
+    if (!currentUrl || typeof currentUrl !== 'string') return null;
+    return ROSE_CHIP_BUDDING_MILESTONES.find((m) => currentUrl.includes(m.url) || currentUrl.endsWith(m.url)) || null;
+  }, [customImageUrl, displayImage]);
+
   // Unified upload dispatcher (supports both photos and video clips)
   const handleUpload = (fileDataOrFile, url) => {
     if (fileDataOrFile instanceof File) {
@@ -650,6 +657,50 @@ export const ImageInspector = ({
             <span>URL</span>
           </button>
 
+          {/* Milestone Photograph Dropdown Selector */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            background: 'var(--bg-dark)',
+            padding: '0.2rem 0.5rem',
+            borderRadius: '6px',
+            border: activeMilestone ? '1.5px solid var(--primary)' : '1px solid var(--border-color)',
+            boxShadow: activeMilestone ? '0 0 8px rgba(56, 189, 248, 0.2)' : 'none'
+          }}>
+            <Sprout size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '0.7rem', fontWeight: '600', color: 'var(--text-muted)' }}>
+              Milestone:
+            </span>
+            <select
+              value={activeMilestone ? activeMilestone.url : ''}
+              onChange={(e) => {
+                const targetUrl = e.target.value;
+                if (targetUrl) {
+                  handleUpload(null, targetUrl);
+                }
+              }}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-main)',
+                fontSize: '0.72rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                outline: 'none',
+                maxWidth: '185px'
+              }}
+              title="Select authentic photographic milestone from 192-day rose chip budding journey"
+            >
+              <option value="" disabled>Select milestone photo...</option>
+              {ROSE_CHIP_BUDDING_MILESTONES.map((m, idx) => (
+                <option key={idx} value={m.url}>
+                  {m.badge}: {m.label.replace(/^Day \d+(\.\d+)?:?\s*/i, '')} ({m.date})
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Bounding Box Master Toggle */}
           <button
             onClick={() => {
@@ -708,6 +759,52 @@ export const ImageInspector = ({
             Load
           </button>
         </form>
+      )}
+
+      {/* Milestone Botanical Context Ribbon */}
+      {activeMilestone && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.45rem 0.85rem',
+          marginBottom: '0.65rem',
+          background: 'linear-gradient(90deg, rgba(2, 132, 199, 0.08) 0%, rgba(16, 185, 129, 0.06) 100%)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          borderRadius: '8px',
+          fontSize: '0.74rem',
+          flexWrap: 'wrap',
+          gap: '6px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: activeMilestone.color,
+              color: '#ffffff',
+              fontSize: '0.62rem',
+              fontWeight: '700',
+              padding: '0.12rem 0.45rem',
+              borderRadius: '4px'
+            }}>
+              {activeMilestone.badge}
+            </span>
+            <strong style={{ color: 'var(--text-main)' }}>{activeMilestone.label}</strong>
+            <span style={{ color: 'var(--text-muted)' }}>({activeMilestone.date})</span>
+            <span style={{
+              fontSize: '0.65rem',
+              padding: '0.1rem 0.4rem',
+              background: 'rgba(255,255,255,0.75)',
+              borderRadius: '4px',
+              border: '1px solid rgba(0,0,0,0.06)',
+              color: '#0f172a',
+              fontWeight: 600
+            }}>
+              {activeMilestone.stage}
+            </span>
+          </div>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            {activeMilestone.botanicalDetails}
+          </span>
+        </div>
       )}
 
       {/* 2. Visual Evidence Container (Photo or Video Player) */}

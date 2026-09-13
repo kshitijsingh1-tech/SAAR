@@ -1462,10 +1462,13 @@ export default function App() {
         onUploadCustomImage={(fileOrDataUrl) => {
           executeImageInvestigation(fileOrDataUrl);
         }}
-        onPasteImageUrl={async (url) => {
+        onPasteImageUrl={async (url, preserveTelemetry = false) => {
           setInvestigationData(null);
-          setSaarData(null);
-          setBaselineData(null);
+          // Preserve ingested CSV telemetry when viewing milestones so sensor graph is not cleared
+          if (!preserveTelemetry && !saarData?.telemetry) {
+            setSaarData(null);
+            setBaselineData(null);
+          }
           setSelectedNodeId(null);
           setCustomImageData(null);
           setCustomImageUrl(url);

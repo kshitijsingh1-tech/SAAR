@@ -277,7 +277,7 @@ export function ToolCanvasDrawer({
                 customImageData={customImageData}
                 customImageUrl={customImageUrl}
                 onUploadCustom={onUploadCustomImage}
-                onPasteUrl={onPasteImageUrl}
+                onPasteUrl={(url) => onPasteImageUrl && onPasteImageUrl(url, true)}
                 vlmProvider="auto"
                 cameraConnected={true}
                 onCloseCamera={null}
@@ -378,6 +378,10 @@ export function ToolCanvasDrawer({
                 hasSensorData={hasSensorData}
                 onUploadSensorData={onUploadSensorData}
                 onLoadSampleDataset={onLoadSampleDataset}
+                onViewMilestoneImage={(imgUrl) => {
+                  if (onPasteImageUrl) onPasteImageUrl(imgUrl, true);
+                  if (onSelectTool) onSelectTool('grounded');
+                }}
               />
             </div>
           </div>

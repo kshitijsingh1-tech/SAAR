@@ -242,6 +242,20 @@ Structure:
                     return response.read(), "image/jpeg"
             except Exception:
                 return None, "image/jpeg"
+        elif image_input.startswith("/") or image_input.startswith("./"):
+            # Local public filesystem asset (e.g. /rose_graft_milestones/...)
+            try:
+                clean_path = image_input.lstrip("/\\.")
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                public_path = os.path.join(base_dir, "frontend", "public", clean_path)
+                if os.path.exists(public_path):
+                    with open(public_path, "rb") as f:
+                        data = f.read()
+                        mime = "image/png" if clean_path.endswith(".png") else "image/jpeg"
+                        return data, mime
+            except Exception as e:
+                print(f"[VLMService] Error loading local public image {image_input}: {e}")
+            return None, "image/jpeg"
         else:
             # Plain base64 string
             try:
