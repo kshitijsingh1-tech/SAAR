@@ -71,6 +71,20 @@ export const fetchSaarKnowledge = async () => {
   return res.data;
 };
 
+export const fetchKeyStatus = async () => {
+  const res = await axios.get(`${API_BASE_URL}/api/keys/status`);
+  return res.data;
+};
+
+export const querySaarKnowledge = async (query, domain = 'agriculture', topK = 4) => {
+  const res = await axios.post(`${API_BASE_URL}/api/saar/knowledge/query`, {
+    query,
+    domain,
+    top_k: topK
+  });
+  return res.data;
+};
+
 export const lookupScientificTerm = async (term, domain = 'general', context = '') => {
   const res = await axios.post(`${API_BASE_URL}/api/dictionary/lookup`, {
     term,
@@ -111,10 +125,6 @@ export const fetchGlossary = async (screenTexts = [], domain = 'agriculture', gr
   }
 };
 
-export const querySaarKnowledge = async (query, domain = null) => {
-  const res = await axios.post(`${API_BASE_URL}/api/saar/knowledge/query`, { query, domain });
-  return res.data;
-};
 
 // ------------------------------------------------------------------
 // Multimodal Video Processing API (Workstream 1 & 4)

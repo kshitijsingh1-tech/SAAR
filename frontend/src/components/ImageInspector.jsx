@@ -9,7 +9,7 @@ import {
   Sparkles, CheckCircle, ArrowUpRight, Thermometer, Droplets, Folder, CornerDownRight,
   Filter, RotateCcw, Send, Loader2, Database, FileCheck, BookmarkCheck
 } from 'lucide-react';
-import { lookupScientificTerm, runInvestigation } from '../api/client';
+import { lookupScientificTerm, runInvestigation, fetchKeyStatus, querySaarKnowledge } from '../api/client';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SCIENTIFIC LABEL NORMALIZER
@@ -168,17 +168,11 @@ export const ImageInspector = ({
 
   // Fetch Live Backend Key Status & Knowledge Citations from Real RAG Database
   useEffect(() => {
-    fetch('http://127.0.0.1:8001/api/keys/status')
-      .then(r => r.json())
+    fetchKeyStatus()
       .then(data => setKeyStatus(data))
       .catch(err => console.warn('[SAAR] Keys status check:', err));
 
-    fetch('http://127.0.0.1:8001/api/saar/knowledge/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: resolvedDomain, domain: resolvedDomain, top_k: 4 })
-    })
-      .then(r => r.json())
+    querySaarKnowledge(resolvedDomain, resolvedDomain, 4)
       .then(data => { if (Array.isArray(data)) setRagCitations(data); })
       .catch(err => console.warn('[SAAR] RAG citations fetch:', err));
   }, [resolvedDomain]);
@@ -1268,6 +1262,10 @@ export const ImageInspector = ({
                   src={displayImage}
                   alt="Scientific Specimen"
                   onLoad={handleImageLoad}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/monstera_sample.png';
+                  }}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -1288,10 +1286,13 @@ export const ImageInspector = ({
                   >
                     {groundedNodes.map((node) => {
                       if (!visibleBoxIds.has(node.id)) return null;
-                      const [ymin, xmin, ymax, xmax] = node.bbox;
+                      const [ymin, xmin, ymax, xmax] = Array.isArray(node.bbox) && node.bbox.length === 4
+                        ? node.bbox
+                        : [0, 0, 0, 0];
                       const isHovered = hoveredBoxId === node.id;
                       const isSelected = activeFinding?.id === node.id || selectedNodeId === node.id;
                       const strokeColor = node.severity === 'critical' ? '#ef4444' : isSelected ? '#10b981' : isHovered ? '#0284c7' : '#2563eb';
+                      const labelText = node.displayLabel || node.label || 'Visual Anchor';
 
                       return (
                         <g
@@ -1303,7 +1304,7 @@ export const ImageInspector = ({
                         >
                           {/* Fill Glow */}
                           <rect
-                            x={xmin} y={ymin} width={xmax - xmin} height={ymax - ymin}
+                            x={xmin} y={ymin} width={Math.max(0, xmax - xmin)} height={Math.max(0, ymax - ymin)}
                             fill={strokeColor}
                             fillOpacity={isSelected ? 0.22 : isHovered ? 0.16 : 0.08}
                             stroke={strokeColor}
@@ -1332,7 +1333,7 @@ export const ImageInspector = ({
                           {/* Top Confidence Pill Label */}
                           <rect
                             x={xmin} y={Math.max(0, ymin - 22)}
-                            width={Math.min(220, xmax - xmin + 40)} height="20"
+                            width={Math.min(220, Math.max(0, xmax - xmin) + 40)} height="20"
                             fill="rgba(15, 23, 42, 0.9)"
                             rx="4"
                             stroke={strokeColor}
@@ -1344,7 +1345,7 @@ export const ImageInspector = ({
                             fontSize="11"
                             fontWeight="800"
                           >
-                            {node.displayLabel.slice(0, 22)} • {Math.round((node.confidence || 0.95) * 100)}%
+                            {labelText.slice(0, 22)} • {Math.round((node.confidence || 0.95) * 100)}%
                           </text>
                         </g>
                       );
@@ -1370,10 +1371,10 @@ export const ImageInspector = ({
                     <ChevronLeft size={14} />
                   </button>
                   <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#0f172a' }}>
-                    0{activePerspective + 1} / 0{groundedNodes.length}
+                    {String(activePerspective + 1).padStart(2, '0')} / {String(groundedNodes.length || 1).padStart(2, '0')}
                   </span>
                   <button
-                    onClick={() => handleFocusAnchor(Math.min(groundedNodes.length - 1, activePerspective + 1))}
+                    onClick={() => handleFocusAnchor(Math.min(Math.max(0, groundedNodes.length - 1), activePerspective + 1))}
                     style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0 }}
                   >
                     <ChevronRight size={14} />

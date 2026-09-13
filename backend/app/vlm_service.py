@@ -222,7 +222,7 @@ Structure:
 
     @staticmethod
     def _prepare_image_data(image_input: str) -> Tuple[Optional[bytes], str]:
-        """Convert base64 data URL or URL into raw bytes and mime type."""
+        """Convert base64 data URL, URL, or local file path into raw bytes and mime type."""
         if not image_input:
             return None, "image/jpeg"
         
@@ -243,7 +243,26 @@ Structure:
             except Exception:
                 return None, "image/jpeg"
         else:
-            # Plain base64 string
+            # Check if it's a local file on disk or in frontend/public
+            clean_path = image_input.lstrip("/")
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            possible_paths = [
+                image_input,
+                os.path.join(base_dir, "../../frontend/public", clean_path),
+                os.path.join(base_dir, "../public", clean_path),
+                os.path.join(base_dir, "../../", clean_path),
+            ]
+            for p in possible_paths:
+                if os.path.isfile(p):
+                    try:
+                        with open(p, "rb") as f:
+                            data = f.read()
+                        mime = "image/png" if p.lower().endswith(".png") else "image/webp" if p.lower().endswith(".webp") else "image/jpeg"
+                        return data, mime
+                    except Exception:
+                        pass
+
+            # Fallback to base64 decode
             try:
                 return base64.b64decode(image_input), "image/jpeg"
             except Exception:
