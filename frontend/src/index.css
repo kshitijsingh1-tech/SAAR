@@ -60,27 +60,50 @@ a {
   font-family: var(--font-sans);
 }
 
-/* 1. Pure Dark Theme Tokens (Deep Obsidian Black, Zero Cyan Glow, Ultra-Crisp Slate/White) */
+/* 1. Refined Greyish Theme (Soft Silver-Grey Backdrop, Clean White/Light-Grey Elevated Cards, Charcoal Text) */
+[data-theme="grey"], [data-theme="greyish"], .grey, .greyish {
+  color-scheme: light;
+  --bg-dark: #d8dce4;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f4f9;
+  --border-color: #dbe1eb;
+  --border-glow: rgba(0, 0, 0, 0.06);
+  
+  --primary: #2563eb;
+  --primary-glow: rgba(37, 99, 235, 0.16);
+  --primary-bg: #eff6ff;
+  --purple: #7c3aed;
+  --emerald: #10b981;
+  --amber: #d97706;
+  --rose: #ef4444;
+  
+  --text-main: #0f172a;
+  --text-muted: #334155;
+  --text-dim: #64748b;
+  --input-bg: #f8fafc;
+}
+
+/* 2. Refined Slate Grey Theme Tokens (Matte Charcoal & Slate Surfaces, Subtle Neutral Borders) */
 [data-theme="dark"], .dark {
   color-scheme: dark;
-  --bg-dark: #050811;
-  --bg-card: #0b1120;
-  --bg-card-hover: #131d33;
-  --border-color: #1e293b;
-  --border-glow: rgba(255, 255, 255, 0.07);
+  --bg-dark: #13151b;
+  --bg-card: #1c2028;
+  --bg-card-hover: #262b36;
+  --border-color: #2e3543;
+  --border-glow: rgba(255, 255, 255, 0.08);
   
-  --primary: #818cf8;
-  --primary-glow: rgba(129, 140, 248, 0.2);
-  --primary-bg: rgba(129, 140, 248, 0.12);
-  --purple: #c084fc;
-  --emerald: #34d399;
-  --amber: #fbbf24;
-  --rose: #fb7185;
+  --primary: #3b82f6;
+  --primary-glow: rgba(59, 130, 246, 0.2);
+  --primary-bg: rgba(59, 130, 246, 0.12);
+  --purple: #a855f7;
+  --emerald: #10b981;
+  --amber: #f59e0b;
+  --rose: #f43f5e;
   
-  --text-main: #ffffff;
-  --text-muted: #e2e8f0;
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
   --text-dim: #94a3b8;
-  --input-bg: #0f172a;
+  --input-bg: #16181f;
 }
 
 /* 2. Pure Light Theme Tokens (Crisp Clean White & Deep Slate Black Typography) */
@@ -7783,7 +7806,6 @@ body {
   letter-spacing: 0.24em;
   background: linear-gradient(135deg, #ffffff 0%, #c084fc 50%, #818cf8 100%);
   -webkit-background-clip: text;
-  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-transform: uppercase;
   display: inline-block;
@@ -7792,14 +7814,12 @@ body {
 .saar-landing-page.light .motto-text {
   background: linear-gradient(135deg, #0284c7 0%, #7e22ce 50%, #059669 100%);
   -webkit-background-clip: text;
-  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .saar-landing-page.purple .motto-text {
   background: linear-gradient(135deg, #7e22ce 0%, #9333ea 50%, #d97706 100%);
   -webkit-background-clip: text;
-  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -7827,7 +7847,6 @@ body {
 .gradient-text-glow {
   background: linear-gradient(135deg, var(--primary) 0%, #818cf8 50%, #c084fc 100%);
   -webkit-background-clip: text;
-  background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
   filter: drop-shadow(0 0 20px var(--primary-glow));

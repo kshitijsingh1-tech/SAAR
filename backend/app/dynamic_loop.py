@@ -12,6 +12,7 @@ from .plugins.agriculture_plugin import AgriculturePlugin
 from .plugins.pediatrics_plugin import PediatricsPlugin
 from .plugins.gait_plugin import GaitPlugin
 from .plugins.sports_plugin import SportsPlugin
+from .plugins.badminton_plugin import BadmintonPlugin
 from .vlm_service import VLMService
 
 class DynamicWorkflowOrchestrator:
@@ -22,7 +23,8 @@ class DynamicWorkflowOrchestrator:
             "agriculture": AgriculturePlugin(),
             "pediatrics": PediatricsPlugin(),
             "gait": GaitPlugin(),
-            "sports": SportsPlugin()
+            "sports": SportsPlugin(),
+            "badminton": BadmintonPlugin()
         }
         self.vlm_service = VLMService()
 

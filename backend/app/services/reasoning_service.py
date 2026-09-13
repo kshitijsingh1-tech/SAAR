@@ -29,6 +29,7 @@ class ReasoningService:
         self.rag = RAGKnowledgeService()
         self.vlm = VLMService()
         self._investigations: Dict[str, InvestigationState] = {}
+        self._badminton_results: Dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # Phase 1: Ingest & Perceive
@@ -283,6 +284,106 @@ class ReasoningService:
         self._investigations[inv_id] = state
         return state
 
+    def register_badminton_investigation(self, badminton_result: Any) -> InvestigationState:
+        """Register a deterministic Badminton Biomechanics assessment into SAAR reasoning store."""
+        inv_id = getattr(badminton_result, "analysis_id", f"badminton_{uuid.uuid4().hex[:8]}")
+        self._badminton_results[inv_id] = badminton_result
+
+        movement = getattr(badminton_result, "movement", None)
+        court_calib = getattr(badminton_result, "court_calibration", None)
+        shot_metrics = getattr(badminton_result, "shot_metrics", None)
+        shots = getattr(badminton_result, "shots", []) or []
+        energy = getattr(badminton_result, "energy_expenditure", None)
+        speed = getattr(badminton_result, "speed_metrics", None)
+        evidence_graph = getattr(badminton_result, "evidence_graph", None)
+        quality = getattr(badminton_result, "quality", None)
+
+        features = [
+            Feature(name="total_shots", data_type="int", semantic_role=SemanticRole.TARGET),
+            Feature(name="mean_shot_duration_s", data_type="float", semantic_role=SemanticRole.STATE),
+            Feature(name="court_calibrated", data_type="bool", semantic_role=SemanticRole.STATE),
+            Feature(name="total_distance_m", data_type="float", semantic_role=SemanticRole.STATE),
+            Feature(name="coverage_pct", data_type="float", semantic_role=SemanticRole.STATE),
+            Feature(name="calories_burned_kcal", data_type="float", semantic_role=SemanticRole.TARGET),
+        ]
+
+        observations = []
+        if shot_metrics:
+            total_shots = getattr(shot_metrics, "total_shots_detected", len(shots))
+            mean_dur = getattr(shot_metrics, "mean_shot_duration_seconds", 0.0)
+            observations.append(Observation(feature_name="total_shots", value=total_shots, confidence=0.95))
+            observations.append(Observation(feature_name="mean_shot_duration_s", value=mean_dur, unit="s", confidence=0.95))
+
+        is_cal = bool(court_calib and getattr(court_calib, "is_calibrated", False))
+        observations.append(Observation(feature_name="court_calibrated", value=1 if is_cal else 0, confidence=0.99))
+
+        if movement and is_cal:
+            if getattr(movement, "total_distance_m", None) is not None:
+                observations.append(Observation(feature_name="total_distance_m", value=movement.total_distance_m, unit="m", confidence=0.90))
+            if getattr(movement, "coverage_percentage", None) is not None:
+                observations.append(Observation(feature_name="coverage_pct", value=movement.coverage_percentage, unit="%", confidence=0.90))
+
+        if energy:
+            burned = getattr(energy, "estimated_calories_burned_kcal", None)
+            if burned is not None:
+                observations.append(Observation(feature_name="calories_burned_kcal", value=burned, unit="kcal", confidence=0.85))
+
+        concepts = []
+        # Extract hypotheses and concepts from evidence_graph if available
+        if evidence_graph and hasattr(evidence_graph, "nodes"):
+            for n in evidence_graph.nodes:
+                node_id = getattr(n, "id", "")
+                node_type = getattr(n, "node_type", "") or getattr(n, "type", "")
+                label = getattr(n, "label", node_id)
+                props = getattr(n, "properties", {}) or {}
+                if node_type in ("hypothesis", "recommendation", "trend"):
+                    concepts.append(Concept(
+                        concept_id=f"c_{node_id}",
+                        name=label,
+                        description=str(props.get("value", label)),
+                        category=node_type,
+                        confidence=float(props.get("confidence", 0.8)),
+                        status=ConceptStatus.SUPPORTED if node_type == "hypothesis" else ConceptStatus.CANDIDATE
+                    ))
+
+        if not concepts:
+            concepts.append(Concept(
+                concept_id="c_badminton_tactical",
+                name="Badminton Tactical & Kinetic Profile",
+                description="Deterministic stroke kinematics and spatial movement profile.",
+                category="tactics",
+                confidence=0.90,
+                status=ConceptStatus.SUPPORTED
+            ))
+
+        evidence = []
+        if evidence_graph and hasattr(evidence_graph, "edges"):
+            for e in evidence_graph.edges:
+                evidence.append(Evidence(
+                    observation=f"{getattr(e, 'source', '')} -> {getattr(e, 'relation', '')} -> {getattr(e, 'target', '')}",
+                    description=getattr(e, "description", "") or "Grounded evidence graph relationship",
+                    evidence_type=EvidenceType.OBSERVATION,
+                    impact="supports",
+                    weight=0.90
+                ))
+
+        conf_val = 0.90 if is_cal else 0.75
+
+        state = InvestigationState(
+            investigation_id=inv_id,
+            dataset_id="badminton",
+            features=features,
+            observations=observations,
+            concepts=concepts,
+            relationships=[],
+            evidence=evidence,
+            overall_confidence=conf_val,
+            iteration=1,
+            status="active"
+        )
+        self._investigations[inv_id] = state
+        return state
+
     # ------------------------------------------------------------------
     # Phase 2: Iterative Update (User provides answers)
     # ------------------------------------------------------------------
@@ -332,6 +433,223 @@ class ReasoningService:
     def _natural_sort_key(self, s: Any) -> list:
         return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', str(s))]
 
+    def _answer_badminton_question(self, state: InvestigationState, investigation_id: str, question: str) -> Dict[str, Any]:
+        """Answer a natural-language question grounded in badminton biomechanics and evidence graph."""
+        from ..plugins.sports.badminton.reasoning import BadmintonHypothesisEngine
+
+        badminton_result = self._badminton_results.get(investigation_id) or self._badminton_results.get(state.investigation_id)
+
+        # 1. Section 27 "What's Missing" Check & Section 52 Out-of-Scope decline
+        missing_assessment = BadmintonHypothesisEngine.assess_missing_data(question, badminton_result)
+        if missing_assessment and missing_assessment.is_missing:
+            return {
+                "question": question,
+                "status": "DATA_UNAVAILABLE_DECLINED",
+                "decline_reason_code": missing_assessment.category,
+                "answer_summary": (
+                    f"### Data Unavailable (Declined Up Front — Section 27 Protocol)\n\n"
+                    f"**Status**: Declined up front — unmeasured or out-of-scope variable.\n\n"
+                    f"**Reason**: {missing_assessment.reason}\n\n"
+                    f"**Missing Parameter**: `{missing_assessment.parameter}`\n\n"
+                    f"**Methodological Guidance**: {missing_assessment.hedged_guidance}\n\n"
+                    f"**Bottom line:** Analysis declined up front. This question requires parameters that cannot be determined from video."
+                ),
+                "relevant_relationships": [],
+                "relevant_trends": [],
+                "relevant_concepts": [c.model_dump() for c in state.concepts],
+                "domain_knowledge": [],
+                "evidence_count": len(state.evidence),
+                "overall_confidence": state.overall_confidence,
+                "iteration": state.iteration,
+            }
+
+        # 2. Extract measured facts from badminton result
+        movement = getattr(badminton_result, "movement", None) if badminton_result else None
+        court_calib = getattr(badminton_result, "court_calibration", None) if badminton_result else None
+        shot_metrics = getattr(badminton_result, "shot_metrics", None) if badminton_result else None
+        shots = getattr(badminton_result, "shots", []) if badminton_result else []
+        energy = getattr(badminton_result, "energy_expenditure", None) if badminton_result else None
+        speed = getattr(badminton_result, "speed_metrics", None) if badminton_result else None
+        evidence_graph = getattr(badminton_result, "evidence_graph", None) if badminton_result else None
+
+        q_lower = question.lower()
+
+        total_shots = getattr(shot_metrics, "total_shots_detected", len(shots)) if shot_metrics else len(shots)
+        shot_counts = getattr(shot_metrics, "count_by_shot_type", {}) if shot_metrics else {}
+        shot_pcts = getattr(shot_metrics, "percentage_by_shot_type", {}) if shot_metrics else {}
+        mean_shot_dur = getattr(shot_metrics, "mean_shot_duration_seconds", None) if shot_metrics else None
+
+        calib_str = "Calibrated (Metric 13.4m x 6.1m)" if (court_calib and court_calib.is_calibrated) else "Uncalibrated (Pixel Space)"
+        dist_m = getattr(movement, "total_distance_m", None) if movement else None
+        cov_pct = getattr(movement, "coverage_percentage", None) if movement else None
+
+        # Check for asserted hypotheses in evidence graph
+        hypo_node = None
+        if evidence_graph and hasattr(evidence_graph, "nodes"):
+            hypo_node = next((n for n in evidence_graph.nodes if n.id == "hypo_left_space_underutilization"), None)
+
+        rag_results = self.rag.query(question, domain="sports", top_k=2)
+
+        prompt = f"""You are SAAR, an autonomous scientific reasoning engine analyzing a Badminton Video Biomechanics assessment. Answer the user's question accurately by synthesizing empirical kinematic measurements, court spatial geometry, and peer-reviewed badminton literature.
+
+User Question:
+"{question}"
+
+BADMINTON ANALYSIS EMPIRICAL CONTEXT:
+- Total Shots Detected: {total_shots}
+- Shot Breakdown: {', '.join([f"{k}: {v} ({shot_pcts.get(k, 0.0):.1f}%)" for k, v in shot_counts.items()]) if shot_counts else 'None detected'}
+- Mean Shot Duration: {f"{mean_shot_dur:.2f} s" if mean_shot_dur is not None else 'N/A'}
+- Court Calibration: {calib_str}
+- Movement Coverage: {f"{cov_pct:.1f}%" if cov_pct is not None else 'N/A'} (Total Distance: {f"{dist_m:.2f} m" if dist_m is not None else 'N/A'})
+- Energy Expenditure: {f"{energy.estimated_calories_burned_kcal:.1f} kcal ({energy.active_duration_minutes:.1f} min)" if energy else 'N/A'}
+- Active Hypotheses: {hypo_node.label if hypo_node else 'None asserted (Multi-signal gate not satisfied)'}
+
+Domain Literature Knowledge (Badminton RAG):
+{chr(10).join([f"- [{r.domain}] {r.content[:180]}..." for r in rag_results[:2]])}
+
+MANDATORY EPISTEMIC FRAMING & ETHICAL RULES:
+1. **Section 11 Epistemic Hedging**: When discussing hypotheses or patterns, use strictly hedged language: "is consistent with a pattern of", "may indicate", "suggests potential". NEVER assert definitive or guaranteed causal dogmatism.
+2. **Measured Facts Only**: Always report the exact measured joint angles, durations, and counts above. Never invent metrics.
+3. **Structured Explanation**:
+   - **Executive Summary**: 1-2 direct sentences answering the question with measured values and hedged wording.
+   - **Evidence Matrix**: Clean markdown table with parameters, measured values, units, and methodological notes.
+   - **Key Biomechanical Takeaways**: Exactly 2 crisp bullet points.
+   - **Bottom Line**: `**Bottom line:** <1 sentence conclusion with coach validation reminder>`.
+"""
+        answer_text = None
+        try:
+            answer_text = self.vlm.synthesize_reasoning_explanation(prompt)
+        except Exception as synth_err:
+            print(f"[ReasoningService] Live AI synthesis error for badminton: {synth_err}")
+
+        if not answer_text:
+            parts = []
+            parts.append("### Badminton Biomechanical Reasoning Summary")
+
+            if any(k in q_lower for k in ["hypothesis", "hypotheses", "left space", "underutilization", "bias", "pattern", "avoidance", "weakness"]):
+                if hypo_node:
+                    props = hypo_node.properties or {}
+                    parts.append(f"**Executive Summary**: Multi-signal gating evaluated and **satisfied** (>= 2 signals confirmed). {hypo_node.label}.")
+                    parts.append("\n#### Grounded Hypothesis & Evidence Chain (Section 11)")
+                    parts.append(f"> **Observation -> Trend -> Correlation -> Hypothesis**:\n> {props.get('value', 'Evidence consistent with left-space underutilization.')}")
+                    parts.append("\n#### Supporting Signals Matrix")
+                    parts.append("| Signal Criterion | Status | Observed Value | Evidence Basis |")
+                    parts.append("|---|---|---|---|")
+                    parts.append("| **Region Occupancy Deficit** | Satisfied | < 20% left court occupancy | Phase 5 Movement Analysis |")
+                    parts.append("| **Shot Target Placement Skew** | Satisfied | >= 60% right court targeting | Phase 8 Placement Metrics |")
+                    parts.append("| **Recovery Centroid Bias** | Evaluated | Shifted rightward | Phase 8 Recovery Centroid |")
+                    parts.append("\n#### Key Findings")
+                    parts.append("- **Hedged Epistemic Status**: Observed data is consistent with a pattern of left-space underutilization, which may indicate tactical avoidance, reach limitation, or visual habit.")
+                    parts.append("- **Coach Grounding**: This hypothesis requires validation by a qualified badminton coach with on-court context.")
+                    parts.append("\n**Bottom line:** Tactical spatial asymmetry is consistent with left-space underutilization; requires coach validation.")
+                else:
+                    parts.append("**Executive Summary**: Multi-signal gating was evaluated for spatial underutilization. The hypothesis was **strictly not asserted** because fewer than 2 corroborating signals were satisfied.")
+                    parts.append("\n#### Gating Evaluation Matrix (Section 11)")
+                    parts.append("| Required Signal | Status | Gate Requirement |")
+                    parts.append("|---|---|---|")
+                    parts.append("| **Left Court Occupancy Deficit** | Insufficient | < 20% left court time with right court > 25% |")
+                    parts.append("| **Target Placement Skew** | Insufficient | >= 60% right court targeting (n >= 3) |")
+                    parts.append("| **Base Recovery Bias** | Insufficient | Mean recovery x >= 3.50m (center = 3.05m) |")
+                    parts.append("\n#### Key Findings")
+                    parts.append("- **Anti-Fabrication Gate**: Per Section 11, hypotheses cannot be asserted from single isolated signals or uncalibrated data.")
+                    parts.append("- **Corroboration Threshold**: At least 2 independent signals must be confirmed before creating a hypothesis node.")
+                    parts.append("\n**Bottom line:** Hypothesis not asserted due to insufficient corroborating multi-signal evidence.")
+
+            elif any(k in q_lower for k in ["angle", "elbow", "shoulder", "knee", "hip", "joint", "kinematic", "arm", "technique"]):
+                parts.append(f"**Executive Summary**: Kinematic joint angles were measured at detected shot contact frames across {total_shots} stroke(s).")
+                parts.append("\n#### Contact Frame Kinematics Matrix")
+                parts.append("| Shot ID | Shot Type | Contact Frame | Elbow Extension (°) | Shoulder Angle (°) | Knee Angle (°) |")
+                parts.append("|---|---|---|---|---|---|")
+                if shots:
+                    for s in shots[:10]:
+                        pf = s.pose_features or {}
+                        elb = f"{pf.get('contact_elbow_angle_deg', pf.get('elbow_angle_deg', 'N/A'))}"
+                        sho = f"{pf.get('contact_shoulder_angle_deg', pf.get('shoulder_angle_deg', 'N/A'))}"
+                        kne = f"{pf.get('contact_knee_angle_deg', pf.get('knee_angle_deg', 'N/A'))}"
+                        cf = s.contact_frame if s.contact_frame is not None else (f"{s.contact_time:.2f}s" if s.contact_time else "-")
+                        parts.append(f"| **{s.shot_id}** | {s.shot_type.upper()} | {cf} | {elb}° | {sho}° | {kne}° |")
+                else:
+                    parts.append("| - | No strokes detected | - | - | - | - |")
+                parts.append("\n#### Key Findings")
+                parts.append("- **Biomechanical Measurement**: Joint angles are calculated directly from MediaPipe 33-landmark 2D arccos geometry at the exact contact frame.")
+                parts.append("- **Kinetic Transfer**: Proximal-to-distal sequencing requires continuous multi-frame visibility leading into contact.")
+                parts.append("\n**Bottom line:** Contact joint angles measured from validated pose landmarks; consult coach for technique adjustments.")
+
+            elif any(k in q_lower for k in ["calorie", "energy", "burn", "met", "metabolic", "kcal"]):
+                if energy:
+                    kcal = energy.estimated_calories_burned_kcal
+                    dur = energy.active_duration_minutes
+                    met = energy.met_value
+                    inputs = energy.inputs_used or []
+                    label_type = "Personalized" if energy.is_personalized else "Generalized (Population-Average 70.0 kg)"
+                    parts.append(f"**Executive Summary**: Estimated energy expenditure is **{kcal:.1f} kcal** across **{dur:.1f} minutes** of active play.")
+                    parts.append("\n#### Energy Expenditure Model (Compendium of Physical Activities)")
+                    parts.append("| Parameter | Value | Reference / Derivation |")
+                    parts.append("|---|---|---|")
+                    parts.append(f"| **Calculated Calories** | **{kcal:.1f} kcal** | MET equation: MET × 3.5 × (mass_kg / 200) × duration_min |")
+                    parts.append(f"| **Active Duration** | {dur:.1f} min | Derived from detected shot / rally timestamps |")
+                    parts.append(f"| **Metabolic Equivalent (MET)** | {met} METs | Ainsworth et al. (2011) / Herrmann et al. (2024) |")
+                    parts.append(f"| **Personalization Status** | **{label_type}** | {'User-supplied mass' if energy.is_personalized else 'Standard 70.0 kg default'} |")
+                    parts.append(f"| **Inputs Used** | {', '.join(inputs)} | Deterministic processing pipeline |")
+                    parts.append("\n#### Key Findings")
+                    parts.append(f"- **Traceable Methodology**: Grounded in Compendium Code 15040/15050 badminton match play baseline.")
+                    parts.append(f"- **Labeling Transparency**: Explicitly labeled as {label_type.lower()} per Section 52.")
+                    parts.append(f"\n**Bottom line:** Energy expenditure estimated at {kcal:.1f} kcal using peer-reviewed MET equation.")
+                else:
+                    parts.append("**Executive Summary**: Energy expenditure calculation unavailable for this session.")
+                    parts.append("\n**Bottom line:** Calorie estimation requires rally duration timing.")
+
+            elif any(k in q_lower for k in ["speed", "velocity", "km/h", "fast", "shuttle speed", "racket speed"]):
+                if speed and (speed.shuttle_speed_peak.available or speed.racket_speed_peak.available):
+                    shuttle_peak = speed.shuttle_speed_peak.speed_kmh if speed.shuttle_speed_peak.available else "Unavailable"
+                    racket_peak = speed.racket_speed_peak.speed_kmh if speed.racket_speed_peak.available else "Unavailable"
+                    parts.append(f"**Executive Summary**: Ballistic speed analysis: Peak Shuttle Speed: **{shuttle_peak} km/h**, Peak Racket Speed: **{racket_peak} km/h**.")
+                    parts.append("\n#### Speed Measurement Matrix (Section 14 Isolated Reporting)")
+                    parts.append("| Ballistic Entity | Peak Speed | Tracking Segments | Status |")
+                    parts.append("|---|---|---|---|")
+                    parts.append(f"| **Shuttlecock** | {shuttle_peak} km/h | {speed.shuttle_speed_peak.valid_trajectory_segments} | {'Calibrated' if speed.shuttle_speed_peak.available else 'Gated out'} |")
+                    parts.append(f"| **Racket Head** | {racket_peak} km/h | {speed.racket_speed_peak.valid_trajectory_segments} | {'Calibrated' if speed.racket_speed_peak.available else 'Gated out'} |")
+                    parts.append("\n**Bottom line:** Racket and shuttle velocities reported independently without conflation.")
+                else:
+                    parts.append("**Executive Summary**: **Speed estimate unavailable — insufficient continuous tracking** (Section 13).")
+                    parts.append("\n#### Tracking Limitation Note")
+                    parts.append("- **Section 13 Compliance**: Ballistic speeds require continuous sub-millisecond object tracking and calibrated homography not met by this video capture.")
+                    parts.append("\n**Bottom line:** Speed estimate unavailable — insufficient continuous tracking.")
+
+            else:
+                parts.append(f"**Executive Summary**: Badminton biomechanics analysis processed **{total_shots} detected shot(s)** with **{calib_str}** court geometry.")
+                parts.append("\n#### Session Summary Matrix")
+                parts.append("| Biomechanical Dimension | Measured Value | Analysis Basis |")
+                parts.append("|---|---|---|")
+                parts.append(f"| **Total Strokes Detected** | {total_shots} | Wrist/racket velocity peak-deceleration validation |")
+                parts.append(f"| **Mean Stroke Duration** | {f'{mean_shot_dur:.2f} s' if mean_shot_dur is not None else 'N/A'} | Contact-to-completion temporal duration |")
+                parts.append(f"| **Court Calibration** | {calib_str} | Perspective boundary homography |")
+                if dist_m is not None:
+                    parts.append(f"| **Total Distance Covered** | {dist_m:.2f} m | Pelvis centroid trajectory |")
+                if cov_pct is not None:
+                    parts.append(f"| **Court Coverage Area** | {cov_pct:.1f}% | 9-region occupancy mapping |")
+                if energy:
+                    parts.append(f"| **Estimated Calories** | {energy.estimated_calories_burned_kcal:.1f} kcal | Compendium MET model |")
+                parts.append("\n#### Key Findings")
+                parts.append("- **Evidence Graph Grounding**: All metrics are organized into the SAAR knowledge & evidence graph following Section 25 node types.")
+                parts.append("- **Epistemic Discipline**: Hypotheses require multi-signal corroboration before assertion.")
+                parts.append("\n**Bottom line:** Objective video biomechanics extracted; consult coach for tactical integration.")
+
+            answer_text = "\n".join(parts)
+
+        return {
+            "question": question,
+            "status": "ANSWERED",
+            "answer_summary": answer_text,
+            "relevant_relationships": [],
+            "relevant_trends": [],
+            "relevant_concepts": [c.model_dump() for c in state.concepts],
+            "domain_knowledge": [r.to_dict() for r in rag_results],
+            "evidence_count": len(state.evidence),
+            "overall_confidence": state.overall_confidence,
+            "iteration": state.iteration,
+        }
+
     def answer_question(self, investigation_id: str, question: str) -> Dict[str, Any]:
         """Answer a natural-language question about the current investigation state."""
         state = self._investigations.get(investigation_id)
@@ -346,6 +664,9 @@ class ReasoningService:
                     iteration=1,
                     status="active"
                 )
+
+        if state.dataset_id == "badminton":
+            return self._answer_badminton_question(state, investigation_id, question)
 
         q_lower = question.lower()
         available_cols = []

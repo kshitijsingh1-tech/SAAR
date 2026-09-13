@@ -31,6 +31,9 @@ app.add_middleware(
 
 orchestrator = DynamicWorkflowOrchestrator()
 
+from .plugins.sports.badminton.router import router as badminton_v1_router
+app.include_router(badminton_v1_router)
+
 @app.options("/{full_path:path}")
 def options_handler(full_path: str):
     return Response(status_code=200)
@@ -422,6 +425,276 @@ async def gait_ask_assessment(assessment_id: str, payload: Dict[str, str]):
     if isinstance(res, dict):
         res["terminology"] = terms
     return res
+
+
+# ===================================================================
+# BADMINTON BIOMECHANICS VIDEO ANALYSIS API
+# ===================================================================
+
+try:
+    from .plugins.sports.badminton import (
+        BadmintonPipeline, BadmintonAnalysisResult, PlayerMetadata
+    )
+except Exception as _badminton_err:
+    BadmintonPipeline = None
+    BadmintonAnalysisResult = None
+    PlayerMetadata = None
+    print(f"[Main] Notice: BadmintonPipeline unavailable: {_badminton_err}")
+
+_badminton_pipeline = None
+_badminton_assessments: Dict[str, Any] = {}
+
+
+def get_badminton_pipeline():
+    global _badminton_pipeline
+    if _badminton_pipeline is None:
+        if BadmintonPipeline is None:
+            raise HTTPException(status_code=503, detail="Badminton analysis pipeline dependencies not available.")
+        _badminton_pipeline = BadmintonPipeline()
+    return _badminton_pipeline
+
+
+@app.get("/api/sports/badminton/recording-guidance")
+def badminton_recording_guidance():
+    """Returns static UX recording guidelines and capture best practices for badminton video analysis."""
+    return {
+        "title": "Badminton Video Recording Best Practices",
+        "camera_position": {
+            "preferred_angles": [
+                "Rear Baseline: Elevated 1.5m - 2.5m directly behind the baseline facing the net.",
+                "Diagonal Corner: 45° angle from the rear corner for optimal depth and lateral footwork observation."
+            ],
+            "stability": "Stationary mount or tripod strongly recommended. Handheld tracking introduces false acceleration artifacts."
+        },
+        "framing": {
+            "court_coverage": "Full half-court or complete 13.4m x 6.1m court boundaries clearly visible.",
+            "player_framing": "Player must be visible head-to-toe across all strokes, jumps, and lunges.",
+            "occlusion": "Keep net posts and umpire chair from obstructing player racket swing plane."
+        },
+        "technical_specifications": {
+            "minimum_fps": 30,
+            "recommended_fps": 60,
+            "minimum_resolution": "720p (1280x720)",
+            "recommended_resolution": "1080p (1920x1080)",
+            "lighting": "Uniform indoor court lighting; avoid backlight glare and heavy shadows."
+        },
+        "clip_duration": {
+            "minimum_seconds": 3.0,
+            "recommended_seconds": "5s – 90s (single rally or repetitive stroke drill)",
+            "maximum_seconds": 180.0
+        },
+        "rally_types": [
+            "Overhead smash drills",
+            "Clears and drop shots",
+            "Full singles / doubles competitive rally exchanges"
+        ]
+    }
+
+
+@app.post("/api/sports/badminton/analyze")
+async def badminton_analyze_video(
+    video: UploadFile = File(...),
+    player_age: Optional[int] = Query(None, ge=5, le=100),
+    player_sex: Optional[str] = Query(None),
+    body_weight_kg: Optional[float] = Query(None, ge=20.0, le=250.0),
+    skill_level: Optional[str] = Query(None),
+    session_duration_min: Optional[float] = Query(None, ge=1.0, le=300.0),
+    match_type: Optional[str] = Query(None),
+    court_orientation: Optional[str] = Query(None)
+):
+    """
+    Accepts video upload and optional player metadata, decodes video container,
+    runs recording-level quality gating, and returns a structured BadmintonAnalysisResult.
+    """
+    player_meta = None
+    if any(p is not None for p in [player_age, player_sex, body_weight_kg, skill_level, session_duration_min, match_type, court_orientation]):
+        player_meta = PlayerMetadata(
+            age=player_age,
+            sex=player_sex,
+            body_weight_kg=body_weight_kg,
+            skill_level=skill_level,
+            session_duration_min=session_duration_min,
+            match_type=match_type,
+            court_orientation=court_orientation
+        ) if PlayerMetadata else None
+
+    try:
+        content = await video.read()
+        pipeline = get_badminton_pipeline()
+        result = pipeline.analyze_video_bytes(
+            video_bytes=content,
+            filename=video.filename or "badminton_video.mp4",
+            player_metadata=player_meta
+        )
+        _badminton_assessments[result.analysis_id] = result
+        try:
+            saar_engine.register_badminton_investigation(result)
+        except Exception as reg_err:
+            print(f"[Main] Warning: Failed to register badminton investigation: {reg_err}")
+        return result.model_dump()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Badminton video processing failed: {str(e)}")
+
+
+@app.get("/api/sports/badminton/analysis/{analysis_id}")
+def badminton_get_analysis(analysis_id: str):
+    """Retrieve structured analysis result for a badminton video."""
+    if analysis_id in _badminton_assessments:
+        return _badminton_assessments[analysis_id].model_dump()
+    raise HTTPException(status_code=404, detail=f"Badminton analysis '{analysis_id}' not found.")
+
+
+@app.post("/api/sports/badminton/analysis/{analysis_id}/ask")
+async def badminton_ask_analysis(analysis_id: str, payload: Dict[str, str]):
+    """
+    Ask a question regarding a specific badminton analysis with grounded reasoning
+    and Section 27 'what's missing' protocol.
+    """
+    question = payload.get("question", "")
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required.")
+
+    if analysis_id not in _badminton_assessments and analysis_id not in saar_engine._investigations:
+        raise HTTPException(status_code=404, detail=f"Badminton analysis '{analysis_id}' not found.")
+
+    res = await asyncio.to_thread(saar_engine.answer_question, analysis_id, question)
+    if isinstance(res, dict) and "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+    return res
+
+
+@app.get("/api/sports/badminton/sample/video")
+def badminton_sample_video():
+    """Stream bundled sample video for badminton player playback."""
+    import os
+    from fastapi.responses import FileResponse
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "gait", "assets", "sample_toddler_walk.mp4")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "app", "gait", "assets", "sample_toddler_walk.mp4")),
+    ]
+    sample_path = next((c for c in candidates if os.path.exists(c)), None)
+    if not sample_path:
+        raise HTTPException(status_code=404, detail="Sample video file not found.")
+    return FileResponse(sample_path, media_type="video/mp4")
+
+
+_cached_badminton_sample = None
+
+@app.get("/api/sports/badminton/sample")
+def badminton_analyze_sample():
+    """Run real badminton biomechanics analysis on the sample clip."""
+    global _cached_badminton_sample
+    if _cached_badminton_sample is not None:
+        return _cached_badminton_sample
+
+    import os
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "gait", "assets", "sample_toddler_walk.mp4")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "backend", "app", "gait", "assets", "sample_toddler_walk.mp4")),
+    ]
+    sample_path = next((c for c in candidates if os.path.exists(c)), None)
+    if not sample_path:
+        raise HTTPException(status_code=404, detail="Sample video not found.")
+
+    pipeline = get_badminton_pipeline()
+    with open(sample_path, "rb") as f:
+        content = f.read()
+
+    sample_player_meta = None
+    if PlayerMetadata:
+        sample_player_meta = PlayerMetadata(
+            age=23,
+            body_weight_kg=72.0,
+            session_duration_min=45.0,
+            skill_level="intermediate",
+            match_type="singles"
+        )
+
+    result = pipeline.analyze_video_bytes(
+        video_bytes=content,
+        filename="badminton_sample_rally.mp4",
+        player_metadata=sample_player_meta
+    )
+    _badminton_assessments[result.analysis_id] = result
+    try:
+        saar_engine.register_badminton_investigation(result)
+    except Exception as reg_err:
+        print(f"[Main] Warning: Failed to register badminton sample investigation: {reg_err}")
+    _cached_badminton_sample = result.model_dump()
+    return _cached_badminton_sample
+
+
+@app.post("/api/sports/badminton/longitudinal")
+def badminton_compare_longitudinal(payload: Dict[str, Any]):
+    """
+    Phase 17: Deterministic multi-session trend analysis for the same player_id.
+    Compares shot accuracy, distribution, coverage, speeds, recovery tempo,
+    and joint kinematics with non-causal epistemic discipline.
+    """
+    raw_sessions = payload.get("sessions", [])
+    analysis_ids = payload.get("analysis_ids", [])
+    player_id = payload.get("player_id")
+
+    sessions: List[Any] = []
+    if raw_sessions:
+        for s in raw_sessions:
+            if isinstance(s, dict):
+                sessions.append(BadmintonAnalysisResult.model_validate(s))
+            else:
+                sessions.append(s)
+    elif analysis_ids:
+        for aid in analysis_ids:
+            if aid in _badminton_assessments:
+                sessions.append(_badminton_assessments[aid])
+    elif player_id:
+        for aid, assessment in _badminton_assessments.items():
+            sess_player = getattr(assessment, "player_id", None) or (
+                assessment.player_metadata.player_id if assessment.player_metadata else None
+            )
+            if sess_player == player_id:
+                sessions.append(assessment)
+
+    if len(sessions) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Longitudinal comparison requires at least 2 sessions for player '{player_id or 'unknown'}'. Found {len(sessions)}."
+        )
+
+    pipeline = get_badminton_pipeline()
+    try:
+        comparison = pipeline.compare_longitudinal_sessions(sessions, player_id=player_id)
+        return comparison.model_dump()
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Longitudinal analysis failed: {err}")
+
+
+@app.get("/api/sports/badminton/players/{player_id}/longitudinal")
+def badminton_player_longitudinal(player_id: str):
+    """
+    Retrieve longitudinal trends and non-causal correlations for a specific athlete.
+    """
+    sessions = []
+    for aid, assessment in _badminton_assessments.items():
+        sess_player = getattr(assessment, "player_id", None) or (
+            assessment.player_metadata.player_id if assessment.player_metadata else None
+        )
+        if sess_player == player_id:
+            sessions.append(assessment)
+
+    if len(sessions) < 2:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Insufficient sessions ({len(sessions)}) found for athlete '{player_id}'. Minimum 2 required."
+        )
+
+    pipeline = get_badminton_pipeline()
+    try:
+        comparison = pipeline.compare_longitudinal_sessions(sessions, player_id=player_id)
+        return comparison.model_dump()
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Longitudinal analysis failed: {err}")
 
 
 

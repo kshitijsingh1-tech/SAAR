@@ -154,7 +154,17 @@ class RAGKnowledgeService:
         if not query_tokens:
             return []
 
-        candidates = self.domains.get(domain, self.chunks) if domain else self.chunks
+        if domain:
+            d_lower = domain.lower().replace("_", " ").strip()
+            matched = []
+            for d_key, chunks in self.domains.items():
+                k_lower = d_key.lower()
+                if d_lower == k_lower or d_lower in k_lower or k_lower in d_lower:
+                    matched.extend(chunks)
+            candidates = matched if matched else self.chunks
+        else:
+            candidates = self.chunks
+
         if not candidates:
             return []
 

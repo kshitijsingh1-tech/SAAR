@@ -16,6 +16,9 @@
 7. [Clean Response Formatting: Thought Process Capsule for Dataset Ingestion](#7-clean-response-formatting-thought-process-capsule-for-dataset-ingestion)
 8. [Authentic Photographic Milestones & Bi-Directional Visual Grounding](#8-authentic-photographic-milestones--bi-directional-visual-grounding)
 9. [Image Metadata Tagging & Multi-Iteration Milestone Architecture](#9-image-metadata-tagging--multi-iteration-milestone-architecture)
+10. [Single Metadata Context Box with Standardized Format & Sequential Ingestion](#10-single-metadata-context-box-with-standardized-format--sequential-ingestion)
+11. [Analytical Inquiry Reasoning Engine Overhaul & Gemini Model Re-alignment](#11-analytical-inquiry-reasoning-engine-overhaul--gemini-model-re-alignment)
+12. [Safe Upstream Integration of Origin/Main with Non-Regression Multimodal Invariants](#12-safe-upstream-integration-of-originmain-with-non-regression-multimodal-invariants)
 
 ---
 
@@ -332,6 +335,52 @@ with an empty table and meaningless "COLUMN DATA GAP" notices.
 
 ---
 
+## 12. Safe Upstream Integration of Origin/Main with Non-Regression Multimodal Invariants
+**Date Solved**: 2026-09-13
+**Primary Files Modified**:
+- `frontend/src/App.jsx`
+- `frontend/src/components/ChatGPTView.jsx`
+- `frontend/src/components/ImageInspector.jsx`
+- `frontend/src/components/ToolCanvasDrawer.jsx`
+- `frontend/package.json`
+- `backend/app/main.py`
+- `backend/app/services/reasoning_service.py`
+- `work_done.md`
+
+### Problem Description & User Goal
+The user requested integrating the latest updates from `origin/main` (which included pull request #21, the badminton athletic biomechanics feature suite, the greyish scientific dashboard theme, evidence ledger tabs, and universal tool availability) into our active development branch (`feat/multimodal-ui`) safely, **without losing any of our developed features or violating non-regression invariants**.
+
+### Root Cause Analysis & Merge Conflict Surface
+1. **`ChatGPTView.jsx`**:
+   - `origin/main` introduced `ImageVerificationModal` and `ImageAttachmentCard` alongside updated tool badges for movement kinematics.
+   - `feat/multimodal-ui` introduced the single metadata text box modal formatted as `info(example: data,name,time etc) : message for ai`, theme-matched styling, auto-sequencing multi-iteration bar, and clickable image pill cards.
+   - *Resolution*: Unified both modals at the bottom of the component. Maintained the clickable image pill with metadata tag badges and added an inspect zoom trigger, preserving both full-size preview verification and context editing.
+2. **`ToolCanvasDrawer.jsx`**:
+   - `origin/main` refactored tool availability, making badminton biomechanics and motion tools accessible across domains.
+   - `feat/multimodal-ui` passed `milestones` telemetry to `ImageInspector` and bound session switching callbacks.
+   - *Resolution*: Harmonized tool rollout definitions while cleanly passing `milestones`, `sessions`, `activeSessionId`, `onSwitchSession`, and `isProcessing` props to `ImageInspector`.
+3. **`App.jsx`**:
+   - `origin/main` introduced expanded domain auto-detection (`isBotanical`, `isInfra`, `isAstro`, `isSports`) and custom video handling.
+   - `feat/multimodal-ui` added multi-iteration milestone accumulation, session telemetry persistence, and Stage 1 text-first thought process rendering.
+   - *Resolution*: Combined all domain detection branches with milestone extraction, multi-frame comparative thought processes, and session persistence.
+4. **`ImageInspector.jsx`**:
+   - `origin/main` completely overhauled the presentation into a sophisticated greyish scientific analytical dashboard with 1:1 SVG reticle alignment, zoom & pan, natural aspect ratio scaling, and evidence ledger tabs.
+   - `feat/multimodal-ui` added photographic milestone selection dropdowns and contextual ribbons.
+   - *Resolution*: Integrated dynamic milestone photograph dropdown and active milestone context ribbon cleanly into the new greyish dashboard. Eliminated legacy fallback to `/monstera_sample.png` to adhere strictly to Rule 2 of `AGENTS.md` (honest empty state over fake fallbacks).
+5. **Missing Dependency in `package.json`**:
+   - `PerformanceRadar.jsx` imported `chart.js` and `react-chartjs-2`, which were not previously listed in `package.json`.
+   - *Resolution*: Installed `chart.js` and `react-chartjs-2` into `frontend/package.json` and validated that `npm run build` succeeds cleanly with exit code 0.
+
+### Non-Regression Invariants Preserved
+- ✅ **Single Metadata Box with Exact Format**: `info(example: data,name,time etc) : message for ai` and theme-matched modal preserved.
+- ✅ **Two-Stage Ingestion Pipeline**: Stage 1 context analysis runs prior to visual grounding.
+- ✅ **30-Day Milestone Graph Pinning**: User-tagged milestones dynamically pin onto timeline curves in `PlotlyGraphViewer.jsx`.
+- ✅ **Analytical Inquiry Engine**: `"help me with this analysis"` triggers deep multimodal synthesis without column gap notices.
+- ✅ **Zero Hardcoding**: No hardcoded bounding boxes or scenario strings in UI components; honest empty states preserved.
+- ✅ **Universal Tool Rollout & Badminton**: Full sports biomechanics suite and scientific dashboard operational.
+
+---
+
 ## How to Maintain This File
 When completing any new task or fixing any bug:
 1. Add a new numbered section under Table of Contents and document:
@@ -341,4 +390,5 @@ When completing any new task or fixing any bug:
    - Root Causes
    - Implemented Solution & Non-Regression Rules
 2. Keep entries chronological and concise.
+
 

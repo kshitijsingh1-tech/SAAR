@@ -11,6 +11,14 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
   // Operational Scientific Tools:
   const allTools = [
     {
+      id: 'badminton',
+      label: 'Badminton Biomechanics',
+      tooltip: 'Athletic Video Analysis, Stroke Kinematics, Court Heatmap & Evidence Graph',
+      icon: <Activity size={17} />,
+      gradient: 'linear-gradient(135deg, #10b981, #059669)',
+      glow: 'rgba(16, 185, 129, 0.45)'
+    },
+    {
       id: 'grounded',
       label: 'Image Analysis (Query & Graph)',
       tooltip: 'Visual image perception alongside query-grounded causal graph',
@@ -60,10 +68,14 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     }
   ];
 
-  const isPediatric = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
-  const tools = isPediatric
-    ? allTools.filter((t) => ['grounded', 'gait', 'rag'].includes(t.id))
-    : allTools.filter((t) => t.id !== 'gait');
+  const domainLower = String(selectedDomain || '').toLowerCase();
+  const isPediatrics = domainLower.includes('pediat') || domainLower.includes('gait') || domainLower.includes('toddle');
+
+  const tools = isPediatrics
+    ? allTools
+        .filter((t) => ['gait', 'rag'].includes(t.id))
+        .map((t) => (t.id === 'rag' ? { ...t, label: 'Clinical References' } : t))
+    : allTools;
 
   useEffect(() => {
     function handleClickOutside(event) {
