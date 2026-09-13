@@ -29,9 +29,7 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
 
   // Synchronize when initialResult or initialFile props change
   React.useEffect(() => {
-    if (initialResult) {
-      setAssessmentResult(initialResult);
-    }
+    setAssessmentResult(initialResult || null);
   }, [initialResult]);
 
   React.useEffect(() => {
@@ -40,6 +38,9 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
       try {
         setVideoPreviewUrl(URL.createObjectURL(initialFile));
       } catch (e) { }
+    } else {
+      setSelectedFile(null);
+      setVideoPreviewUrl(null);
     }
   }, [initialFile]);
 

@@ -27,14 +27,6 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
       glow: 'rgba(6, 182, 212, 0.45)'
     },
     {
-      id: 'camera',
-      label: 'Visual Evidence Monitor',
-      tooltip: 'High-Res Photo & Visual Inspection Monitor with Spatial Anchors',
-      icon: <Camera size={17} />,
-      gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)',
-      glow: 'rgba(244, 63, 94, 0.45)'
-    },
-    {
       id: 'graph',
       label: 'Causal Knowledge Graph',
       tooltip: 'NetworkX Causal Knowledge Graph',
@@ -68,9 +60,10 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     }
   ];
 
-  const tools = selectedDomain === 'pediatrics'
-    ? allTools.filter((t) => ['gait', 'camera', 'rag'].includes(t.id))
-    : allTools;
+  const isPediatric = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
+  const tools = isPediatric
+    ? allTools.filter((t) => ['grounded', 'gait', 'rag'].includes(t.id))
+    : allTools.filter((t) => t.id !== 'gait');
 
   useEffect(() => {
     function handleClickOutside(event) {

@@ -124,6 +124,48 @@ async def saar_upload(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.get("/api/saar/read-file")
+async def saar_read_file(path: str = Query(...)):
+    """Read a local dataset or document file from disk to support pasted file paths."""
+    from pathlib import Path
+    raw_path = path.strip().strip('"').strip("'")
+    if not raw_path:
+        raise HTTPException(status_code=400, detail="Path parameter is required")
+
+    candidates = [
+        Path(raw_path),
+        Path(r"d:\bytebuild") / raw_path,
+        Path(r"d:\bytebuild") / os.path.basename(raw_path)
+    ]
+    target = None
+    for c in candidates:
+        try:
+            if c.exists() and c.is_file():
+                target = c
+                break
+        except Exception:
+            continue
+
+    if not target:
+        raise HTTPException(status_code=404, detail=f"File not found on system: {raw_path}")
+
+    try:
+        with open(target, "rb") as f:
+            content = f.read()
+        filename = target.name
+        media_type = "text/csv" if filename.lower().endswith(".csv") else "application/octet-stream"
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Filename": filename,
+                "Access-Control-Expose-Headers": "X-Filename, Content-Disposition"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/saar/investigation/{investigation_id}")
 def saar_get_investigation(investigation_id: str):
     """Get the current state of an active SAAR investigation."""

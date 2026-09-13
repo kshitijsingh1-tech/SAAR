@@ -4,6 +4,7 @@ import urllib.request
 import urllib.parse
 import re
 import os
+import time
 from typing import Dict, Any, List, Optional, Tuple
 
 try:
@@ -362,6 +363,9 @@ Structure:
 
         # Try active generation models with vision capabilities
         candidate_models = [
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
             "gemini-3.1-flash-lite",
             "gemini-3.6-flash",
             "gemini-3.5-flash",
@@ -479,7 +483,7 @@ Structure:
                     {"role": "user", "content": content}
                 ],
                 "temperature": 0.15,
-                "max_tokens": 1800
+                "max_tokens": 950
             }
             try:
                 req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={

@@ -118,18 +118,17 @@ export function ToolCanvasDrawer({
 
   if (!isOpen) return null;
 
-  const isPediatricsDomain = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
+  const isPediatricsDomain = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait') || String(selectedDomain || '').toLowerCase().includes('biomechanic');
 
-  // Operational tools strictly for active scientific investigations
-  const isMovementAnalysis = isPediatricsDomain || activeTool === 'gait';
+  // Video/motion analysis is strictly private to pediatric/movement inquiries or when video media is loaded
+  const hasVideoContent = Boolean(customVideoFile) || isPediatricsDomain;
 
   const toolsMeta = [
     { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
-    { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
-    { id: 'camera', label: 'Visual Evidence Monitor', icon: <Camera size={15} /> },
+    ...(hasVideoContent ? [{ id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> }] : []),
     { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
     { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'Scientific References', icon: <BookOpen size={15} /> },
+    { id: 'rag', label: isPediatricsDomain ? 'Clinical References' : 'Scientific References', icon: <BookOpen size={15} /> },
     { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
   ];
 
@@ -142,10 +141,14 @@ export function ToolCanvasDrawer({
     biomechanics: 'gait',
     posture: 'gait',
     morphology: 'grounded',
-    inspector: 'camera',
-    image: 'camera'
+    camera: 'grounded',
+    inspector: 'grounded',
+    image: 'grounded'
   };
-  const effectiveTool = TOOL_ALIASES[activeTool] || (toolsMeta.some((t) => t.id === activeTool) ? activeTool : 'grounded');
+
+  // If activeTool is 'gait' but hasVideoContent is false (e.g. botanical inquiry), fall back to 'grounded'
+  const resolvedActive = (!hasVideoContent && activeTool === 'gait') ? 'grounded' : activeTool;
+  const effectiveTool = TOOL_ALIASES[resolvedActive] || (toolsMeta.some((t) => t.id === resolvedActive) ? resolvedActive : 'grounded');
 
   const currentToolMeta = toolsMeta.find((t) => t.id === effectiveTool) || toolsMeta[0];
 
@@ -353,34 +356,6 @@ export function ToolCanvasDrawer({
               onSendToChat={onSendToChat}
               isExpanded={isExpanded}
               onToggleExpand={() => setIsExpanded(!isExpanded)}
-            />
-          </div>
-        )}
-
-        {/* Tool 2: Visual Photo Evidence Monitor (ImageInspector.jsx) */}
-        {effectiveTool === 'camera' && (
-          <div className="tool-body-pane custom-pane-scrollbar" style={{ height: '100%', maxHeight: '100%', minHeight: 0, overflowY: 'auto', padding: '0.65rem', display: 'block', boxSizing: 'border-box' }}>
-            <ImageInspector
-              preset={investigationData?.preset}
-              presetId={activePresetId}
-              customImageData={customImageData}
-              customImageUrl={customImageUrl}
-              onUploadCustom={onUploadCustomImage}
-              onPasteUrl={onPasteImageUrl}
-              vlmProvider="auto"
-              cameraConnected={cameraConnected}
-              onCloseCamera={onCloseCamera}
-              nodes={investigationData?.final_graph?.nodes || saarData?.graph_data?.nodes || []}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={onSelectNode}
-              onOpenTool={(toolId, node) => {
-                if (node?.id && onSelectNode) onSelectNode(node.id);
-                onSelectTool(toolId);
-              }}
-              onAskQuery={(q) => onSendToChat && onSendToChat(q)}
-              onOpenGlossary={() => onSelectTool('dictionary')}
-              domain={selectedDomain}
-              investigationData={investigationData}
             />
           </div>
         )}

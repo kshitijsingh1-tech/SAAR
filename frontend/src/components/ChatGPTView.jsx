@@ -6,7 +6,11 @@ import {
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
   PieChart, ChevronRight, MessageSquare, Sprout, Construction, Orbit, Activity,
+<<<<<<< HEAD
   Image as ImageIcon, Film, Sun, Moon, Eye, Trash2, ZoomIn
+=======
+  Image as ImageIcon, Film, Sun, Moon, Crosshair
+>>>>>>> a034de23bfd5df6600655a1590250dd2b3c4dc87
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -512,7 +516,7 @@ export function ChatGPTView({
     }
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = async (e) => {
     const now = Date.now();
     // Guard against rapid duplicate paste events fired within 50ms
     if (now - lastPasteTimeRef.current < 50) {
@@ -564,18 +568,83 @@ export function ChatGPTView({
       return;
     }
 
-    // 3. Convert large text pastes into a staged draft pill card (Claude / ChatGPT behavior)
     const text = clipboardData.getData('text');
-    if (text && text.trim().length > 220) {
-      e.preventDefault();
-      e.stopPropagation();
-      const cleanFirst = text.trim().split('\n')[0].replace(/^[#>*\s-]+/, '').trim();
-      const title = cleanFirst.length > 24 ? `${cleanFirst.slice(0, 24)}..` : (cleanFirst || 'Draft text..');
-      setTextSnippet({
-        title,
-        content: text.trim()
-      });
-      return;
+    if (text) {
+      const trimmed = text.trim();
+
+      // 3. File path / filename detection (e.g. copied file path from VS Code or typed path)
+      const cleanPath = trimmed.replace(/^["']|["']$/g, '').trim();
+      const isFilePathCandidate = /\.(csv|xlsx?|tsv|json|txt|png|jpe?g|webp|pdf)$/i.test(cleanPath) &&
+        (cleanPath.includes('/') || cleanPath.includes('\\') || !cleanPath.includes('\n'));
+
+      if (isFilePathCandidate) {
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+          const res = await fetch(`${apiUrl}/api/saar/read-file?path=${encodeURIComponent(cleanPath)}`);
+          if (res.ok) {
+            e.preventDefault();
+            e.stopPropagation();
+            const blob = await res.blob();
+            const filename = res.headers.get('X-Filename') || cleanPath.split(/[/\\]/).pop() || 'dataset.csv';
+            const fileObj = new File([blob], filename, {
+              type: blob.type || (filename.endsWith('.csv') ? 'text/csv' : 'application/octet-stream')
+            });
+            setAttachedFiles((prev) => [...prev, fileObj]);
+            return;
+          }
+        } catch (fetchErr) {
+          // If backend can't find file, continue to text/tabular logic
+        }
+      }
+
+      // 4. Tabular text detection (CSV or TSV text pasted into chat input)
+      const lines = trimmed.split(/\r?\n/).filter((l) => l.trim().length > 0);
+
+      // Check if text is a tabular CSV or TSV (header + data rows with matching delimiters)
+      if (lines.length >= 2) {
+        const header = lines[0];
+        const commaCount0 = (header.match(/,/g) || []).length;
+        const tabCount0 = (header.match(/\t/g) || []).length;
+        const semiCount0 = (header.match(/;/g) || []).length;
+        const maxDelim0 = Math.max(commaCount0, tabCount0, semiCount0);
+
+        if (maxDelim0 >= 1) {
+          const sampleLine = lines[1];
+          const commaCount1 = (sampleLine.match(/,/g) || []).length;
+          const tabCount1 = (sampleLine.match(/\t/g) || []).length;
+          const semiCount1 = (sampleLine.match(/;/g) || []).length;
+          const maxDelim1 = Math.max(commaCount1, tabCount1, semiCount1);
+
+          if (maxDelim1 >= 1) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const firstCol = header.split(/,|\t|;/)[0].replace(/["']/g, '').trim();
+            const datasetName = firstCol && firstCol.length < 25
+              ? `${firstCol.toLowerCase().replace(/[^a-z0-9_]/g, '_')}_dataset.csv`
+              : 'pasted_dataset.csv';
+
+            const csvBlob = new Blob([trimmed], { type: 'text/csv' });
+            const csvFile = new File([csvBlob], datasetName, { type: 'text/csv' });
+
+            setAttachedFiles((prev) => [...prev, csvFile]);
+            return;
+          }
+        }
+      }
+
+      // 5. Convert large non-tabular text pastes into a staged draft pill card (Claude / ChatGPT behavior)
+      if (trimmed.length > 220) {
+        e.preventDefault();
+        e.stopPropagation();
+        const cleanFirst = trimmed.split('\n')[0].replace(/^[#>*\s-]+/, '').trim();
+        const title = cleanFirst.length > 24 ? `${cleanFirst.slice(0, 24)}..` : (cleanFirst || 'Draft text..');
+        setTextSnippet({
+          title,
+          content: trimmed
+        });
+        return;
+      }
     }
   };
 
@@ -962,11 +1031,11 @@ export function ChatGPTView({
                         <button
                           type="button"
                           className="tool-invoke-badge compact"
-                          onClick={() => onOpenTool('camera')}
+                          onClick={() => onOpenTool('grounded')}
                           title="Inspect spatial visual bounding boxes on image canvas"
                         >
-                          <Camera size={12} className="text-rose" />
-                          <span>Visual Evidence Monitor</span>
+                          <Crosshair size={12} className="text-emerald" />
+                          <span>Image Analysis</span>
                           <ArrowRight size={10} />
                         </button>
 
