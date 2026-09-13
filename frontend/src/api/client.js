@@ -189,6 +189,16 @@ export const askGaitQuestion = async (assessmentId, question) => {
   return res.data;
 };
 
+export const classifyVideo = async (file, contextText = '') => {
+  const formData = new FormData();
+  formData.append('video', file);
+  if (contextText) {
+    formData.append('context', contextText);
+  }
+  const res = await axios.post(`${API_BASE_URL}/api/video/classify`, formData);
+  return res.data;
+};
+
 // ------------------------------------------------------------------
 // Badminton Biomechanics Video Analysis API
 // ------------------------------------------------------------------

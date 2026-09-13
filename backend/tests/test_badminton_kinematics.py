@@ -212,6 +212,8 @@ class TestBadmintonKinematics:
         pose landmarks, verifiably different shot-to-shot on a real multi-shot video.
         """
         candidate_paths = [
+            Path("app/plugins/sports/badminton/assets/badminton_sample_rally.mp4"),
+            Path("../backend/app/plugins/sports/badminton/assets/badminton_sample_rally.mp4"),
             Path("../Prompt_Photorealistic_p_.mp4"),
             Path("Prompt_Photorealistic_p_.mp4"),
             Path("app/gait/assets/sample_toddler_walk.mp4")

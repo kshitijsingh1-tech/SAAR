@@ -24,6 +24,7 @@
 15. [Resolution of Badminton Studio Unavailable Features & Multi-Keyframe Court Calibration](#15-2026-09-13-resolution-of-badminton-studio-unavailable-features--multi-keyframe-court-calibration)
 16. [Elimination of Sample Limitations & Authentic Badminton Rally Ingestion](#16-2026-09-13-elimination-of-sample-limitations--authentic-badminton-rally-ingestion)
 17. [Resolution of Image Attachment Thumbnail Overflow & Verification Modal Restoration](#17-2026-09-13-resolution-of-image-attachment-thumbnail-overflow--verification-modal-restoration)
+18. [Autonomous Video Domain Classifier & Dynamic Tool Dispatcher (Toddler Gait vs. Badminton Studio)](#18-2026-09-13-autonomous-video-domain-classifier--dynamic-tool-dispatcher-toddler-gait-vs-badminton-studio)
 
 ---
 
@@ -568,6 +569,58 @@ When an image file (e.g. a high-resolution lotus specimen photograph) was attach
 4. **Verification**:
    - Production frontend build (`npm run build`) succeeded in 19.86s with **0 errors**.
    - Preserves all Section 9 and Section 10 invariants: single-context text box (`info: message`), click-to-tag metadata modal, and two-stage text-first pipeline.
+
+---
+
+## 18. [2026-09-13] Autonomous Video Domain Classifier & Dynamic Tool Dispatcher (Toddler Gait vs. Badminton Studio)
+
+**Primary Files Modified**:
+- `backend/app/services/video_classifier.py`
+- `backend/app/main.py`
+- `frontend/src/api/client.js`
+- `frontend/src/App.jsx`
+- `backend/tests/test_badminton_kinematics.py`
+- `work_done.md`
+
+### Problem Description & User Goal
+When users upload video files into SAAR, the system previously routed all videos unconditionally to ToddleAI Pediatric Gait Screening (`analyzeGaitVideo`) and opened the gait drawer, completely bypassing the Badminton Athletic Biomechanics Studio (`BadmintonDashboard`). Users uploading a badminton match clip had no automated mechanism to identify the scene and mount the appropriate badminton kinematics tool without manual preset navigation.
+
+### Root Cause Analysis
+1. **Unconditional Routing in Composer**:
+   - In `frontend/src/App.jsx:872`, the `isVideo` block unconditionally invoked `analyzeGaitVideo(file, 24)` and set `setActiveTool('gait')`.
+2. **Missing Video Domain Classifier**:
+   - The platform lacked a dedicated video scene classifier capable of sampling keyframes and differentiating domain signatures (badminton court geometry, adult athletic stature, racket contact vs. pediatric walking stature, wide base of support).
+
+### Implemented Solution & Non-Regression Invariants
+1. **Multi-Signal Video Classifier Service (`backend/app/services/video_classifier.py`)**:
+   - **Computer Vision Probes**:
+     - `CourtDetector.detect_court`: identifies badminton boundary lines, green/blue court surface, and metric homography calibration.
+     - `BadmintonPoseEstimator`: evaluates cephalic-to-stature ratio (toddler $1:4$–$1:5$ vs. adult athlete $1:7$–$1:8$) and stance width.
+   - **Fast VLM Semantic Probe**:
+     - Extracts keyframe at 20% duration and queries Gemini Flash / Groq Vision for zero-shot classification (`badminton` vs. `toddler_gait`).
+   - **Multi-Signal Score Fusion**:
+     - Computes calibrated confidence ($0.0$ to $1.0$), human-readable rationale, and observed physical indicators.
+2. **Dedicated Classification API (`backend/app/main.py`)**:
+   - Exposed `POST /api/video/classify` accepting `video: UploadFile` and optional `context`.
+3. **Frontend API Client & Autonomous Dispatcher (`client.js` & `App.jsx`)**:
+   - `classifyVideo(file, userText)` called upon video upload in `handleSendMessage`.
+   - **If Badminton Athletic Rally**:
+     - Calls `analyzeBadmintonVideo(file)`.
+     - Switches `selectedDomain` to `'sports'`.
+     - Mounts `BadmintonDashboard.jsx` (`activeTool = 'badminton'`) in `ToolCanvasDrawer`.
+     - Thought Process Pill documents: `Autonomous Video Dispatch: Classified as Badminton Athletic Rally (${confidence}% confidence)`.
+     - Displays comprehensive coach summary, racket velocity, shuttle speed, and court coverage in chat.
+   - **If Toddler Gait Screening**:
+     - Calls `analyzeGaitVideo(file, 24)`.
+     - Switches `selectedDomain` to `'pediatrics'`.
+     - Mounts `GaitDashboard.jsx` (`activeTool = 'gait'`).
+     - Thought Process Pill documents: `Autonomous Video Dispatch: Classified as Toddler Gait Screening (${confidence}% confidence)`.
+4. **Verification**:
+   - `test_video_classification.py`:
+     - `badminton_sample_rally.mp4` $\longrightarrow$ `sports / badminton (confidence 0.75)`
+     - `sample_toddler_walk.mp4` $\longrightarrow$ `pediatrics / gait (confidence 0.65)`
+   - All **41 backend pytest tests** pass cleanly in 58.73s with **0 failures**.
+   - Production frontend build (`npm run build`) compiles cleanly with **0 errors**.
 
 ---
 

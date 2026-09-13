@@ -5,7 +5,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, HTTPException, Query, Response, Request
+from fastapi import FastAPI, HTTPException, Query, Response, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
@@ -355,6 +355,31 @@ async def gait_analyze_video(
         return result.model_dump()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gait analysis failed: {str(e)}")
+
+
+@app.post("/api/video/classify")
+async def classify_video_endpoint(
+    video: UploadFile = File(...),
+    context: Optional[str] = Form(None)
+):
+    """
+    Autonomous Video Domain Classifier & Tool Dispatcher.
+    Analyzes video keyframes, court boundary geometry, and anatomical stature
+    to dynamically determine whether a video is a Badminton rally or a Toddler Gait screening.
+    """
+    try:
+        from app.services.video_classifier import get_video_classifier
+        content = await video.read()
+        classifier = get_video_classifier()
+        result = classifier.classify_video_bytes(
+            video_bytes=content,
+            filename=video.filename or "video.mp4",
+            user_context=context or ""
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Video classification failed: {str(e)}")
+
 
 
 @app.get("/api/gait/sample/video")
