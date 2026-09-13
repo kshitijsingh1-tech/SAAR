@@ -8,7 +8,8 @@ import {
   analyzeBadmintonVideo,
   analyzeBadmintonSample,
   getBadmintonSampleVideoUrl,
-  askBadmintonQuestion
+  askBadmintonQuestion,
+  formatApiErrorMessage
 } from '../api/client';
 
 import { BadmintonQualityBanner } from './BadmintonQualityBanner';
@@ -319,7 +320,7 @@ export function BadmintonDashboard({ onRegisterToChat = null, initialResult = nu
       }
       if (onRegisterToChat) onRegisterToChat(data);
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Badminton video processing failed.');
+      setError(formatApiErrorMessage(err, 'Badminton video processing failed.'));
     } finally {
       setIsProcessing(false);
     }
@@ -338,7 +339,7 @@ export function BadmintonDashboard({ onRegisterToChat = null, initialResult = nu
       }
       if (onRegisterToChat) onRegisterToChat(data);
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Failed to analyze sample badminton clip.');
+      setError(formatApiErrorMessage(err, 'Failed to analyze sample badminton clip.'));
     } finally {
       setIsProcessing(false);
     }
@@ -355,7 +356,7 @@ export function BadmintonDashboard({ onRegisterToChat = null, initialResult = nu
       const resp = await askBadmintonQuestion(analysisResult.analysis_id, q);
       setQaHistory((prev) => [...prev, { question: q, answer: resp.answer || resp.answer_summary || 'Analysis complete.', status: resp.status }]);
     } catch (err) {
-      setQaHistory((prev) => [...prev, { question: q, answer: err.response?.data?.detail || err.message || 'Query failed.', status: 'ERROR' }]);
+      setQaHistory((prev) => [...prev, { question: q, answer: formatApiErrorMessage(err, 'Query failed.'), status: 'ERROR' }]);
     } finally {
       setIsAsking(false);
     }

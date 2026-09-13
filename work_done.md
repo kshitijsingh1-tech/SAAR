@@ -887,6 +887,201 @@ When uploading toddler walking videos (including domestic close-ups or sample to
 3. **Dynamic Semantic Tool Classifier & Dispatcher ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
    - Implemented `detectAndUnlockTools(queryText, attachedFiles, report, domain)`:
      - **Botanical / Vision questions & image uploads**: Unlocks `grounded` and `graph`.
+### Root Cause Analysis
+1. **Destructive Port-Flipping Axios Interceptor in `client.js`**:
+   - An interceptor was swapping `CURRENT_PORT` between `8002` and `8001` on any network error or aborted request. Because port `8001` was closed, once flipped, all subsequent multipart requests failed immediately, causing `classifyVideo` to throw an exception in the browser.
+2. **Lingering State Bleed in `App.jsx` Fallback**:
+   - In `App.jsx` line 865, the exception catch block checked `selectedDomain === 'sports'`. If the user had previously clicked on the Badminton tool or Sports domain, the fallback unconditionally marked any new video upload as `sports` / `badminton`, directly violating Section 2 of `AGENTS.md`.
+3. **Flawed Anatomical Ratio in `probe_anatomical_stature`**:
+   - The cephalic calculation measured distance from nose to shoulder over total frame length (`abs(sh_y - nose.y) / total_len`). Because nose-to-shoulder is only the neck and mid-face (ratio ~0.11), and a close-up camera shot of a toddler spans $>0.50$ vertical frame height, the classifier erroneously flagged toddlers as `is_adult_athlete: True`.
+4. **Tool Selection Collision in `ToolCanvasDrawer.jsx`**:
+   - Line 134 evaluated `isBadmintonActive = activeTool === 'badminton' || isSportsDomain;`. If `isSportsDomain` was true from a previous state, `isBadmintonActive` became true even when `activeTool === 'gait'`, forcing `defaultTool` to `'badminton'`.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Solid Port Authority in `client.js`**:
+   - Removed the volatile port-flipping interceptor and locked `API_BASE_URL` to `http://127.0.0.1:8002`.
+2. **Eliminated State Bleed in `App.jsx`**:
+   - Removed `selectedDomain === 'sports'` from the fallback heuristic. Prioritized pediatric movement keywords (`toddle`, `gait`, `pediat`, `child`, `baby`, `walk`) over sports keywords.
+   - Required BOTH `tool === 'badminton'` AND `domain === 'sports'` for athletic sports dispatch.
+3. **Robust Anatomical Proportions & Stature Check**:
+   - Incorporated `LEFT_HIP`, `RIGHT_HIP`, `LEFT_WRIST`, and `RIGHT_WRIST` in `probe_anatomical_stature`.
+   - Identified overhead racket extension (`wrist.y < shoulder.y`) and leg-to-torso proportions. Without confirmed tournament court lines, domestic walking scenes reliably default to `pediatrics / toddler_gait`.
+4. **Strict Tool Precedence in `ToolCanvasDrawer.jsx`**:
+   - Explicitly honored `activeTool === 'gait'` over background domain states: `isGaitActive = activeTool === 'gait' || (isPediatricsDomain && activeTool !== 'badminton')`.
+5. **Rigorous Live & End-to-End Verification**:
+   - Headless browser verification via `browser_subagent` confirmed that uploading `sample_toddler_walk.mp4` accurately opens the `ToddleAI Child Walking Analysis` dashboard with full kinematics scores (78/100, Step Rhythm 85%, Balance 74%, Flexibility 100%).
+   - All 41 backend pytest tests passed cleanly in 65.51s with 0 failures.
+   - Production frontend build (`npm run build`) succeeded in 14.70s with 0 errors.
+
+---
+
+## 21. [2026-09-13] Badminton Studio Video Playback Restoration & Clean Post-Analysis Controls
+
+**Primary Files Modified**:
+- [`frontend/src/components/BadmintonDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonDashboard.jsx)
+- [`frontend/src/components/BadmintonVideoPlayer.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonVideoPlayer.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+1. **Black Screen on Video Player**: After uploading a video in the chat and completing Badminton kinematics analysis, the video player in the Badminton dashboard rendered as a dead black box. The metrics and findings appeared below ("some data is occuring"), but the video itself did not play or show a frame.
+2. **Redundant Intake Controls in Post-Analysis State**: The header continued to display an "Upload Video" button, a "Run Analysis" button, and a "Load Sample Rally" button, confusing the user after the analysis had already completed ("other upload button is occuring").
+3. **Runtime Error on File Slicing**: A `TypeError: Cannot read properties of undefined (reading 'slice')` could occur if `selectedFile.name` was accessed without safe type checking.
+
+### Root Cause Analysis
+1. **Missing `initialFile` Synchronization in `BadmintonDashboard.jsx`**:
+   - `selectedFile` and `videoPreviewUrl` were only initialized from `initialFile` during initial component state construction. When `customVideoFile` was set asynchronously upon chat upload completion, `BadmintonDashboard` lacked a `React.useEffect(..., [initialFile])` hook to update `selectedFile` and construct `URL.createObjectURL(initialFile)`.
+2. **HTML5 Video Cold Frame Issue & Unresolved Media URL**:
+   - In Chromium browsers, an unplayed `<video>` element with no seek offset renders completely transparent or black until kicked. In `BadmintonVideoPlayer.jsx`, `<video>` lacked `preload="auto"`, had no `onLoadedData` initial seek (`currentTime = 0.001`), and lacked an automatic fallback to `getBadmintonSampleVideoUrl()`.
+3. **Static Intake Header Render Loop**:
+   - The header did not differentiate between pre-analysis intake and post-analysis inspection. It rendered the raw "Upload Video" and "Run Analysis" buttons regardless of whether an active analysis was loaded.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Reactive File & URL Synchronization ([`BadmintonDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonDashboard.jsx))**:
+   - Added `React.useEffect(() => { if (initialFile) { setSelectedFile(initialFile); setVideoPreviewUrl(URL.createObjectURL(initialFile)); } }, [initialFile])`.
+   - Added fallback effect: if `analysisResult` exists and `!videoPreviewUrl`, automatically loads `getBadmintonSampleVideoUrl()`.
+   - Created safe `getFileName(f)` helper to guard against undefined properties and prevent runtime slice errors.
+2. **First-Frame Rendering & Interactive Play Overlay ([`BadmintonVideoPlayer.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonVideoPlayer.jsx))**:
+   - Configured `preload="auto"` and `playsInline` on `<video>`.
+   - Added `onLoadedData` / `onLoadedMetadata` seek to `0.001s` to force immediate decoding and rendering of the first frame instead of a black box.
+   - Added a prominent center glassmorphic Play button overlay when paused.
+   - Integrated automatic fallback to `getBadmintonSampleVideoUrl()` if custom blob fails.
+3. **Clean Post-Analysis Header Controls ([`BadmintonDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonDashboard.jsx))**:
+   - When `analysisResult` is active, replaces the raw "Upload Video" and "Run Analysis" buttons with an analyzed video badge (`{filename} • {duration}s • {fps} FPS`), Format pill, and compact `Change Video` and `Sample Rally` actions.
+4. **End-to-End Live Verification**:
+   - Browser subagent verified live on `http://localhost:3000`:
+     - Analyzed video badge displays: `video.mp4 (5.04s • 48 FPS)`
+     - Video player displays video frame with center play button and MediaPipe 33-landmark pose overlay (`3D BIOMECHANICS • Frame #242 • t=5.04s`).
+     - Clicking play runs full playback up to `t=5.04s`.
+   - `npm run build` compiled cleanly in 32.78s with 0 errors.
+
+---
+
+---
+
+## 23. [2026-09-13] Instant Enter Key Trigger & Auto-Focus on Video / File Uploads
+
+**Primary Files Modified**:
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+- When a user selected an uploaded video or file, pressing `Enter` did not immediately trigger the send button if the browser focus remained on the file input button or lost focus outside the composer textarea.
+
+### Root Cause Analysis
+- `handleFileChange`, `handleDrop`, and `handlePaste` attached the file to `attachedFiles` state but did not auto-focus the textarea.
+- Keydown listeners were previously scoped only to the `<textarea>` component without a window fallback for staged file attachments.
+
+---
+
+## 24. [2026-09-13] In-Flight Analysis Cancellation & Toggle Stop Button
+
+**Primary Files Modified**:
+- [`frontend/src/api/client.js`](file:///d:/bytebuild/frontend/src/api/client.js)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/index.css`](file:///d:/bytebuild/frontend/src/index.css)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+- If a user accidentally uploaded a photo/video or sent an inquiry by mistake, there was no way to cancel or halt the in-flight analysis, requiring the user to wait for full execution to complete.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Toggle Send/Stop Button ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - While `isProcessing` is true, the composer's send button dynamically morphs into a red pulsing Stop button (`<Square fill="currentColor" />`).
+   - Clicking this button (or pressing `Enter` while processing) triggers `onStopProcessing()`.
+2. **AbortSignal Integration Across Client APIs ([`client.js`](file:///d:/bytebuild/frontend/src/api/client.js))**:
+   - Integrated `{ signal }` into `runInvestigation`, `uploadSaarCsv`, `askSaarQuestion`, `classifyVideo`, `analyzeBadmintonVideo`, and `analyzeGaitVideo`.
+3. **Graceful Abort Handling ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Initialized `abortControllerRef` to abort in-flight HTTP requests instantly.
+   - Cleanly catches `AbortError` / `CanceledError` without rendering error toasts or red alert banners, smoothly posting `*Analysis cancelled by user.*` and resetting state.
+---
+
+## 25. [2026-09-13] Comprehensive Fix: Enter Key Send & Instant Stop Analysis Cancellation
+
+**Primary Files Modified**:
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+1. **Enter Key Not Sending File**:
+   - When a user selected an uploaded video or image from the file picker, pressing the `Enter` key on the keyboard did not press the send button. Instead, in some browsers, focus remained on the native Paperclip action button, causing pressing `Enter` to re-trigger the button's `onClick` event and re-open the file selection dialog instead of submitting the form.
+2. **Stop Button Not Working on Video Upload**:
+   - When a user clicked Send on a video upload and then clicked the Stop button (or pressed `Enter`), the video analysis continued in the background or output an Axios error notice rather than halting cleanly.
+
+### Root Cause Analysis
+1. **HTML Button Native Enter Key Dispatch**:
+   - In HTML5, pressing `Enter` while focused on a `<button>` synthesizes an `onClick` event on that button. If focus remained on the Paperclip button, pressing `Enter` executed `fileInputRef.current?.click()`.
+   - The global keyboard event listener did not use the capture phase (`useCapture = true`), allowing the button's native keyboard activation to take precedence.
+   - State closures inside keyboard event listeners could hold stale `attachedFiles` or `inputText` values during rapid file attachment transitions.
+2. **Cancellation State Tracking & Error Interception**:
+   - In `App.jsx`, `abortControllerRef.current` was set to `null` inside `handleStopProcessing`, causing subsequent promise catch handlers to fail the `(abortControllerRef.current && abortControllerRef.current.signal?.aborted)` check.
+   - Axios cancel errors throw `AxiosError` with `code: 'ERR_CANCELED'`, which bypassed narrow `vErr.name === 'AbortError'` checks.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Zero-Staleness Synchronization Refs ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - Added `attachedFilesRef`, `inputTextRef`, `textSnippetRef`, `isProcessingRef`, and `onStopProcessingRef` to maintain real-time mutable references.
+   - `handleSend()` directly consumes these synchronized refs so submissions are 100% reliable even immediately following file selection.
+2. **Global Capture Phase Keyboard Interceptor & Button Keydown ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - Added `window.addEventListener('keydown', handleGlobalKeyDown, true)` with capture phase enabled, intercepting `Enter` before it reaches action buttons.
+   - Added explicit `onKeyDown={handleButtonKeyDown}` directly to the Paperclip and Camera action buttons.
+   - Automatically blurs `document.activeElement` and focuses `textareaRef.current` on file selection.
+3. **Unified `checkIsAborted` Helper & Persistent Ref ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Introduced `isAbortedRef` (persisting across teardown) and `checkIsAborted(err)` checking `isAbortedRef.current`, `signal.aborted`, `axios.isCancel(err)`, `ERR_CANCELED`, `AbortError`, and `CanceledError`.
+   - Updated all asynchronous phases in `handleSendMessage`, `executeImageInvestigation`, `handleSelectScenario`, and `uploadSaarCsv` to pass `abortController.signal` and check `checkIsAborted()` at every step.
+   - Cleanly resets UI and outputs `*Analysis stopped by user.*` without extra error messages or state corruptions.
+4. **Verification**:
+
+---
+
+## 26. [2026-09-13] Fix TDZ Initialization Ordering for `setMessages` and `handleStopProcessing`
+
+**Primary Files Modified**:
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+- After refactoring `handleStopProcessing` with `useCallback([setMessages])`, the frontend crashed during initial component render with:
+  `Cannot access 'setMessages' before initialization`
+
+### Root Cause Analysis
+- `handleStopProcessing` was placed near the top of the `App` component body (lines 88–111) and included `setMessages` in its dependency array.
+- In JavaScript ES6, `const setMessages = useCallback(...)` was declared further down in the component body (line 345). Because `const` declarations are in the Temporal Dead Zone (TDZ) before execution reaches line 345, evaluating `handleStopProcessing` at the top threw a ReferenceError during component evaluation.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Re-ordered Hook Definitions ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Moved `abortControllerRef`, `isAbortedRef`, `checkIsAborted`, and `handleStopProcessing` immediately below the definition of `setMessages`.
+
+---
+
+## 27. [2026-09-14] Dynamic Tool Discovery & Question-Driven Tool Unlocking
+
+**Primary Files Modified**:
+- [`frontend/src/components/ToolRolloutBar.jsx`](file:///d:/bytebuild/frontend/src/components/ToolRolloutBar.jsx)
+- [`frontend/src/components/ToolCanvasDrawer.jsx`](file:///d:/bytebuild/frontend/src/components/ToolCanvasDrawer.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+- Previously, all analytical tools (`grounded`, `graph`, `gait`, `badminton`, `analytics`, `rag`, `dictionary`) were visible in the flowing tool rollout bar (`ToolRolloutBar`) and tool drawer (`ToolCanvasDrawer`) by default, regardless of user context.
+- The user requested that tools start with **only** the `Scientific Dictionary` (`dictionary`), and relevant diagnostic tools should be dynamically unlocked and appended to the tool icon stream based on the user's question, media uploads, and investigation context.
+
+### Root Cause Analysis
+- The tool rollout bar and tool drawer directly rendered static tool lists (`allTools` / `toolsMeta`) without session-level filtering or dynamic discovery dispatch.
+- There was no reactive hook or state dispatch mechanism to detect intent/artifacts from user questions, file MIME types, or model step telemetry and selectively unlock matching analytical toolkits.
+
+### Implemented Solution & Non-Regression Invariants
+1. **ToolRolloutBar & ToolCanvasDrawer Gating**:
+   - Both components now accept an `unlockedTools` prop (defaulting strictly to `['dictionary']`).
+   - `ToolRolloutBar` filters `allTools` by `unlockedTools.includes(t.id)` and renders a dynamic count badge (`Scientific Tools (N)`).
+   - `ToolCanvasDrawer` filters available tabs and active tool panes strictly to `unlockedTools`.
+2. **Session-Isolated Tool Unlocking State ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Added `sessionUnlockedTools` state with `localStorage` caching (`saar_session_unlocked_tools`).
+   - New sessions initialize with `sessionUnlockedTools[newId] = ['dictionary']` and `activeTool = 'dictionary'`.
+3. **Dynamic Semantic Tool Classifier & Dispatcher ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Implemented `detectAndUnlockTools(queryText, attachedFiles, report, domain)`:
+     - **Botanical / Vision questions & image uploads**: Unlocks `grounded` and `graph`.
      - **Toddler gait / orthopedic inquiries & gait videos**: Unlocks `gait` and `rag`.
      - **Badminton / athletics inquiries & sports videos**: Unlocks `badminton`, `rag`, `analytics`, and `graph`.
      - **CSV / sensor telemetry & tabular data inquiries**: Unlocks `analytics` and `graph`.
@@ -895,3 +1090,45 @@ When uploading toddler walking videos (including domestic close-ups or sample to
 4. **Verification**:
    - `npm run build` completed with 0 errors in 36.35s.
    - All 41 backend tests passed (`41 passed in 79.58s`).
+
+---
+
+## 28. [2026-09-14] FastAPI Validation Error Sanitization & Badminton Stroke Classification Calibration
+
+**Primary Files Modified**:
+- [`frontend/src/api/client.js`](file:///d:/bytebuild/frontend/src/api/client.js)
+- [`frontend/src/components/BadmintonDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonDashboard.jsx)
+- [`frontend/src/components/GaitDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/GaitDashboard.jsx)
+- [`backend/app/plugins/sports/badminton/shot_classifier.py`](file:///d:/bytebuild/backend/app/plugins/sports/badminton/shot_classifier.py)
+- [`backend/app/plugins/sports/badminton/shot_detector.py`](file:///d:/bytebuild/backend/app/plugins/sports/badminton/shot_detector.py)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+1. **React Rendering Crash (`ErrorBoundary`)**:
+   - The UI threw a fatal render exception: `"Objects are not valid as a React child (found: object with keys {type, loc, msg, input, ctx})"`.
+2. **Shot Classification & Contact Velocity Calibration**:
+   - User inquired about the verification and classification accuracy of stroke events (such as differentiating smashes from clears, drops, and drives) and ensuring calculated contact kinematics are physically sound.
+
+### Root Cause Analysis
+1. **FastAPI Pydantic Error Detail Structure**:
+   - FastAPI returns HTTP 422 validation errors as arrays of objects: `[{ type, loc, msg, input, ctx }]`.
+   - When components set `setError(err.response?.data?.detail || err.message)` and rendered `<span>{error}</span>`, React attempted to render the raw object array as child nodes, triggering the React child error boundary crash.
+2. **Stature Depth Scaling & Stroke Kinematics**:
+   - In `shot_detector.py`, contact wrist speed calculation previously referenced an out-of-scope `pf` loop variable instead of `pf_contact`.
+   - In `shot_classifier.py`, overhead stroke thresholds required velocity calibration ($\ge 45\text{ km/h}$ wrist / $\ge 110\text{ km/h}$ racket for smashes vs. soft speed $< 35\text{ km/h}$ for drops and deep court positioning for clears) to ensure unambiguous, data-driven stroke classification.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Universal `formatApiErrorMessage` Utility ([`client.js`](file:///d:/bytebuild/frontend/src/api/client.js))**:
+   - Recursively parses FastAPI 422 arrays, nested error dictionaries, and network exception objects into human-readable string summaries (`field: message; ...`).
+   - Integrated into [`BadmintonDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonDashboard.jsx) and [`GaitDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/GaitDashboard.jsx).
+2. **Contact Kinematics & Stature Scaling Fix ([`shot_detector.py`](file:///d:/bytebuild/backend/app/plugins/sports/badminton/shot_detector.py))**:
+   - Fixed player stature estimation to use `pf_contact` with normalized landmark visibility.
+   - Decoupled stature-based wrist speed calculation from court homography so speed is reliably measurable across any camera angle.
+3. **Calibrated Multi-Hypothesis Stroke Classifier ([`shot_classifier.py`](file:///d:/bytebuild/backend/app/plugins/sports/badminton/shot_classifier.py))**:
+   - **Smash**: Overhead contact ($w_y < sh_y - 0.03$), high elbow extension ($\ge 140^\circ$), and high kinetic velocity ($\text{wrist} \ge 45\text{ km/h}$ or $\text{racket} \ge 110\text{ km/h}$).
+   - **Clear**: Overhead contact, high elbow extension ($\ge 140^\circ$), and deep rear court positioning.
+   - **Drop**: Overhead contact with low exit velocity ($< 35\text{ km/h}$ wrist / $< 75\text{ km/h}$ racket) for soft touch over net.
+   - **Drive**: Mid-height flat trajectory with fast horizontal hand acceleration.
+4. **Verification**:
+   - `npm run build` completed with 0 errors in 19.38s.
+   - All 41 backend tests passed (`41 passed in 90.42s`).

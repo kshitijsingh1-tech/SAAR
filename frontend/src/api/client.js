@@ -2,6 +2,35 @@ import axios from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8002';
 
+/**
+ * Format any API error response (FastAPI 422 array of objects, 400 detail strings, or network errors)
+ * into a safe, displayable text string to prevent React rendering crashes.
+ */
+export const formatApiErrorMessage = (err, fallback = 'An unexpected error occurred.') => {
+  if (!err) return fallback;
+  if (typeof err === 'string') return err;
+  const detail = err.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'object' && item !== null) {
+          const loc = Array.isArray(item.loc)
+            ? item.loc.filter((l) => l !== 'body').join('.')
+            : item.loc;
+          return `${loc ? loc + ': ' : ''}${item.msg || item.message || item.type || JSON.stringify(item)}`;
+        }
+        return String(item);
+      })
+      .join('; ');
+  }
+  if (typeof detail === 'object' && detail !== null) {
+    return detail.msg || detail.message || JSON.stringify(detail);
+  }
+  if (err.message) return err.message;
+  return fallback;
+};
+
 export const fetchDomains = async () => {
   const res = await axios.get(`${API_BASE_URL}/domains`);
   return res.data;

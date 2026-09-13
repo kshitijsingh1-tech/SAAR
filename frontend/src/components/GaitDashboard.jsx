@@ -4,7 +4,7 @@ import {
   Send, RefreshCw, ShieldCheck, ChevronRight, Play, Info, AlertTriangle,
   Layers, Compass, Scale, BarChart3, HelpCircle, FileText
 } from 'lucide-react';
-import { analyzeGaitVideo, analyzeGaitSample, askGaitQuestion, getGaitSampleVideoUrl } from '../api/client';
+import { analyzeGaitVideo, analyzeGaitSample, askGaitQuestion, getGaitSampleVideoUrl, formatApiErrorMessage } from '../api/client';
 import { MarkdownResponse } from './MarkdownResponse';
 
 export function GaitDashboard({ onRegisterToChat, initialResult = null, initialFile = null, selectedDomain = 'pediatrics' }) {
@@ -74,7 +74,7 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
         onRegisterToChat(data);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || "Gait analysis failed.");
+      setError(formatApiErrorMessage(err, "Gait analysis failed."));
     } finally {
       setIsProcessing(false);
     }
@@ -91,7 +91,7 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
         onRegisterToChat(data);
       }
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || "Failed to load sample analysis.");
+      setError(formatApiErrorMessage(err, "Failed to load sample analysis."));
     } finally {
       setIsProcessing(false);
     }
@@ -120,7 +120,7 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
         ...prev,
         {
           question: qText,
-          answer: `**Inquiry Notice**: ${err.response?.data?.detail || err.message || 'Unable to complete reasoning synthesis.'}`,
+          answer: `**Inquiry Notice**: ${formatApiErrorMessage(err, 'Unable to complete reasoning synthesis.')}`,
           terminology: []
         }
       ]);

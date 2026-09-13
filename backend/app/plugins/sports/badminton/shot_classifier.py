@@ -207,46 +207,52 @@ class BadmintonShotClassifier:
 
         # A. Overhead Category
         if is_overhead:
-            # Smash: high elbow extension + high speed + rear/mid court
+            # Smash: high elbow extension + high velocity + rear/mid court
             smash_score = 0.35  # baseline overhead
             if elbow_angle is not None:
-                if elbow_angle >= 145.0:
+                if elbow_angle >= 140.0:
                     smash_score += 0.25
-                elif elbow_angle >= 125.0:
+                elif elbow_angle >= 120.0:
                     smash_score += 0.15
 
-            if shot.wrist_speed_km_h and shot.wrist_speed_km_h >= 60.0:
-                smash_score += 0.20
-            elif shot.racket_speed_km_h and shot.racket_speed_km_h >= 120.0:
+            if shot.wrist_speed_km_h and shot.wrist_speed_km_h >= 45.0:
                 smash_score += 0.25
+            elif shot.wrist_speed_km_h and shot.wrist_speed_km_h >= 35.0:
+                smash_score += 0.15
+            elif shot.racket_speed_km_h and shot.racket_speed_km_h >= 110.0:
+                smash_score += 0.25
+            elif shot.racket_speed_km_h and shot.racket_speed_km_h >= 85.0:
+                smash_score += 0.15
 
             if is_rear or is_mid:
                 smash_score += 0.15
             scores["smash"] = smash_score
 
-            # Clear: high elbow extension + rear court + high contact
+            # Clear: high elbow extension + rear court + high contact (deep baseline trajectory)
             clear_score = 0.35
-            if elbow_angle is not None and elbow_angle >= 145.0:
-                clear_score += 0.25
+            if elbow_angle is not None and elbow_angle >= 140.0:
+                clear_score += 0.20
             if is_rear:
                 clear_score += 0.25
             elif is_mid:
                 clear_score += 0.10
             scores["clear"] = clear_score
 
-            # Drop: moderate elbow extension + rear court + lower exit speed
+            # Drop: moderate elbow extension + rear/mid court + lower contact velocity (soft touch)
             drop_score = 0.35
-            if elbow_angle is not None and 105.0 <= elbow_angle <= 145.0:
-                drop_score += 0.25
-            if is_rear:
+            if elbow_angle is not None and 100.0 <= elbow_angle <= 145.0:
                 drop_score += 0.20
+            if shot.wrist_speed_km_h and shot.wrist_speed_km_h < 35.0:
+                drop_score += 0.20
+            if is_rear:
+                drop_score += 0.15
             scores["drop"] = drop_score
 
         # B. Mid-Height Category
         elif is_mid_height:
             # Drive: midcourt flat high speed (requires active athletic velocity)
             drive_score = 0.20
-            if (shot.wrist_speed_km_h and shot.wrist_speed_km_h >= 45.0) or (shot.racket_speed_km_h and shot.racket_speed_km_h >= 90.0):
+            if (shot.wrist_speed_km_h and shot.wrist_speed_km_h >= 35.0) or (shot.racket_speed_km_h and shot.racket_speed_km_h >= 85.0):
                 drive_score += 0.35
             if is_mid:
                 drive_score += 0.20

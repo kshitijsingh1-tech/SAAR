@@ -259,17 +259,25 @@ class BadmintonShotDetector:
                 if post_shuttles:
                     target_pos = [round(post_shuttles[-1].shuttle_m[0], 2), round(post_shuttles[-1].shuttle_m[1], 2)]
 
-            # Compute wrist speed in km/h if calibrated
+            # Compute contact wrist speed in km/h using player stature depth scaling
             wrist_speed_km_h = None
-            if H_np is not None and contact_f > 0 and contact_f < n_frames - 1:
+            if contact_f > 0 and contact_f < n_frames - 1:
                 p0 = wrist_px_trajectory[contact_f - 1]
                 p2 = wrist_px_trajectory[contact_f + 1]
                 if p0 and p2:
-                    m0 = pixel_to_court_m(p0[0], p0[1], H_np)
-                    m2 = pixel_to_court_m(p2[0], p2[1], H_np)
-                    if m0 and m2:
-                        dist_m = math.hypot(m2[0] - m0[0], m2[1] - m0[1])
-                        wrist_speed_km_h = round((dist_m / (2.0 * dt)) * 3.6, 1)
+                    # Estimate player stature in pixels from contact pose
+                    stature_px = None
+                    if pf_contact and pf_contact.is_detected and len(pf_contact.landmarks) >= 29:
+                        nose_lm = pf_contact.landmarks[0]
+                        ank_lm = pf_contact.landmarks[27] if pf_contact.landmarks[27].visibility > 0.15 else pf_contact.landmarks[28]
+                        if nose_lm.visibility > 0.15 and ank_lm.visibility > 0.15:
+                            stature_px = abs(ank_lm.y - nose_lm.y) * pf_contact.source_height
+                    m_per_px = (1.75 / max(40.0, stature_px)) if stature_px else 0.005
+
+                    dist_px = math.hypot(p2[0] - p0[0], p2[1] - p0[1])
+                    dist_m = dist_px * m_per_px
+                    raw_spd = (dist_m / (2.0 * dt)) * 3.6
+                    wrist_speed_km_h = round(min(85.0, max(5.0, raw_spd)), 1)
 
             # 6. Confidence and Evidence Basis per Section 15
             peak_v = wrist_velocities[contact_f]
