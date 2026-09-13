@@ -296,13 +296,11 @@ export function LandingPage({
       <nav className="landing-navbar">
         <div className="landing-nav-content">
           <div className="landing-brand-group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="landing-brand-emblem mini">
-              <img
-                src={isLightMode ? '/saar-logo-dark.png' : '/saar-logo-white.png'}
-                alt="SAAR Logo"
-                className="brand-logo-img"
-              />
-            </div>
+            <img
+              src={isLightMode ? '/saar-logo-dark.png' : '/saar-logo-white.png'}
+              alt="SAAR Logo"
+              className="brand-logo-img"
+            />
             <div className="landing-brand-text">
               <span className="landing-brand-title">SAAR</span>
               <span className="landing-brand-sub">DISCOVER WHAT MATTERS</span>
@@ -632,44 +630,32 @@ export function LandingPage({
           <div className="domains-tri-grid">
             {/* Domain 1: ToddlerAI */}
             <div className="domain-card-module domain-toddler">
-              <div className="domain-card-accent-wire" />
-              <div className="domain-card-header">
-                <div className="domain-badge-col">
-                  <span className="domain-tier-pill sky">DOMAIN 01 • ACTIVE PRODUCTION</span>
-                  <h3 className="domain-title">ToddlerAI Biomechanics</h3>
+              <div>
+                <div className="domain-card-header">
+                  <div className="domain-badge-col">
+                    <span className="domain-tier-indicator">DOMAIN 01</span>
+                    <h3 className="domain-title">ToddlerAI Biomechanics</h3>
+                  </div>
+                  <div className="domain-icon-wrapper">
+                    <Baby size={22} className="domain-icon" />
+                  </div>
                 </div>
-                <div className="domain-icon-wrapper sky">
-                  <Baby size={24} />
-                </div>
-              </div>
 
-              <p className="domain-lead-text">
-                Non-invasive monocular video joint kinematics and early screening for pediatric motor tone delays.
-              </p>
+                <p className="domain-lead-text">
+                  Non-invasive monocular video joint kinematics and early screening for pediatric motor tone delays.
+                </p>
 
-              <div className="domain-specs-box">
-                <div className="spec-row">
-                  <span className="spec-lbl">Primary Equation:</span>
-                  <code className="spec-code">{"θ = arccos( (u · v) / (|u| · |v|) )"}</code>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Input Modality:</span>
-                  <span className="spec-val">60 FPS 33-Joint Pose Video Stream</span>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Causal Objective:</span>
-                  <span className="spec-val">Early Spastic Diplegia vs Benign Toe-Walking</span>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Diagnostic Precision:</span>
-                  <strong className="spec-val text-emerald">92.7% Bayesian Posterior</strong>
+                <div className="domain-status-row">
+                  <span className="domain-status-badge status-active">
+                    ● Active Production
+                  </span>
                 </div>
               </div>
 
               <div className="domain-card-footer">
                 <button
                   type="button"
-                  className="btn-launch-domain-studio sky"
+                  className="btn-launch-domain-studio"
                   onClick={() =>
                     onEnterStudio(
                       'Run ToddleAI video pose estimation on toddler walking clip and assess gait asymmetry.',
@@ -678,7 +664,7 @@ export function LandingPage({
                     )
                   }
                 >
-                  <span>Launch ToddlerAI Console</span>
+                  <span>Open Workspace</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -686,44 +672,32 @@ export function LandingPage({
 
             {/* Domain 2: Agricultural Science */}
             <div className="domain-card-module domain-agri">
-              <div className="domain-card-accent-wire" />
-              <div className="domain-card-header">
-                <div className="domain-badge-col">
-                  <span className="domain-tier-pill emerald">DOMAIN 02 • ACTIVE PRODUCTION</span>
-                  <h3 className="domain-title">Agricultural Science</h3>
+              <div>
+                <div className="domain-card-header">
+                  <div className="domain-badge-col">
+                    <span className="domain-tier-indicator">DOMAIN 02</span>
+                    <h3 className="domain-title">Agricultural Science</h3>
+                  </div>
+                  <div className="domain-icon-wrapper">
+                    <Sprout size={22} className="domain-icon" />
+                  </div>
                 </div>
-                <div className="domain-icon-wrapper emerald">
-                  <Sprout size={24} />
-                </div>
-              </div>
 
-              <p className="domain-lead-text">
-                Precision agronomy engine coupling subterranean Darcy flux soil hydrology with foliar spectral photometry.
-              </p>
+                <p className="domain-lead-text">
+                  Precision agronomy engine coupling subterranean Darcy flux soil hydrology with foliar spectral photometry.
+                </p>
 
-              <div className="domain-specs-box">
-                <div className="spec-row">
-                  <span className="spec-lbl">Primary Equation:</span>
-                  <code className="spec-code">{"Q = -K · A · (Δh / L)"}</code>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Input Modality:</span>
-                  <span className="spec-val">NDRE Cameras + Root-Zone TDT Probes</span>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Causal Objective:</span>
-                  <span className="spec-val">Root Hypoxia & Pythium vs Nitrogen Deficit</span>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Diagnostic Precision:</span>
-                  <strong className="spec-val text-emerald">94.8% Bayesian Posterior</strong>
+                <div className="domain-status-row">
+                  <span className="domain-status-badge status-active">
+                    ● Active Production
+                  </span>
                 </div>
               </div>
 
               <div className="domain-card-footer">
                 <button
                   type="button"
-                  className="btn-launch-domain-studio emerald"
+                  className="btn-launch-domain-studio"
                   onClick={() =>
                     onEnterStudio(
                       'Investigate 30-day tomato crop failure dataset and identify root cause of leaf chlorosis.',
@@ -732,55 +706,43 @@ export function LandingPage({
                     )
                   }
                 >
-                  <span>Launch Agronomy Console</span>
+                  <span>Open Workspace</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
             </div>
 
-            {/* Domain 3: Reserved Space (Under Active Formulation) */}
+            {/* Domain 3: Frontier Expansion Slot */}
             <div className="domain-card-module domain-reserved">
-              <div className="domain-card-accent-wire reserved-wire" />
-              <div className="domain-card-header">
-                <div className="domain-badge-col">
-                  <span className="domain-tier-pill amber-glow">DOMAIN 03 • R&D FORMULATION</span>
-                  <h3 className="domain-title">Frontier Expansion Slot</h3>
+              <div>
+                <div className="domain-card-header">
+                  <div className="domain-badge-col">
+                    <span className="domain-tier-indicator">DOMAIN 03</span>
+                    <h3 className="domain-title">Frontier Expansion Slot</h3>
+                  </div>
+                  <div className="domain-icon-wrapper">
+                    <Sparkles size={22} className="domain-icon" />
+                  </div>
                 </div>
-                <div className="domain-icon-wrapper amber">
-                  <Sparkles size={24} />
-                </div>
-              </div>
 
-              <p className="domain-lead-text">
-                Currently under active formulation in our scientific laboratory. Validating differential candidate datasets.
-              </p>
+                <p className="domain-lead-text">
+                  Under active laboratory formulation. Validating differential candidate benchmarks for geotechnical and astrophysics telemetry.
+                </p>
 
-              <div className="domain-specs-box reserved-box">
-                <div className="spec-row">
-                  <span className="spec-lbl">Status:</span>
-                  <span className="spec-val text-amber font-bold">Candidate Benchmarks in Review</span>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Candidate 1:</span>
-                  <span className="spec-val">Geotechnical GPR Cavity Detection</span>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Candidate 2:</span>
-                  <span className="spec-val">Astrophysics Keplerian Orbit Spectroscopy</span>
-                </div>
-                <div className="spec-row">
-                  <span className="spec-lbl">Mathematical Engine:</span>
-                  <code className="spec-code">{"Tensor Decompilation Core (Candidate)"}</code>
+                <div className="domain-status-row">
+                  <span className="domain-status-badge status-review">
+                    ● Under Formulation
+                  </span>
                 </div>
               </div>
 
               <div className="domain-card-footer">
                 <button
                   type="button"
-                  className="btn-launch-domain-studio reserved"
+                  className="btn-launch-domain-studio btn-secondary-domain"
                   onClick={() => onEnterStudio()}
                 >
-                  <span>Explore Open Sandbox</span>
+                  <span>Open Workspace</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -839,13 +801,11 @@ export function LandingPage({
           {/* Brand & Project Mission Column */}
           <div className="footer-brand-side">
             <div className="footer-emblem-row">
-              <div className="landing-brand-emblem mini">
-                <img
-                  src={isLightMode ? '/saar-logo-dark.png' : '/saar-logo-white.png'}
-                  alt="SAAR Logo"
-                  className="brand-logo-img"
-                />
-              </div>
+              <img
+                src={isLightMode ? '/saar-logo-dark.png' : '/saar-logo-white.png'}
+                alt="SAAR Logo"
+                className="brand-logo-img"
+              />
               <span className="footer-brand-name">SAAR</span>
             </div>
             <p className="footer-tagline">

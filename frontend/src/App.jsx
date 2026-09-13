@@ -1346,6 +1346,7 @@ export default function App() {
           onToggleTheme={handleToggleTheme}
           onSelectTheme={handleSelectTheme}
           onReturnToLanding={handleReturnToLanding}
+          onNewSession={handleNewSession}
           hasSensorData={hasSensorData}
         />
       </main>
