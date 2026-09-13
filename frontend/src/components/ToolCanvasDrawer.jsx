@@ -130,32 +130,31 @@ export function ToolCanvasDrawer({
   const isAstroDomain = domainLower.includes('astro') || domainLower.includes('orbit') || domainLower.includes('transit');
 
   // Input detection:
-  // When analyzing toddler AI video: strictly ONLY video analysis and clinical references.
-  const isToddlerVideo = isPediatricsDomain || (activeTool === 'gait' && !isSportsDomain && !isAgriDomain);
-  const isSportsVideo = isSportsDomain && (activeTool === 'gait' || Boolean(customVideoFile));
+  // Strictly honor activeTool first, then fall back to domain context
+  const isGaitActive = activeTool === 'gait' || (isPediatricsDomain && activeTool !== 'badminton');
+  const isBadmintonActive = (activeTool === 'badminton' || isSportsDomain) && !isGaitActive;
 
-  // Configure tools uniquely for each domain:
+  // Configure tools uniquely for each domain, always preserving accessibility:
   let toolsMeta = [];
 
-  if (isToddlerVideo) {
-    // When analyzing toddler AI video:
+  if (isGaitActive) {
     toolsMeta = [
-      {
-        id: 'gait',
-        label: 'Video Analysis (Motion & Gait)',
-        icon: <Activity size={15} />
-      },
-      {
-        id: 'rag',
-        label: 'Clinical References',
-        icon: <BookOpen size={15} />
-      }
+      { id: 'gait', label: 'Toddler Gait Screening', icon: <Activity size={15} /> },
+      { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
+      { id: 'rag', label: 'Clinical References', icon: <BookOpen size={15} /> }
+    ];
+  } else if (isBadmintonActive) {
+    toolsMeta = [
+      { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
+      { id: 'gait', label: 'Toddler Gait Screening', icon: <Activity size={15} /> },
+      { id: 'rag', label: 'Sports References', icon: <BookOpen size={15} /> },
+      { id: 'analytics', label: 'Kinematic Analytics', icon: <BarChart2 size={15} /> }
     ];
   } else {
     // Standard and full operational scientific tools:
     toolsMeta = [
-      { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
       { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
+      { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
       { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
       { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
       { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
@@ -174,6 +173,8 @@ export function ToolCanvasDrawer({
     sensors: 'analytics',
     spectrometry: 'analytics',
     posture: 'gait',
+    gait: 'gait',
+    pediatrics: 'gait',
     morphology: 'grounded',
     camera: 'grounded',
     inspector: 'grounded',
@@ -181,7 +182,7 @@ export function ToolCanvasDrawer({
   };
 
   const availableIds = toolsMeta.map((t) => t.id);
-  const defaultTool = (isToddlerVideo) ? 'gait' : (isSportsDomain || activeTool === 'badminton') ? 'badminton' : 'grounded';
+  const defaultTool = isGaitActive ? 'gait' : isBadmintonActive ? 'badminton' : 'grounded';
   const aliased = TOOL_ALIASES[activeTool] || activeTool;
   const effectiveTool = availableIds.includes(aliased) ? aliased : defaultTool;
 

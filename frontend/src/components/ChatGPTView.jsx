@@ -12,6 +12,7 @@ import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
 import { MediaAttachmentPreview } from './MediaAttachmentPreview';
 import { ChatCameraRecorder } from './ChatCameraRecorder';
+import { API_BASE_URL } from '../api/client';
 
 // Built-in grounded domain lexicon for automatic chat dictionary linking
 const SCIENTIFIC_LEXICON = [
@@ -617,6 +618,7 @@ export function ChatGPTView({
   };
 
   const handleSend = () => {
+    if (isProcessing) return;
     const combinedPrompt = [textSnippet?.content, inputText].filter(Boolean).join('\n\n').trim();
     if (!combinedPrompt && attachedFiles.length === 0) return;
     onSendMessage(combinedPrompt || inputText, attachedFiles);
@@ -635,6 +637,39 @@ export function ChatGPTView({
     }
   };
 
+  // Global keydown listener so that pressing Enter anywhere when a video/file is attached triggers send
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        // Do not intercept if user is typing in a modal or inquiry answer
+        if (
+          e.target.closest('.inquiry-answer-input') ||
+          e.target.closest('.term-modal-card') ||
+          e.target.closest('.camera-modal-backdrop') ||
+          e.target.closest('.image-verify-card')
+        ) {
+          return;
+        }
+
+        // If target is already the textarea, handleKeyDown handles it
+        if (e.target === textareaRef.current) {
+          return;
+        }
+
+        // If we have attached files or typed text, trigger send on Enter
+        if ((attachedFiles.length > 0 || (inputText && inputText.trim().length > 0)) && !isProcessing) {
+          e.preventDefault();
+          handleSend();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [attachedFiles, inputText, textSnippet, isProcessing]);
+
   const handleTextareaChange = (e) => {
     setInputText(e.target.value);
     e.target.style.height = 'auto';
@@ -646,6 +681,9 @@ export function ChatGPTView({
     if (files.length > 0) {
       setAttachedFiles((prev) => [...prev, ...files]);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 50);
     }
   };
 
@@ -688,6 +726,9 @@ export function ChatGPTView({
         e.preventDefault();
         e.stopPropagation();
         setAttachedFiles((prev) => [...prev, ...pastedFiles]);
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 50);
         return;
       }
     }
@@ -712,7 +753,7 @@ export function ChatGPTView({
 
       if (isFilePathCandidate) {
         try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+          const apiUrl = API_BASE_URL;
           const res = await fetch(`${apiUrl}/api/saar/read-file?path=${encodeURIComponent(cleanPath)}`);
           if (res.ok) {
             e.preventDefault();

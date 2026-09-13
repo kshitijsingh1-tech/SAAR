@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
   uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline,
-  analyzeGaitVideo, analyzeBadmintonVideo, classifyVideo
+  analyzeGaitVideo, analyzeBadmintonVideo, classifyVideo, API_BASE_URL
 } from './api/client';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ChatGPTView } from './components/ChatGPTView';
@@ -742,7 +742,7 @@ export default function App() {
     } catch (err) {
       const isNetworkError = err.message?.includes('Network Error') || !err.response;
       const errorDetail = isNetworkError
-        ? `Could not reach the backend server at http://127.0.0.1:8001. Please make sure the FastAPI backend is running (python -m uvicorn app.main:app --host 127.0.0.1 --port 8001).`
+        ? `Could not reach the backend server at ${API_BASE_URL}. Please make sure the FastAPI backend is running.`
         : (err.response?.data?.detail || err.message || 'Failed to complete VLM analysis pipeline.');
 
       setMessages((prev) => [
@@ -859,20 +859,22 @@ export default function App() {
             let classification = { domain: 'pediatrics', tool: 'gait', confidence: 0.75, rationale: 'Standard video gait screening' };
             try {
               classification = await classifyVideo(file, userText);
+              console.log("[Autonomous Video Classifier] Response:", classification);
             } catch (cErr) {
               console.warn("Video classification fallback to keyword heuristics:", cErr);
               const combinedContext = `${fileName} ${userText || ''}`.toLowerCase();
-              const isSportsVideo = combinedContext.includes('sport') || combinedContext.includes('badminton') || combinedContext.includes('smash') || combinedContext.includes('athlet') || selectedDomain === 'sports';
+              const hasPediatricTerm = combinedContext.includes('toddle') || combinedContext.includes('gait') || combinedContext.includes('pediat') || combinedContext.includes('child') || combinedContext.includes('baby') || combinedContext.includes('infant') || combinedContext.includes('walk');
+              const hasSportsTerm = (combinedContext.includes('sport') || combinedContext.includes('badminton') || combinedContext.includes('smash') || combinedContext.includes('racket') || combinedContext.includes('shuttlecock') || combinedContext.includes('rally')) && !hasPediatricTerm;
               classification = {
-                domain: isSportsVideo ? 'sports' : 'pediatrics',
-                tool: isSportsVideo ? 'badminton' : 'gait',
-                confidence: 0.70,
-                rationale: isSportsVideo ? 'Identified sports keywords in upload context' : 'Defaulted to pediatric movement screening'
+                domain: hasSportsTerm ? 'sports' : 'pediatrics',
+                tool: hasSportsTerm ? 'badminton' : 'gait',
+                confidence: 0.75,
+                rationale: hasSportsTerm ? 'Identified authentic sports keywords in upload context' : 'Defaulted to pediatric movement screening'
               };
             }
 
             const targetDomain = classification.domain || 'pediatrics';
-            const isBadminton = classification.tool === 'badminton' || targetDomain === 'sports';
+            const isBadminton = classification.tool === 'badminton' && targetDomain === 'sports';
 
             setSelectedDomain(targetDomain);
             setCustomVideoFile(file);

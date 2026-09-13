@@ -9,7 +9,7 @@ import {
   Sparkles, CheckCircle, ArrowUpRight, Thermometer, Droplets, Folder, CornerDownRight,
   Filter, RotateCcw, Send, Loader2, Database, FileCheck, BookmarkCheck
 } from 'lucide-react';
-import { lookupScientificTerm, runInvestigation } from '../api/client';
+import { lookupScientificTerm, runInvestigation, API_BASE_URL } from '../api/client';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SCIENTIFIC LABEL NORMALIZER
@@ -168,12 +168,12 @@ export const ImageInspector = ({
 
   // Fetch Live Backend Key Status & Knowledge Citations from Real RAG Database
   useEffect(() => {
-    fetch('http://127.0.0.1:8001/api/keys/status')
+    fetch(`${API_BASE_URL}/api/keys/status`)
       .then(r => r.json())
       .then(data => setKeyStatus(data))
       .catch(err => console.warn('[SAAR] Keys status check:', err));
 
-    fetch('http://127.0.0.1:8001/api/saar/knowledge/query', {
+    fetch(`${API_BASE_URL}/api/saar/knowledge/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: resolvedDomain, domain: resolvedDomain, top_k: 4 })

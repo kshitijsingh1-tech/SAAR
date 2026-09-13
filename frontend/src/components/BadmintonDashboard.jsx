@@ -24,6 +24,12 @@ import { BadmintonVideoPlayer } from './BadmintonVideoPlayer';
 import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { MarkdownResponse } from './MarkdownResponse';
 
+const getFileName = (f) => {
+  if (!f) return '';
+  if (typeof f === 'string') return f.split('/').pop()?.split('\\').pop() || f;
+  return f.name || f.filename || 'video.mp4';
+};
+
 /**
  * BadmintonDashboard (Section 29)
  * Master orchestrator for Badminton Biomechanics Video Analysis.
@@ -90,7 +96,7 @@ export function BadmintonDashboard({ onRegisterToChat = null, initialResult = nu
   const [qaHistory, setQaHistory] = useState([]);
   const fileInputRef = useRef(null);
 
-  // Synchronize initialResult or initialFile props
+  // Synchronize initialResult prop
   React.useEffect(() => {
     if (initialResult) {
       setAnalysisResult(initialResult);
@@ -100,6 +106,32 @@ export function BadmintonDashboard({ onRegisterToChat = null, initialResult = nu
       }
     }
   }, [initialResult]);
+
+  // Synchronize initialFile prop (e.g. from chat upload or external tool mounting)
+  React.useEffect(() => {
+    if (initialFile) {
+      setSelectedFile(initialFile);
+      try {
+        const url = URL.createObjectURL(initialFile);
+        setVideoPreviewUrl(url);
+      } catch (e) {
+        console.warn('[BadmintonDashboard] Failed to create object URL for initialFile:', e);
+      }
+    }
+  }, [initialFile]);
+
+  // If analysis is present but videoPreviewUrl is not yet set, provide reliable playback URL
+  React.useEffect(() => {
+    if (analysisResult && !videoPreviewUrl) {
+      if (initialFile) {
+        try {
+          setVideoPreviewUrl(URL.createObjectURL(initialFile));
+        } catch (e) {}
+      } else {
+        setVideoPreviewUrl(getBadmintonSampleVideoUrl());
+      }
+    }
+  }, [analysisResult, videoPreviewUrl, initialFile]);
 
   /**
    * Section 53 / Task 1: Wire ShotTimeline clicks to:
@@ -390,106 +422,181 @@ export function BadmintonDashboard({ onRegisterToChat = null, initialResult = nu
               style={{ display: 'none' }}
             />
 
-            {/* Match Type */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '6px 12px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Format:</span>
-              <select
-                value={matchType}
-                onChange={(e) => setMatchType(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer', fontSize: '0.84rem' }}
-              >
-                <option value="singles">Singles</option>
-                <option value="doubles">Doubles</option>
-              </select>
-            </div>
+            {analysisResult ? (
+              // -------------------------------------------------------------
+              // Post-Analysis Active State: Clean Metadata Badge + Change Video
+              // -------------------------------------------------------------
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '6px 14px' }}>
+                  <Video size={16} color="#0284c7" />
+                  <span style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a' }}>
+                    {getFileName(selectedFile) || analysisResult.video?.filename || 'Badminton Rally Video'}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>
+                    ({analysisResult.video?.duration_seconds || 0}s • {analysisResult.video?.fps || 30} FPS)
+                  </span>
+                </div>
 
-            {/* Skill Level */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '6px 12px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Skill:</span>
-              <select
-                value={skillLevel}
-                onChange={(e) => setSkillLevel(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer', fontSize: '0.84rem' }}
-              >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-                <option value="elite">Elite / Pro</option>
-              </select>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '6px 12px' }}>
+                  <span style={{ fontSize: '0.80rem', fontWeight: '600', color: '#475569' }}>Format:</span>
+                  <select
+                    value={matchType}
+                    onChange={(e) => setMatchType(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer', fontSize: '0.82rem' }}
+                  >
+                    <option value="singles">Singles</option>
+                    <option value="doubles">Doubles</option>
+                  </select>
+                </div>
 
-            {/* Upload Video Button */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#f1f5f9',
-                color: '#334155',
-                border: '1px solid #cbd5e1',
-                padding: '9px 16px',
-                borderRadius: '10px',
-                fontWeight: '600',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              title="Upload your own badminton video file"
-            >
-              <UploadCloud size={16} />
-              <span>{selectedFile ? `File: ${selectedFile.name.slice(0, 14)}...` : 'Upload Video'}</span>
-            </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#f1f5f9',
+                    color: '#334155',
+                    border: '1px solid #cbd5e1',
+                    padding: '7px 14px',
+                    borderRadius: '9px',
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Upload a different video file"
+                >
+                  <UploadCloud size={15} />
+                  <span>Change Video</span>
+                </button>
 
-            {/* Run Analysis Button if file selected */}
-            {selectedFile && (
-              <button
-                onClick={handleRunAnalysis}
-                disabled={isProcessing}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: '#0284c7',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '9px 18px',
-                  borderRadius: '10px',
-                  fontWeight: '700',
-                  fontSize: '0.85rem',
-                  cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 2px 10px rgba(2,132,199,0.25)',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                {isProcessing ? <RefreshCw size={15} className="spin" /> : <Sparkles size={15} />}
-                <span>{isProcessing ? 'Analyzing...' : 'Run Analysis'}</span>
-              </button>
+                <button
+                  onClick={handleLoadSample}
+                  disabled={isProcessing}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#0f172a',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '7px 14px',
+                    borderRadius: '9px',
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 8px rgba(15,23,42,0.12)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Load reference tournament rally clip"
+                >
+                  <Play size={14} />
+                  <span>{isProcessing ? 'Loading...' : 'Sample Rally'}</span>
+                </button>
+              </>
+            ) : (
+              // -------------------------------------------------------------
+              // Pre-Analysis Intake State: Upload & Run Analysis Controls
+              // -------------------------------------------------------------
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '6px 12px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Format:</span>
+                  <select
+                    value={matchType}
+                    onChange={(e) => setMatchType(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer', fontSize: '0.84rem' }}
+                  >
+                    <option value="singles">Singles</option>
+                    <option value="doubles">Doubles</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '6px 12px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Skill:</span>
+                  <select
+                    value={skillLevel}
+                    onChange={(e) => setSkillLevel(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer', fontSize: '0.84rem' }}
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                    <option value="elite">Elite / Pro</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#f1f5f9',
+                    color: '#334155',
+                    border: '1px solid #cbd5e1',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    fontWeight: '600',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Upload your own badminton video file"
+                >
+                  <UploadCloud size={16} />
+                  <span>{selectedFile ? `File: ${getFileName(selectedFile).slice(0, 14)}...` : 'Upload Video'}</span>
+                </button>
+
+                {selectedFile && (
+                  <button
+                    onClick={handleRunAnalysis}
+                    disabled={isProcessing}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#0284c7',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '9px 18px',
+                      borderRadius: '10px',
+                      fontWeight: '700',
+                      fontSize: '0.85rem',
+                      cursor: isProcessing ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 10px rgba(2,132,199,0.25)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {isProcessing ? <RefreshCw size={15} className="spin" /> : <Sparkles size={15} />}
+                    <span>{isProcessing ? 'Analyzing...' : 'Run Analysis'}</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleLoadSample}
+                  disabled={isProcessing}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: '#0f172a',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    fontWeight: '600',
+                    fontSize: '0.86rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 10px rgba(15,23,42,0.12)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <Play size={15} />
+                  <span>{isProcessing ? 'Processing...' : 'Load Sample Rally'}</span>
+                </button>
+              </>
             )}
-
-            {/* Load Sample Button */}
-            <button
-              onClick={handleLoadSample}
-              disabled={isProcessing}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: '#0f172a',
-                color: '#ffffff',
-                border: 'none',
-                padding: '9px 18px',
-                borderRadius: '10px',
-                fontWeight: '600',
-                fontSize: '0.86rem',
-                cursor: isProcessing ? 'not-allowed' : 'pointer',
-                boxShadow: '0 2px 10px rgba(15,23,42,0.12)',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Play size={15} />
-              <span>{isProcessing ? 'Processing...' : 'Load Sample Rally'}</span>
-            </button>
           </div>
         </div>
 
@@ -508,7 +615,7 @@ export function BadmintonDashboard({ onRegisterToChat = null, initialResult = nu
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
               <Video size={32} color="#0284c7" />
               <div style={{ fontSize: '0.94rem', fontWeight: '700', color: '#1e293b' }}>
-                {selectedFile ? `Selected: ${selectedFile.name}` : 'Upload Badminton Rally Video'}
+                {selectedFile ? `Selected: ${getFileName(selectedFile)}` : 'Upload Badminton Rally Video'}
               </div>
               <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
                 Full-court view with visible lines or baseline perspective. Supports MP4, MOV, WebM.

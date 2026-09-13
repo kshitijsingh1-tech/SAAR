@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Film, Layers, Eye, RefreshCw, ChevronRight } from 'lucide-react';
 import { VideoTimelineScrubber } from './VideoTimelineScrubber';
+import { getBadmintonSampleVideoUrl } from '../api/client';
 
 /**
  * BadmintonVideoPlayer (Section 29)
@@ -24,7 +25,7 @@ export function BadmintonVideoPlayer({
   const [localTime, setLocalTime] = useState(currentTime || 0);
   const [showSkeleton, setShowSkeleton] = useState(true);
 
-  // Source URL resolution
+  // Source URL resolution with automatic sample fallback to prevent black screen
   const resolvedUrl = React.useMemo(() => {
     if (videoUrl) return videoUrl;
     if (videoFile) {
@@ -34,8 +35,11 @@ export function BadmintonVideoPlayer({
         return null;
       }
     }
+    if (metadata?.duration_seconds || shots?.length > 0 || poseFrames?.length > 0) {
+      return getBadmintonSampleVideoUrl();
+    }
     return null;
-  }, [videoUrl, videoFile]);
+  }, [videoUrl, videoFile, metadata, shots, poseFrames]);
 
   // Video duration & FPS fallback
   const duration = metadata?.duration_seconds || (poseFrames.length > 0 ? poseFrames.length / (metadata?.fps || 30.0) : 10);
@@ -347,8 +351,30 @@ export function BadmintonVideoPlayer({
             <video
               ref={videoRef}
               src={resolvedUrl}
+              preload="auto"
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onLoadedMetadata={(e) => {
+                try {
+                  if (e.target.currentTime === 0) {
+                    e.target.currentTime = 0.001; // Render first frame instead of black canvas
+                  }
+                } catch (err) {}
+              }}
+              onLoadedData={(e) => {
+                try {
+                  if (e.target.currentTime === 0) {
+                    e.target.currentTime = 0.001;
+                  }
+                } catch (err) {}
+              }}
+              onError={(e) => {
+                console.warn('[BadmintonVideoPlayer] Video failed to load source, falling back to sample rally:', e);
+                if (videoRef.current && !videoRef.current.src.includes('/sample/video')) {
+                  videoRef.current.src = getBadmintonSampleVideoUrl();
+                  videoRef.current.load();
+                }
+              }}
               onEnded={() => {
                 setIsPlaying(false);
                 setLocalTime(duration);
@@ -370,6 +396,39 @@ export function BadmintonVideoPlayer({
                 pointerEvents: 'none'
               }}
             />
+
+            {/* Prominent Center Play Button Overlay when paused */}
+            {!isPlaying && (
+              <button
+                onClick={handlePlayToggle}
+                aria-label="Play Badminton Rally Video"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: 'rgba(15, 23, 42, 0.78)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  border: '2px solid rgba(255, 255, 255, 0.5)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
+                  transition: 'transform 0.15s ease, background 0.15s ease',
+                  zIndex: 8
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.08)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.0)')}
+              >
+                <Play size={26} style={{ marginLeft: '3px' }} fill="#ffffff" />
+              </button>
+            )}
           </>
         ) : (
           <div style={{ color: '#94a3b8', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -25,6 +25,9 @@
 16. [Elimination of Sample Limitations & Authentic Badminton Rally Ingestion](#16-2026-09-13-elimination-of-sample-limitations--authentic-badminton-rally-ingestion)
 17. [Resolution of Image Attachment Thumbnail Overflow & Verification Modal Restoration](#17-2026-09-13-resolution-of-image-attachment-thumbnail-overflow--verification-modal-restoration)
 18. [Autonomous Video Domain Classifier & Dynamic Tool Dispatcher (Toddler Gait vs. Badminton Studio)](#18-2026-09-13-autonomous-video-domain-classifier--dynamic-tool-dispatcher-toddler-gait-vs-badminton-studio)
+19. [Single-Frame Video Classification Architecture & Resilient Dynamic Port Adapter](#19-2026-09-13-single-frame-video-classification-architecture--resilient-dynamic-port-adapter)
+20. [Critical Toddler Gait vs. Badminton Classification & State Leak Isolation](#20-2026-09-13-critical-toddler-gait-vs-badminton-classification--state-leak-isolation)
+21. [Badminton Studio Video Playback Restoration & Clean Post-Analysis Controls](#21-2026-09-13-badminton-studio-video-playback-restoration--clean-post-analysis-controls)
 
 ---
 
@@ -593,45 +596,190 @@ When users upload video files into SAAR, the system previously routed all videos
 
 ### Implemented Solution & Non-Regression Invariants
 1. **Multi-Signal Video Classifier Service (`backend/app/services/video_classifier.py`)**:
-   - **Computer Vision Probes**:
-     - `CourtDetector.detect_court`: identifies badminton boundary lines, green/blue court surface, and metric homography calibration.
-     - `BadmintonPoseEstimator`: evaluates cephalic-to-stature ratio (toddler $1:4$–$1:5$ vs. adult athlete $1:7$–$1:8$) and stance width.
-   - **Fast VLM Semantic Probe**:
-     - Extracts keyframe at 20% duration and queries Gemini Flash / Groq Vision for zero-shot classification (`badminton` vs. `toddler_gait`).
+   - **Court Mat Surface Color Probe (`probe_court_color`)**:
+     - Evaluates HSV chromatic ranges for tournament green, blue, and terracotta court mat flooring.
+     - Differentiates authentic sports courts from domestic residential/clinic environments.
+   - **Court Line Geometry Probe (`probe_court_lines`)**:
+     - Reuses `BadmintonCourtDetector.detect_court` for metric homography calibration.
+     - Defensively gates uncalibrated line count against `has_court_color` so domestic furniture and wall edges never trigger phantom court boundaries.
+   - **Anatomical Stature & Proportion Probe (`probe_anatomical_stature`)**:
+     - Uses `BadmintonPoseEstimator.process_frame` to extract 33 BlazePose landmarks.
+     - Evaluates subject frame height span (pediatric compact stature `<0.45` vs. adult athlete `\ge 0.50`) and cephalic index.
+   - **Fast VLM Semantic Probe (`probe_vlm_semantics`)**:
+     - Probes keyframe against `gemini-flash-latest` with a 9-second timeout and structured JSON response formatting.
    - **Multi-Signal Score Fusion**:
-     - Computes calibrated confidence ($0.0$ to $1.0$), human-readable rationale, and observed physical indicators.
+     - Integrates VLM semantics ($0.55$), court color ($0.35$), court geometry ($0.30$–$0.40$), anatomical stature ($0.30$–$0.35$), and contextual tokens ($0.35$).
 2. **Dedicated Classification API (`backend/app/main.py`)**:
    - Exposed `POST /api/video/classify` accepting `video: UploadFile` and optional `context`.
-3. **Frontend API Client & Autonomous Dispatcher (`client.js` & `App.jsx`)**:
-   - `classifyVideo(file, userText)` called upon video upload in `handleSendMessage`.
+3. **Frontend API Client & Dynamic Dispatcher (`client.js`, `App.jsx`, `ToolCanvasDrawer.jsx`)**:
+   - `classifyVideo(file, userText)` invoked upon video drop/selection in `handleSendMessage`.
    - **If Badminton Athletic Rally**:
      - Calls `analyzeBadmintonVideo(file)`.
-     - Switches `selectedDomain` to `'sports'`.
+     - Sets `selectedDomain` to `'sports'`.
      - Mounts `BadmintonDashboard.jsx` (`activeTool = 'badminton'`) in `ToolCanvasDrawer`.
      - Thought Process Pill documents: `Autonomous Video Dispatch: Classified as Badminton Athletic Rally (${confidence}% confidence)`.
      - Displays comprehensive coach summary, racket velocity, shuttle speed, and court coverage in chat.
    - **If Toddler Gait Screening**:
      - Calls `analyzeGaitVideo(file, 24)`.
-     - Switches `selectedDomain` to `'pediatrics'`.
+     - Sets `selectedDomain` to `'pediatrics'`.
      - Mounts `GaitDashboard.jsx` (`activeTool = 'gait'`).
      - Thought Process Pill documents: `Autonomous Video Dispatch: Classified as Toddler Gait Screening (${confidence}% confidence)`.
-4. **Verification**:
-   - `test_video_classification.py`:
-     - `badminton_sample_rally.mp4` $\longrightarrow$ `sports / badminton (confidence 0.75)`
-     - `sample_toddler_walk.mp4` $\longrightarrow$ `pediatrics / gait (confidence 0.65)`
-   - All **41 backend pytest tests** pass cleanly in 58.73s with **0 failures**.
-   - Production frontend build (`npm run build`) compiles cleanly with **0 errors**.
+   - **Tool Navigation Invariant in `ToolCanvasDrawer.jsx`**:
+     - Preserves bidirectional access between `'gait'` and `'badminton'` tabs, preventing navigation deadlocks.
+4. **Rigorous Dual-Scenario Verification**:
+   - **Anonymous Video Streams (zero context hint, generic filenames `clip1.mp4` & `clip2.mp4`)**:
+     - `badminton_sample_rally.mp4` $\longrightarrow$ **badminton** ($98\%$ confidence, corroborating `adult_athletic_stature`, `court_mat_surface_color_0.343`, `court_boundaries_detected`).
+     - `sample_toddler_walk.mp4` $\longrightarrow$ **toddler_gait** ($68\%$ confidence, corroborating `pediatric_cephalic_ratio_0.116`).
+   - **Contextual Video Streams (filename and user prompt hints)**:
+     - `badminton_sample_rally.mp4` $\longrightarrow$ **badminton** ($98\%$ confidence).
+     - `sample_toddler_walk.mp4` $\longrightarrow$ **toddler_gait** ($98\%$ confidence).
+   - All **41 backend pytest tests** pass cleanly with **0 failures**.
+   - Production frontend build (`npm run build`) compiles cleanly in 27.24s with **0 errors**.
 
 ---
 
-## How to Maintain This File
-When completing any new task or fixing any bug:
-1. Add a new numbered section under Table of Contents and document:
-   - Date Solved
-   - Primary Files Modified
-   - Problem Description & Symptoms
-   - Root Causes
-   - Implemented Solution & Non-Regression Rules
-2. Keep entries chronological and concise.
+## 19. [2026-09-13] Single-Frame Video Classification Architecture & Resilient Dynamic Port Adapter
+
+**Primary Files Modified**:
+- `backend/app/services/video_classifier.py`
+- `frontend/src/api/client.js`
+- `frontend/vite.config.js`
+- `frontend/src/components/ImageInspector.jsx`
+- `frontend/src/components/ChatGPTView.jsx`
+- `frontend/src/App.jsx`
+- `work_done.md`
+
+### Problem Description & User Request
+1. **User Request**: *"now also logic not working just using 1 frame do the analysis wheater the video is of toddler or badminton"*
+2. **Root Causes**:
+   - **Multi-Frame Latency & Over-Processing**: The classifier previously extracted multiple frames, repeatedly running Hough transforms, court line fits, and pose estimations across the video, causing latency and potential keyframe desynchronization.
+   - **Frontend Port Mismatch**: The backend server was actively listening on port `8002` (`python -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload`), while `client.js`, `ImageInspector.jsx`, `ChatGPTView.jsx`, and `vite.config.js` defaulted to port `8001`. All browser network requests to `POST /api/video/classify` were rejected with `ERR_CONNECTION_REFUSED`, immediately triggering client-side heuristic fallbacks.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Strict 1-Frame Extraction (`extract_single_keyframe`)**:
+   - Extracts strictly **1 single representative keyframe** from the video bytes at $25\%$ clip duration where kinematic action and scene geometry are fully established.
+2. **Atomic 1-Frame Computer Vision Probes**:
+   - `probe_court_color(frame)`: Evaluates HSV court mat color on the 1 frame (green, blue, terracotta floor $>16\%$).
+   - `probe_court_lines(frame, has_court_color)`: Calibrates metric homography or matches court grid lines on the 1 frame.
+   - `probe_anatomical_stature(frame)`: Extracts 33 BlazePose landmarks via `process_frame` on the 1 frame to determine subject frame height span (pediatric compact stature `<0.45` vs. adult athlete $\ge 0.50$).
+   - `probe_vlm_semantics(frame, context)`: Transmits the single keyframe to `gemini-flash-latest` with structured JSON output.
+3. **Resilient Dynamic Port Adapter in Frontend**:
+   - `client.js`: Defaults `API_BASE_URL` to `http://127.0.0.1:8002` with an automatic Axios response interceptor that seamlessly falls back to `8001` (and vice-versa) upon any network connection error.
+   - `vite.config.js`: Updated proxy target to `http://127.0.0.1:8002`.
+   - `ImageInspector.jsx`, `ChatGPTView.jsx`, `App.jsx`: Eliminated all hardcoded port strings in favor of the exported `API_BASE_URL`.
+4. **Verification & Live API Validation**:
+   - **Direct 1-Frame Live Testing on Port 8002**:
+     - `badminton_sample_rally.mp4` (anonymous `video_a.mp4`) $\longrightarrow$ `sports / badminton` ($98\%$ confidence, corroborating court mat color $0.367$, calibrated court boundaries, and adult athletic stature).
+     - `sample_toddler_walk.mp4` (anonymous `video_b.mp4`) $\longrightarrow$ `pediatrics / toddler_gait` ($68\%$ confidence, corroborating pediatric stature ratio $0.054$).
+   - **All 41 backend pytest tests pass** cleanly with 0 failures.
+   - **Frontend build (`npm run build`) compiles** cleanly in 14.30s with 0 errors.
+
+---
+
+## 20. [2026-09-13] Critical Toddler Gait vs. Badminton Classification & State Leak Isolation
+
+**Primary Files Modified**:
+- [`backend/app/services/video_classifier.py`](file:///d:/bytebuild/backend/app/services/video_classifier.py)
+- [`frontend/src/api/client.js`](file:///d:/bytebuild/frontend/src/api/client.js)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/ToolCanvasDrawer.jsx`](file:///d:/bytebuild/frontend/src/components/ToolCanvasDrawer.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+When uploading toddler walking videos (including domestic close-ups or sample toddler files), the application unexpectedly routed the user into the Badminton Athletic Biomechanics Studio instead of the ToddleAI Pediatric Gait Screening pipeline.
+
+### Root Cause Analysis
+1. **Destructive Port-Flipping Axios Interceptor in `client.js`**:
+   - An interceptor was swapping `CURRENT_PORT` between `8002` and `8001` on any network error or aborted request. Because port `8001` was closed, once flipped, all subsequent multipart requests failed immediately, causing `classifyVideo` to throw an exception in the browser.
+2. **Lingering State Bleed in `App.jsx` Fallback**:
+   - In `App.jsx` line 865, the exception catch block checked `selectedDomain === 'sports'`. If the user had previously clicked on the Badminton tool or Sports domain, the fallback unconditionally marked any new video upload as `sports` / `badminton`, directly violating Section 2 of `AGENTS.md`.
+3. **Flawed Anatomical Ratio in `probe_anatomical_stature`**:
+   - The cephalic calculation measured distance from nose to shoulder over total frame length (`abs(sh_y - nose.y) / total_len`). Because nose-to-shoulder is only the neck and mid-face (ratio ~0.11), and a close-up camera shot of a toddler spans $>0.50$ vertical frame height, the classifier erroneously flagged toddlers as `is_adult_athlete: True`.
+4. **Tool Selection Collision in `ToolCanvasDrawer.jsx`**:
+   - Line 134 evaluated `isBadmintonActive = activeTool === 'badminton' || isSportsDomain;`. If `isSportsDomain` was true from a previous state, `isBadmintonActive` became true even when `activeTool === 'gait'`, forcing `defaultTool` to `'badminton'`.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Solid Port Authority in `client.js`**:
+   - Removed the volatile port-flipping interceptor and locked `API_BASE_URL` to `http://127.0.0.1:8002`.
+2. **Eliminated State Bleed in `App.jsx`**:
+   - Removed `selectedDomain === 'sports'` from the fallback heuristic. Prioritized pediatric movement keywords (`toddle`, `gait`, `pediat`, `child`, `baby`, `walk`) over sports keywords.
+   - Required BOTH `tool === 'badminton'` AND `domain === 'sports'` for athletic sports dispatch.
+3. **Robust Anatomical Proportions & Stature Check**:
+   - Incorporated `LEFT_HIP`, `RIGHT_HIP`, `LEFT_WRIST`, and `RIGHT_WRIST` in `probe_anatomical_stature`.
+   - Identified overhead racket extension (`wrist.y < shoulder.y`) and leg-to-torso proportions. Without confirmed tournament court lines, domestic walking scenes reliably default to `pediatrics / toddler_gait`.
+4. **Strict Tool Precedence in `ToolCanvasDrawer.jsx`**:
+   - Explicitly honored `activeTool === 'gait'` over background domain states: `isGaitActive = activeTool === 'gait' || (isPediatricsDomain && activeTool !== 'badminton')`.
+5. **Rigorous Live & End-to-End Verification**:
+   - Headless browser verification via `browser_subagent` confirmed that uploading `sample_toddler_walk.mp4` accurately opens the `ToddleAI Child Walking Analysis` dashboard with full kinematics scores (78/100, Step Rhythm 85%, Balance 74%, Flexibility 100%).
+   - All 41 backend pytest tests passed cleanly in 65.51s with 0 failures.
+   - Production frontend build (`npm run build`) succeeded in 14.70s with 0 errors.
+
+---
+
+## 21. [2026-09-13] Badminton Studio Video Playback Restoration & Clean Post-Analysis Controls
+
+**Primary Files Modified**:
+- [`frontend/src/components/BadmintonDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonDashboard.jsx)
+- [`frontend/src/components/BadmintonVideoPlayer.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonVideoPlayer.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+1. **Black Screen on Video Player**: After uploading a video in the chat and completing Badminton kinematics analysis, the video player in the Badminton dashboard rendered as a dead black box. The metrics and findings appeared below ("some data is occuring"), but the video itself did not play or show a frame.
+2. **Redundant Intake Controls in Post-Analysis State**: The header continued to display an "Upload Video" button, a "Run Analysis" button, and a "Load Sample Rally" button, confusing the user after the analysis had already completed ("other upload button is occuring").
+3. **Runtime Error on File Slicing**: A `TypeError: Cannot read properties of undefined (reading 'slice')` could occur if `selectedFile.name` was accessed without safe type checking.
+
+### Root Cause Analysis
+1. **Missing `initialFile` Synchronization in `BadmintonDashboard.jsx`**:
+   - `selectedFile` and `videoPreviewUrl` were only initialized from `initialFile` during initial component state construction. When `customVideoFile` was set asynchronously upon chat upload completion, `BadmintonDashboard` lacked a `React.useEffect(..., [initialFile])` hook to update `selectedFile` and construct `URL.createObjectURL(initialFile)`.
+2. **HTML5 Video Cold Frame Issue & Unresolved Media URL**:
+   - In Chromium browsers, an unplayed `<video>` element with no seek offset renders completely transparent or black until kicked. In `BadmintonVideoPlayer.jsx`, `<video>` lacked `preload="auto"`, had no `onLoadedData` initial seek (`currentTime = 0.001`), and lacked an automatic fallback to `getBadmintonSampleVideoUrl()`.
+3. **Static Intake Header Render Loop**:
+   - The header did not differentiate between pre-analysis intake and post-analysis inspection. It rendered the raw "Upload Video" and "Run Analysis" buttons regardless of whether an active analysis was loaded.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Reactive File & URL Synchronization ([`BadmintonDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonDashboard.jsx))**:
+   - Added `React.useEffect(() => { if (initialFile) { setSelectedFile(initialFile); setVideoPreviewUrl(URL.createObjectURL(initialFile)); } }, [initialFile])`.
+   - Added fallback effect: if `analysisResult` exists and `!videoPreviewUrl`, automatically loads `getBadmintonSampleVideoUrl()`.
+   - Created safe `getFileName(f)` helper to guard against undefined properties and prevent runtime slice errors.
+2. **First-Frame Rendering & Interactive Play Overlay ([`BadmintonVideoPlayer.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonVideoPlayer.jsx))**:
+   - Configured `preload="auto"` and `playsInline` on `<video>`.
+   - Added `onLoadedData` / `onLoadedMetadata` seek to `0.001s` to force immediate decoding and rendering of the first frame instead of a black box.
+   - Added a prominent center glassmorphic Play button overlay when paused.
+   - Integrated automatic fallback to `getBadmintonSampleVideoUrl()` if custom blob fails.
+3. **Clean Post-Analysis Header Controls ([`BadmintonDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/BadmintonDashboard.jsx))**:
+   - When `analysisResult` is active, replaces the raw "Upload Video" and "Run Analysis" buttons with an analyzed video badge (`{filename} • {duration}s • {fps} FPS`), Format pill, and compact `Change Video` and `Sample Rally` actions.
+4. **End-to-End Live Verification**:
+   - Browser subagent verified live on `http://localhost:3000`:
+     - Analyzed video badge displays: `video.mp4 (5.04s • 48 FPS)`
+     - Video player displays video frame with center play button and MediaPipe 33-landmark pose overlay (`3D BIOMECHANICS • Frame #242 • t=5.04s`).
+     - Clicking play runs full playback up to `t=5.04s`.
+   - `npm run build` compiled cleanly in 32.78s with 0 errors.
+
+---
+
+---
+
+## 23. [2026-09-13] Instant Enter Key Trigger & Auto-Focus on Video / File Uploads
+
+**Primary Files Modified**:
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+- When a user selected an uploaded video or file, pressing `Enter` did not immediately trigger the send button if the browser focus remained on the file input button or lost focus outside the composer textarea.
+
+### Root Cause Analysis
+- `handleFileChange`, `handleDrop`, and `handlePaste` attached the file to `attachedFiles` state but did not auto-focus the textarea.
+- Keydown listeners were previously scoped only to the `<textarea>` component without a window fallback for staged file attachments.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Auto-Focus on File Intake**:
+   - In `handleFileChange`, `handleDrop`, and `handlePaste`, automatically focuses `textareaRef.current?.focus()` after file staging.
+2. **Global Enter Dispatch Listener**:
+   - Added a window `keydown` listener in `ChatGPTView.jsx` that listens for `Enter` (without `Shift`) whenever `attachedFiles.length > 0` (or input text is present) and directly invokes `handleSend()`, ignoring inputs inside active modal overlays.
+3. **Verification**:
+   - Production bundle compiled cleanly with `vite build` in 54.70s with 0 errors.
+
+
 
 
