@@ -420,18 +420,57 @@ export function ChatGPTView({
       return;
     }
 
-    // 3. Convert large text pastes into a staged draft pill card (Claude / ChatGPT behavior)
+    // 3. Tabular text detection (CSV or TSV text pasted into chat input)
     const text = clipboardData.getData('text');
-    if (text && text.trim().length > 220) {
-      e.preventDefault();
-      e.stopPropagation();
-      const cleanFirst = text.trim().split('\n')[0].replace(/^[#>*\s-]+/, '').trim();
-      const title = cleanFirst.length > 24 ? `${cleanFirst.slice(0, 24)}..` : (cleanFirst || 'Draft text..');
-      setTextSnippet({
-        title,
-        content: text.trim()
-      });
-      return;
+    if (text) {
+      const trimmed = text.trim();
+      const lines = trimmed.split(/\r?\n/).filter((l) => l.trim().length > 0);
+
+      // Check if text is a tabular CSV or TSV (header + data rows with matching delimiters)
+      if (lines.length >= 2) {
+        const header = lines[0];
+        const commaCount0 = (header.match(/,/g) || []).length;
+        const tabCount0 = (header.match(/\t/g) || []).length;
+        const semiCount0 = (header.match(/;/g) || []).length;
+        const maxDelim0 = Math.max(commaCount0, tabCount0, semiCount0);
+
+        if (maxDelim0 >= 1) {
+          const sampleLine = lines[1];
+          const commaCount1 = (sampleLine.match(/,/g) || []).length;
+          const tabCount1 = (sampleLine.match(/\t/g) || []).length;
+          const semiCount1 = (sampleLine.match(/;/g) || []).length;
+          const maxDelim1 = Math.max(commaCount1, tabCount1, semiCount1);
+
+          if (maxDelim1 >= 1) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const firstCol = header.split(/,|\t|;/)[0].replace(/["']/g, '').trim();
+            const datasetName = firstCol && firstCol.length < 25
+              ? `${firstCol.toLowerCase().replace(/[^a-z0-9_]/g, '_')}_dataset.csv`
+              : 'pasted_dataset.csv';
+
+            const csvBlob = new Blob([trimmed], { type: 'text/csv' });
+            const csvFile = new File([csvBlob], datasetName, { type: 'text/csv' });
+
+            setAttachedFiles((prev) => [...prev, csvFile]);
+            return;
+          }
+        }
+      }
+
+      // 4. Convert large non-tabular text pastes into a staged draft pill card (Claude / ChatGPT behavior)
+      if (trimmed.length > 220) {
+        e.preventDefault();
+        e.stopPropagation();
+        const cleanFirst = trimmed.split('\n')[0].replace(/^[#>*\s-]+/, '').trim();
+        const title = cleanFirst.length > 24 ? `${cleanFirst.slice(0, 24)}..` : (cleanFirst || 'Draft text..');
+        setTextSnippet({
+          title,
+          content: trimmed
+        });
+        return;
+      }
     }
   };
 
