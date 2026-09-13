@@ -368,7 +368,7 @@ export function ChatGPTView({
     }
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = async (e) => {
     const now = Date.now();
     // Guard against rapid duplicate paste events fired within 50ms
     if (now - lastPasteTimeRef.current < 50) {
@@ -420,10 +420,36 @@ export function ChatGPTView({
       return;
     }
 
-    // 3. Tabular text detection (CSV or TSV text pasted into chat input)
     const text = clipboardData.getData('text');
     if (text) {
       const trimmed = text.trim();
+
+      // 3. File path / filename detection (e.g. copied file path from VS Code or typed path)
+      const cleanPath = trimmed.replace(/^["']|["']$/g, '').trim();
+      const isFilePathCandidate = /\.(csv|xlsx?|tsv|json|txt|png|jpe?g|webp|pdf)$/i.test(cleanPath) &&
+        (cleanPath.includes('/') || cleanPath.includes('\\') || !cleanPath.includes('\n'));
+
+      if (isFilePathCandidate) {
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+          const res = await fetch(`${apiUrl}/api/saar/read-file?path=${encodeURIComponent(cleanPath)}`);
+          if (res.ok) {
+            e.preventDefault();
+            e.stopPropagation();
+            const blob = await res.blob();
+            const filename = res.headers.get('X-Filename') || cleanPath.split(/[/\\]/).pop() || 'dataset.csv';
+            const fileObj = new File([blob], filename, {
+              type: blob.type || (filename.endsWith('.csv') ? 'text/csv' : 'application/octet-stream')
+            });
+            setAttachedFiles((prev) => [...prev, fileObj]);
+            return;
+          }
+        } catch (fetchErr) {
+          // If backend can't find file, continue to text/tabular logic
+        }
+      }
+
+      // 4. Tabular text detection (CSV or TSV text pasted into chat input)
       const lines = trimmed.split(/\r?\n/).filter((l) => l.trim().length > 0);
 
       // Check if text is a tabular CSV or TSV (header + data rows with matching delimiters)
@@ -459,7 +485,7 @@ export function ChatGPTView({
         }
       }
 
-      // 4. Convert large non-tabular text pastes into a staged draft pill card (Claude / ChatGPT behavior)
+      // 5. Convert large non-tabular text pastes into a staged draft pill card (Claude / ChatGPT behavior)
       if (trimmed.length > 220) {
         e.preventDefault();
         e.stopPropagation();
