@@ -591,35 +591,27 @@ export function MarkdownResponse({
         </div>
       )}
 
-      {/* Subtle Bottom Action Bar (Claude / ChatGPT style) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
-        <button
-          onClick={() => setShowRaw(!showRaw)}
-          title="Toggle between formatted and raw view"
-          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
-        >
-          <FileText size={11} />
-          <span>{showRaw ? 'Formatted' : 'Raw'}</span>
-        </button>
-        <button
-          onClick={handleCopy}
-          title={pairedQuestion ? "Copy question and response to clipboard" : "Copy to clipboard"}
-          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
-        >
-          {copied ? <Check size={11} color="var(--emerald)" /> : <Copy size={11} />}
-          <span>{copied ? 'Copied' : 'Copy'}</span>
-        </button>
-        {onAskSaar && (
+      {/* Subtle Bottom Action Bar (only on assistant responses) */}
+      {role === 'assistant' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <button
-            onClick={() => onAskSaar(content, pairedQuestion)}
-            title="Ask Saar a follow-up inquiry about this finding"
-            style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.9 }}
+            onClick={() => setShowRaw(!showRaw)}
+            title="Toggle between formatted and raw view"
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
           >
-            <Sparkles size={11} />
-            <span>Follow-up</span>
+            <FileText size={11} />
+            <span>{showRaw ? 'Formatted' : 'Raw'}</span>
           </button>
-        )}
-      </div>
+          <button
+            onClick={handleCopy}
+            title={pairedQuestion ? "Copy question and response to clipboard" : "Copy to clipboard"}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
+          >
+            {copied ? <Check size={11} color="var(--emerald)" /> : <Copy size={11} />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
