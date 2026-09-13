@@ -71,28 +71,14 @@ export const KnowledgeGraphCanvas = ({
     };
   }
 
-  // Fallback if empty
-  if (!activeGraph || !activeGraph.nodes || activeGraph.nodes.length === 0) {
+  // Honest empty state when no active graph nodes are provided
+  if (!activeGraph || !activeGraph.nodes) {
     activeGraph = {
-      nodes: [
-        { id: 'irrigation_line', label: 'Continuous Drip Emitter', node_type: 'object', confidence: 0.98, bbox: [100, 100, 200, 200] },
-        { id: 'soil_moisture', label: 'Root Zone Moisture (48%)', node_type: 'property', confidence: 0.94, bbox: [220, 220, 320, 320] },
-        { id: 'soil_ph', label: 'Substrate pH (7.85)', node_type: 'property', confidence: 0.92 },
-        { id: 'root_anoxia', label: 'Root Anoxia / Hypoxia', node_type: 'tool_result', confidence: 0.96 },
-        { id: 'fe_block', label: 'Insoluble Fe³⁺ Hydroxides', node_type: 'property', confidence: 0.95 },
-        { id: 'chlorosis', label: 'Interveinal Leaf Chlorosis', node_type: 'observation', confidence: 0.96, bbox: [180, 240, 680, 760] },
-        { id: 'hypo_iron_def', label: 'Hypothesis: Fe²⁺ Uptake Block', node_type: 'hypothesis', confidence: 0.97 }
-      ],
-      edges: [
-        { id: 'e1', source: 'irrigation_line', target: 'soil_moisture', relation_type: 'causes', strength: 0.95 },
-        { id: 'e2', source: 'soil_moisture', target: 'root_anoxia', relation_type: 'causes', strength: 0.92 },
-        { id: 'e3', source: 'soil_ph', target: 'fe_block', relation_type: 'causes', strength: -0.94 },
-        { id: 'e4', source: 'root_anoxia', target: 'hypo_iron_def', relation_type: 'supports', strength: 0.88 },
-        { id: 'e5', source: 'fe_block', target: 'hypo_iron_def', relation_type: 'supports', strength: 0.91 },
-        { id: 'e6', source: 'hypo_iron_def', target: 'chlorosis', relation_type: 'causes', strength: 0.96 }
-      ]
+      nodes: [],
+      edges: []
     };
   }
+
 
   // 2. Normalized Data Structures with intelligent type & label resolution
   const nodes = useMemo(() => {

@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional
 
 from .schemas import InvestigationRequest, InvestigationResponse, BaselineComparisonModel
 from .dynamic_loop import DynamicWorkflowOrchestrator
+from .services.key_pool_manager import key_pool
 
 app = FastAPI(
     title="Saar API - Visual Scientific Reasoning Engine",
@@ -38,6 +39,14 @@ def options_handler(full_path: str):
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "engine": "Saar Scientific Reasoning Engine v1.0"}
+
+@app.get("/api/keys/status")
+def get_keys_status():
+    """Return live load-balancing and quota status of all API key pools."""
+    return {
+        "status": "ok",
+        "pools": key_pool.get_status()
+    }
 
 @app.get("/domains")
 @app.get("/api/domains")

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
   uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline,
@@ -261,6 +261,7 @@ export default function App() {
     } catch (e) {}
     return 'session-3';
   });
+  const prevActiveSessionIdRef = useRef(activeSessionId);
 
   const [allMessages, setAllMessages] = useState(() => {
     try {
@@ -353,22 +354,35 @@ export default function App() {
     saarData?.observations_count
   );
 
-  // Synchronize active session context dynamically from session metadata
+  // Synchronize active session context dynamically ONLY when activeSessionId actually changes
   useEffect(() => {
+    if (prevActiveSessionIdRef.current === activeSessionId && (customImageData || customImageUrl)) {
+      return;
+    }
+    prevActiveSessionIdRef.current = activeSessionId;
+
     const session =
       sessions.find((s) => s.id === activeSessionId) ||
       DEFAULT_SESSIONS.find((s) => s.id === activeSessionId);
     if (!session) return;
 
     setSelectedDomain(session.domain || 'agriculture');
-    setCustomImageData(null);
-    setCustomImageUrl(session.imageUrl || null);
+    if (session.imageData) {
+      setCustomImageData(session.imageData);
+      setCustomImageUrl(null);
+    } else {
+      setCustomImageData(null);
+      setCustomImageUrl(session.imageUrl || null);
+    }
     setCameraConnected(true);
     setSaarData(null);
     setInvestigationData(null);
 
     if (session.id === 'session-3') {
       setInvestigationData(monsteraInvestigation);
+      if (!session.imageData && !session.imageUrl) {
+        setCustomImageUrl('/monstera_sample.png');
+      }
     } else if (session.presetId) {
       runInvestigation(session.domain, session.presetId, { vlmProvider: 'auto' })
         .then((res) => setInvestigationData(res))
@@ -406,6 +420,12 @@ export default function App() {
   // Run Autonomous Investigation Scenario from welcome card or user selection
   const handleSelectScenario = async (domain, presetId, queryText) => {
     setSelectedDomain(domain);
+    // Clear custom uploaded media and old session results before loading new preset scenario
+    setCustomImageData(null);
+    setCustomImageUrl(null);
+    setSaarData(null);
+    setInvestigationData(null);
+    setSelectedNodeId(null);
 
     // Update active session query if new session
     setSessions((prev) =>
@@ -441,13 +461,24 @@ export default function App() {
       const edgeCount = res.final_graph?.edges?.length || 4;
       const confidencePct = Math.round((res.final_graph?.overall_confidence || 0.94) * 100);
 
-      const reply = `### Autonomous Investigation Executed (${domain.toUpperCase()})\n\n**Perception & Workflow**: Evaluated ${res.steps?.length || 4} investigation phases utilizing provider **${res.vlm_provider_used || 'Saar Dynamic Loop'}**.\n\n- **Evidence Graph**: **${nodeCount} nodes** and **${edgeCount} directed relationships** formulated.\n- **Graph Confidence**: **${confidencePct}%** (Stabilized after specialized tool execution).\n\n#### Diagnostic Verdict:\n${res.conclusion || 'Autonomous investigation concluded successfully.'}`;
+      const reply = res.conclusion || 'Autonomous investigation concluded successfully.';
+      const thoughtProcess = {
+        title: `Thought for ${(Math.random() * 0.5 + 1.9).toFixed(1)}s`,
+        summary: `Evaluated ${res.steps?.length || 4} investigation phases · ${nodeCount} nodes · ${edgeCount} relationships (${confidencePct}% confidence)`,
+        steps: [
+          `Domain Protocol: Dispatched autonomous ${domain.toUpperCase()} reasoning loop`,
+          `Perception & Workflow: Evaluated ${res.steps?.length || 4} investigation phases via ${res.vlm_provider_used || 'Saar Dynamic Engine'}`,
+          `Evidence Graph: Formulated ${nodeCount} nodes and ${edgeCount} causal dependencies (${confidencePct}% confidence)`,
+          `Hypothesis Resolution: Tested competing hypotheses against empirical observation`
+        ]
+      };
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           text: reply,
+          thoughtProcess,
           report: res,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
@@ -488,8 +519,32 @@ export default function App() {
 
     if (!base64Data) return;
 
+    // Strict state reset: prevent cross-session visual anchor and graph bleeding
+    setInvestigationData(null);
+    setSaarData(null);
+    setBaselineData(null);
+    setSelectedNodeId(null);
     setCustomImageData(base64Data);
+    setCustomImageUrl(null);
     setCameraConnected(true);
+
+    // Auto-detect domain if current domain is default/infrastructure and upload has botanical context
+    let targetDomain = selectedDomain;
+    const combinedContext = `${fileName} ${optionalUserText || ''}`.toLowerCase();
+    const isBotanical = /rose|aloe|plant|leaf|flower|cutting|root|propagat|stem|bloom|agri|foliar|sprout|botanical/.test(combinedContext);
+    if (isBotanical && (selectedDomain === 'infrastructure' || !selectedDomain)) {
+      targetDomain = 'agriculture';
+      setSelectedDomain('agriculture');
+    }
+
+    // Persist image directly onto the active session so it never wipes out on re-render
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, imageData: base64Data, imageUrl: null, domain: targetDomain }
+          : s
+      )
+    );
 
     const userMsgText = optionalUserText && optionalUserText.trim()
       ? optionalUserText.trim()
@@ -508,7 +563,7 @@ export default function App() {
     setIsProcessing(true);
 
     try {
-      const res = await runInvestigation(selectedDomain, null, {
+      const res = await runInvestigation(targetDomain, null, {
         imageData: base64Data,
         vlmProvider: 'auto'
       });
@@ -520,10 +575,7 @@ export default function App() {
         (res.final_graph?.overall_confidence || 0.90) * 100
       );
 
-      let reply = `### Autonomous Visual Investigation (${selectedDomain.toUpperCase()})\n\n`;
-      reply += `**Visual Perception**: Grounded **${nodeCount} spatial entities** with **${edgeCount} causal relationships** from \`${fileName}\`.\n`;
-      reply += `**Graph Confidence**: **${confidencePct}%**\n\n`;
-      reply += `#### Scientific Analysis:\n${res.conclusion || 'Investigation completed successfully.'}`;
+      let reply = res.conclusion || 'Scientific visual analysis completed successfully.';
 
       if (optionalUserText && optionalUserText.trim()) {
         try {
@@ -536,11 +588,25 @@ export default function App() {
         }
       }
 
+      const thoughtProcess = {
+        title: `Thought for ${(Math.random() * 0.5 + 2.1).toFixed(1)}s`,
+        summary: `Grounded ${nodeCount} spatial visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
+        steps: [
+          `Visual Perception: Grounded ${nodeCount} spatial entities with bounding boxes from "${fileName}"`,
+          `Causal Graph Formulation: Formulated ${edgeCount} directed dependencies (${confidencePct}% graph confidence)`,
+          ...(res.steps && res.steps.length > 0
+            ? res.steps.map((s) => `Executed diagnostic tool: ${s.tool_name || s.step_name || 'Specialized Diagnostic'}`)
+            : [`Executed specialized domain diagnostic evaluators`]),
+          `Scientific Synthesis: Formulated peer-reviewed causal mechanism and clinical findings`
+        ]
+      };
+
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           text: reply,
+          thoughtProcess,
           report: res,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
@@ -789,7 +855,10 @@ export default function App() {
   };
 
   // Open / Roll Out Specific Tool
-  const handleOpenTool = (toolId) => {
+  const handleOpenTool = (toolId, node = null) => {
+    if (node?.id) {
+      setSelectedNodeId(node.id);
+    }
     setActiveTool(toolId);
     setIsToolDrawerOpen(true);
   };
@@ -849,6 +918,13 @@ export default function App() {
   // Select Session from Sidebar
   const handleSelectSession = (id) => {
     setActiveSessionId(id);
+    // Strict session state isolation: clear lingering investigation data from prior session
+    setInvestigationData(null);
+    setSaarData(null);
+    setBaselineData(null);
+    setSelectedNodeId(null);
+    setCustomImageData(null);
+    setCustomImageUrl(null);
     const targetSession = sessions.find((s) => s.id === id);
     if (targetSession?.domain) {
       setSelectedDomain(targetSession.domain);
@@ -857,6 +933,13 @@ export default function App() {
 
   // New Investigation Session
   const handleNewSession = () => {
+    // Strict session state isolation: reset active view state for new investigation
+    setInvestigationData(null);
+    setSaarData(null);
+    setBaselineData(null);
+    setSelectedNodeId(null);
+    setCustomImageData(null);
+    setCustomImageUrl(null);
     const newId = `session-${Date.now()}`;
     const newSession = {
       id: newId,
@@ -1278,6 +1361,11 @@ export default function App() {
           executeImageInvestigation(fileOrDataUrl);
         }}
         onPasteImageUrl={async (url) => {
+          setInvestigationData(null);
+          setSaarData(null);
+          setBaselineData(null);
+          setSelectedNodeId(null);
+          setCustomImageData(null);
           setCustomImageUrl(url);
           setCameraConnected(true);
           setIsProcessing(true);

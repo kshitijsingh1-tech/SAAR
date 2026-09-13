@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Sparkles, ArrowUp, Paperclip, Camera, FileText,
   X, Loader2, GitFork, BarChart2, ShieldCheck, Sliders,
-  BookOpen, ChevronDown, PanelLeft, AlertTriangle,
+  BookOpen, ChevronDown, ChevronUp, Brain, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
-  Crosshair, BookA, Image as ImageIcon, Film, Sun, Moon, Zap
+  Crosshair, BookA, Image as ImageIcon, Film, Sun, Moon, Zap,
+  PieChart, ChevronRight
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -70,6 +71,78 @@ const SCIENTIFIC_LEXICON = [
   }
 ];
 
+// Helper to separate technical telemetry from user-facing semantic analysis
+const extractThoughtFromText = (rawText) => {
+  if (!rawText || typeof rawText !== 'string') return { thought: null, cleanText: rawText };
+
+  // Match legacy debug headers like:
+  // ### Autonomous Visual Investigation (AGRICULTURE)
+  // Visual Perception: Grounded 9 spatial entities with 5 causal relationships...
+  // Graph Confidence: 97%
+  // #### Scientific Analysis:
+  const debugMatch = rawText.match(
+    /^(?:###\s*Autonomous\s*(?:Visual\s*)?Investigation[^\n]*\n+)?(?:\*?\*?Visual Perception\*?\*?:[^\n]+\n+)?(?:\*?\*?Graph Confidence\*?\*?:[^\n]+\n+)?(?:####\s*Scientific Analysis:\s*\n+|####\s*Diagnostic Verdict:\s*\n+)?([\s\S]*)$/i
+  );
+
+  if (debugMatch && debugMatch[1] && debugMatch[1].trim() && debugMatch[0] !== debugMatch[1]) {
+    const preamble = rawText.slice(0, rawText.length - debugMatch[1].length).trim();
+    const lines = preamble.split('\n').map(l => l.replace(/[*#]/g, '').trim()).filter(Boolean);
+    const thought = {
+      title: 'Thought process',
+      summary: lines[1] || 'Grounded spatial entities and formulated causal relationships',
+      steps: lines.length > 0 ? lines : ['Visual scene grounding completed', 'Causal graph formulated']
+    };
+    return { thought, cleanText: debugMatch[1].trim() };
+  }
+
+  return { thought: null, cleanText: rawText };
+};
+
+// Claude / ChatGPT style collapsible thought process pill
+const ThoughtProcessPill = ({ thought }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!thought) return null;
+
+  return (
+    <div className="thought-process-container">
+      <button
+        type="button"
+        className={`thought-process-pill ${isExpanded ? 'expanded' : ''}`}
+        onClick={() => setIsExpanded(!isExpanded)}
+        title={isExpanded ? "Collapse thinking steps" : "Expand thinking steps"}
+      >
+        <span className="thought-pill-icon">🧠</span>
+        <span className="thought-pill-title">{thought.title || 'Thought process'}</span>
+        {thought.summary && (
+          <>
+            <span className="thought-pill-dot">·</span>
+            <span className="thought-pill-summary">{thought.summary}</span>
+          </>
+        )}
+        <span className="thought-pill-chevron">
+          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </span>
+      </button>
+
+      {isExpanded && (
+        <div className="thought-process-dropdown animate-fade-in">
+          <div className="thought-process-header">
+            <span>REASONING & GROUNDING STEPS</span>
+          </div>
+          <ul className="thought-steps-list">
+            {(thought.steps || [thought.summary]).map((step, idx) => (
+              <li key={idx} className="thought-step-item">
+                <CheckCircle2 size={12} className="text-emerald" style={{ minWidth: '12px' }} />
+                <span className="thought-step-text">{step}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function ChatGPTView({
   messages,
   isProcessing,
@@ -96,6 +169,7 @@ export function ChatGPTView({
   hasSensorData = true
 }) {
   const [inputText, setInputText] = useState('');
+  const [textSnippet, setTextSnippet] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
@@ -114,6 +188,7 @@ export function ChatGPTView({
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const lastPasteTimeRef = useRef(0);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -215,10 +290,53 @@ export function ChatGPTView({
     scrollToBottom();
   };
 
+  const handleShowSnippetInTextField = () => {
+    if (!textSnippet) return;
+    setInputText(textSnippet.content);
+    setTextSnippet(null);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 35, 180)}px`;
+    }
+  };
+
+  const getFileCardMeta = (file) => {
+    const name = file?.name || '';
+    const type = file?.type || '';
+    if (/\.(pptx?|key|odp)$/i.test(name) || type.includes('presentation')) {
+      return { kind: 'presentation', label: 'Presentation', color: '#f43f5e' };
+    }
+    if (/\.(csv|xlsx?|parquet|tsv)$/i.test(name) || type.includes('spreadsheet') || type.includes('csv')) {
+      return { kind: 'spreadsheet', label: 'Spreadsheet', color: '#10b981' };
+    }
+    if (/\.(pdf)$/i.test(name) || type.includes('pdf')) {
+      return { kind: 'pdf', label: 'PDF Document', color: '#ef4444' };
+    }
+    if (/\.(mp4|mov|webm|avi|mkv)$/i.test(name) || type.startsWith('video/')) {
+      return { kind: 'video', label: 'Video Clip', color: '#38bdf8' };
+    }
+    if (/\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(name) || type.startsWith('image/')) {
+      return { kind: 'image', label: 'Visual Anchor', color: '#a78bfa' };
+    }
+    return { kind: 'document', label: 'Document', color: '#94a3b8' };
+  };
+
+  const formatCardTitle = (name, maxLen = 32) => {
+    if (!name) return '';
+    const baseName = name.replace(/\.[^/.]+$/, '');
+    if (baseName.length > maxLen) {
+      return `${baseName.slice(0, maxLen)}...`;
+    }
+    return baseName;
+  };
+
   const handleSend = () => {
-    if (!inputText.trim() && attachedFiles.length === 0) return;
-    onSendMessage(inputText, attachedFiles);
+    const combinedPrompt = [textSnippet?.content, inputText].filter(Boolean).join('\n\n').trim();
+    if (!combinedPrompt && attachedFiles.length === 0) return;
+    onSendMessage(combinedPrompt || inputText, attachedFiles);
     setInputText('');
+    setTextSnippet(null);
     setAttachedFiles([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -246,6 +364,15 @@ export function ChatGPTView({
   };
 
   const handlePaste = (e) => {
+    e.stopPropagation();
+    const now = Date.now();
+    // Guard against duplicate paste events fired within 200ms
+    if (now - lastPasteTimeRef.current < 200) {
+      e.preventDefault();
+      return;
+    }
+    lastPasteTimeRef.current = now;
+
     const clipboardData = e.clipboardData;
     if (!clipboardData) return;
 
@@ -255,9 +382,15 @@ export function ChatGPTView({
 
     if (fileItems.length > 0) {
       const pastedFiles = [];
+      const seenSignatures = new Set();
+
       for (const item of fileItems) {
         const file = item.getAsFile();
         if (file) {
+          const sig = `${file.size}_${file.type}`;
+          if (seenSignatures.has(sig)) continue;
+          seenSignatures.add(sig);
+
           let name = file.name;
           if (!name || name === 'image.png') {
             const ext = file.type.split('/')[1] || 'png';
@@ -281,10 +414,24 @@ export function ChatGPTView({
       setAttachedFiles((prev) => [...prev, ...files]);
       return;
     }
+
+    // Convert large text pastes into a staged draft pill card (Claude / ChatGPT behavior)
+    const text = clipboardData.getData('text');
+    if (text && text.trim().length > 220) {
+      e.preventDefault();
+      const cleanFirst = text.trim().split('\n')[0].replace(/^[#>*\s-]+/, '').trim();
+      const title = cleanFirst.length > 24 ? `${cleanFirst.slice(0, 24)}..` : (cleanFirst || 'Draft text..');
+      setTextSnippet({
+        title,
+        content: text.trim()
+      });
+      return;
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const droppedFiles = Array.from(e.dataTransfer.files);
       setAttachedFiles((prev) => [...prev, ...droppedFiles]);
@@ -293,6 +440,7 @@ export function ChatGPTView({
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    e.stopPropagation();
   };
 
   return (
@@ -619,12 +767,23 @@ export function ChatGPTView({
                       </div>
 
                       <div className="message-content-text">
-                        <MarkdownResponse
-                          content={msg.text}
-                          pairedQuestion={pairedText}
-                          role={msg.role}
-                          onAskSaar={handleAskSaarFromAction}
-                        />
+                        {(() => {
+                          const { thought, cleanText } = extractThoughtFromText(msg.text);
+                          const activeThought = msg.thoughtProcess || thought;
+                          return (
+                            <>
+                              {msg.role === 'assistant' && activeThought && (
+                                <ThoughtProcessPill thought={activeThought} />
+                              )}
+                              <MarkdownResponse
+                                content={msg.role === 'assistant' ? cleanText : msg.text}
+                                pairedQuestion={pairedText}
+                                role={msg.role}
+                                onAskSaar={handleAskSaarFromAction}
+                              />
+                            </>
+                          );
+                        })()}
                       </div>
 
                     {/* Attached Files Pills */}
@@ -639,61 +798,29 @@ export function ChatGPTView({
                       </div>
                     )}
 
-                    {/* In-Chat Tool Invocation Badges */}
+                    {/* Sleek, subtle exploration shortcuts */}
                     {msg.role === 'assistant' && msg.report && (
-                      <div className="chat-tool-badges-row">
+                      <div className="chat-tool-badges-row compact-row">
                         <button
-                          className="tool-invoke-badge badge-graph"
-                          onClick={() => onOpenTool('grounded')}
-                        >
-                          <Crosshair size={14} className="text-primary" />
-                          <span>Grounded Split Graph</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
-
-                        <button
-                          className="tool-invoke-badge badge-graph"
-                          onClick={() => onOpenTool('graph')}
-                        >
-                          <GitFork size={14} className="text-purple" />
-                          <span>Causal Knowledge Graph ({msg.report.relationships?.length || 8} Edges)</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
-
-                        <button
-                          className="tool-invoke-badge badge-analytics"
-                          onClick={() => onOpenTool('analytics')}
-                        >
-                          <BarChart2 size={14} className="text-primary" />
-                          <span>Sensor Analytics {!hasSensorData ? '· Ingest' : ''}</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
-
-                        <button
-                          className="tool-invoke-badge badge-camera"
+                          type="button"
+                          className="tool-invoke-badge compact"
                           onClick={() => onOpenTool('camera')}
+                          title="Inspect spatial visual bounding boxes on image canvas"
                         >
-                          <Camera size={14} className="text-rose" />
+                          <Camera size={12} className="text-rose" />
                           <span>Visual Evidence Monitor</span>
-                          <ArrowRight size={12} className="badge-arrow" />
+                          <ArrowRight size={10} />
                         </button>
 
                         <button
-                          className="tool-invoke-badge badge-rag"
-                          onClick={() => onOpenTool('rag')}
+                          type="button"
+                          className="tool-invoke-badge compact"
+                          onClick={() => onOpenTool('graph')}
+                          title="Open active Causal Knowledge Graph"
                         >
-                          <BookOpen size={14} className="text-purple" />
-                          <span>Scientific References</span>
-                          <ArrowRight size={12} className="badge-arrow" />
-                        </button>
-
-                        <button
-                          className="tool-invoke-badge badge-dictionary"
-                          onClick={() => onOpenTool('dictionary')}
-                        >
-                          <BookA size={14} className="text-amber" />
-                          <span>Scientific Dictionary</span>
-                          <ArrowRight size={12} className="badge-arrow" />
+                          <GitFork size={12} className="text-purple" />
+                          <span>Causal Graph ({msg.report.relationships?.length || (msg.report.final_graph?.edges?.length ?? 5)} Edges)</span>
+                          <ArrowRight size={10} />
                         </button>
                       </div>
                     )}
@@ -851,27 +978,84 @@ export function ChatGPTView({
 
       {/* Floating Bottom Composer Capsule */}
       <div className="chatgpt-composer-wrapper">
-        {/* Attached files chip preview */}
-        {attachedFiles.length > 0 && (
-          <div className="composer-files-tray">
-            {attachedFiles.map((file, idx) => (
-              <span key={idx} className="file-preview-pill">
-                {file.type?.startsWith('video/') || /\.(mp4|mov|webm|avi|mkv)$/i.test(file.name) ? (
-                  <Film size={12} color="#38bdf8" />
-                ) : file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name) ? (
-                  <ImageIcon size={12} />
-                ) : (
-                  <FileText size={12} />
-                )}
-                <span>{file.name}</span>
+        {/* Context Attachment & Draft Snippet Tray (Claude / ChatGPT style) */}
+        {(textSnippet || attachedFiles.length > 0) && (
+          <div className="composer-context-tray">
+            {/* Text Snippet / Draft Prompt Card */}
+            {textSnippet && (
+              <div
+                className="context-pill-card text-snippet-card"
+                onClick={handleShowSnippetInTextField}
+                title="Click to populate in text field"
+              >
+                <div className="card-icon-wrapper doc-snippet-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="2.5" y="2.5" width="19" height="19" rx="5" stroke="#0284c7" strokeWidth="2.2" fill="rgba(2, 132, 199, 0.12)" />
+                    <line x1="6.5" y1="9.5" x2="17.5" y2="9.5" stroke="#0284c7" strokeWidth="2.4" strokeLinecap="round" />
+                    <line x1="6.5" y1="14.5" x2="13.5" y2="14.5" stroke="#0284c7" strokeWidth="2.4" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="pill-card-text">
+                  <div className="pill-card-title">{textSnippet.title}</div>
+                  <div className="pill-card-subtitle action-link">
+                    <span>Show in text field</span>
+                    <ChevronRight size={13} className="action-chevron" />
+                  </div>
+                </div>
                 <button
-                  className="remove-file-btn"
-                  onClick={() => setAttachedFiles(attachedFiles.filter((_, i) => i !== idx))}
+                  className="pill-dismiss-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTextSnippet(null);
+                  }}
+                  title="Dismiss snippet"
                 >
                   <X size={12} />
                 </button>
-              </span>
-            ))}
+              </div>
+            )}
+
+            {/* Attached Files Cards */}
+            {attachedFiles.map((file, idx) => {
+              const meta = getFileCardMeta(file);
+              return (
+                <div key={idx} className={`context-pill-card file-card file-card-${meta.kind}`}>
+                  <div className="card-icon-wrapper">
+                    {meta.kind === 'presentation' ? (
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="presentation-glyph">
+                        <circle cx="12" cy="12" r="10" stroke="#f43f5e" strokeWidth="1.8" />
+                        <path d="M12 2 A10 10 0 0 1 22 12 L12 12 Z" stroke="#f43f5e" strokeWidth="1.5" fill="rgba(244,63,94,0.22)" />
+                        <text x="6.5" y="15.5" fill="#f43f5e" fontSize="9" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif">P</text>
+                      </svg>
+                    ) : meta.kind === 'spreadsheet' ? (
+                      <PieChart size={22} color="#10b981" />
+                    ) : meta.kind === 'video' ? (
+                      <Film size={22} color="#38bdf8" />
+                    ) : meta.kind === 'image' ? (
+                      <ImageIcon size={22} color="#a78bfa" />
+                    ) : (
+                      <FileText size={22} color="#94a3b8" />
+                    )}
+                  </div>
+                  <div className="pill-card-text">
+                    <div className="pill-card-title" title={file.name}>
+                      {formatCardTitle(file.name, 32)}
+                    </div>
+                    <div className="pill-card-subtitle">{meta.label}</div>
+                  </div>
+                  <button
+                    className="pill-dismiss-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAttachedFiles(attachedFiles.filter((_, i) => i !== idx));
+                    }}
+                    title="Remove attachment"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -885,7 +1069,7 @@ export function ChatGPTView({
             type="file"
             ref={fileInputRef}
             style={{ display: 'none' }}
-            accept=".csv,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.avi"
+            accept=".csv,.xlsx,.xls,.pptx,.ppt,.pdf,.docx,.txt,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.avi"
             onChange={handleFileChange}
           />
 
@@ -917,9 +1101,6 @@ export function ChatGPTView({
             value={inputText}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
             placeholder="Ask Saar anything about the evidence, upload datasets, paste screenshots (Ctrl+V), or simulate interventions..."
           />
 
