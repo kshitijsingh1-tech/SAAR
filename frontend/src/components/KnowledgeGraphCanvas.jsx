@@ -164,8 +164,8 @@ export const KnowledgeGraphCanvas = ({
   }, [nodes, edges]);
 
   // Compact Sleek Card dimensions for generous breathing room
-  const CARD_W = 162;
-  const CARD_H = 54;
+  const CARD_W = 168;
+  const CARD_H = 56;
 
   // 3. Layout Positioning Calculation: Detailed Causal Graph Flow
   const { nodePositions, canvasBounds } = useMemo(() => {
@@ -204,7 +204,7 @@ export const KnowledgeGraphCanvas = ({
     const totalActiveCols = activeColIndices.length || 1;
 
     const startX = 40;
-    const colGap = 290;
+    const colGap = 295;
     const maxRows = Math.max(...cols.map((c) => c.length), 1);
     const rowGap = 106;
     const totalHeight = Math.max(480, maxRows * rowGap + 90);
@@ -333,55 +333,55 @@ export const KnowledgeGraphCanvas = ({
     switch (type) {
       case 'object':
         return {
-          headerBg: isDark ? 'rgba(22, 101, 52, 0.4)' : '#f0fdf4',
+          headerBg: isDark ? 'rgba(22, 101, 52, 0.35)' : '#f0fdf4',
           headerText: isDark ? '#4ade80' : '#166534',
-          border: isDark ? '#22c55e' : '#4ade80',
-          chipBg: isDark ? 'rgba(34, 197, 94, 0.25)' : '#dcfce7',
+          border: isDark ? '#22c55e' : '#bbf7d0',
+          chipBg: isDark ? 'rgba(34, 197, 94, 0.2)' : '#dcfce7',
           tag: 'PHYSICAL OBJECT',
           badgeColor: isDark ? '#86efac' : '#16a34a'
         };
       case 'property':
         return {
-          headerBg: isDark ? 'rgba(30, 64, 175, 0.4)' : '#eff6ff',
-          headerText: isDark ? '#60a5fa' : '#1e40af',
-          border: isDark ? '#3b82f6' : '#60a5fa',
-          chipBg: isDark ? 'rgba(59, 130, 246, 0.25)' : '#dbeafe',
+          headerBg: isDark ? 'rgba(126, 34, 206, 0.2)' : '#faf5ff',
+          headerText: isDark ? '#c084fc' : '#7e22ce',
+          border: isDark ? '#a855f7' : '#e9d5ff',
+          chipBg: isDark ? 'rgba(147, 51, 234, 0.18)' : '#f3e8ff',
           tag: 'SENSOR MEASUREMENT',
-          badgeColor: isDark ? '#93c5fd' : '#2563eb'
+          badgeColor: isDark ? '#d8b4fe' : '#7e22ce'
         };
       case 'observation':
         return {
-          headerBg: isDark ? 'rgba(14, 116, 144, 0.4)' : '#ecfeff',
-          headerText: isDark ? '#22d3ee' : '#0e7490',
-          border: isDark ? '#06b6d4' : '#22d3ee',
-          chipBg: isDark ? 'rgba(6, 182, 212, 0.25)' : '#cffafe',
+          headerBg: isDark ? 'rgba(2, 132, 199, 0.2)' : '#f0f9ff',
+          headerText: isDark ? '#38bdf8' : '#0369a1',
+          border: isDark ? '#0284c7' : '#bae6fd',
+          chipBg: isDark ? 'rgba(2, 132, 199, 0.18)' : '#e0f2fe',
           tag: 'VISUAL SYMPTOM',
-          badgeColor: isDark ? '#67e8f9' : '#0891b2'
+          badgeColor: isDark ? '#7dd3fc' : '#0284c7'
         };
       case 'hypothesis':
         return {
-          headerBg: isDark ? 'rgba(146, 64, 14, 0.4)' : '#fffbeb',
+          headerBg: isDark ? 'rgba(217, 119, 6, 0.2)' : '#fffbeb',
           headerText: isDark ? '#fbbf24' : '#92400e',
-          border: isDark ? '#f59e0b' : '#f59e0b',
-          chipBg: isDark ? 'rgba(245, 158, 11, 0.25)' : '#fef3c7',
+          border: isDark ? '#f59e0b' : '#fef08a',
+          chipBg: isDark ? 'rgba(245, 158, 11, 0.18)' : '#fef3c7',
           tag: 'ROOT CAUSE HYPOTHESIS',
           badgeColor: isDark ? '#fde68a' : '#d97706'
         };
       case 'tool_result':
         return {
-          headerBg: isDark ? 'rgba(134, 25, 143, 0.4)' : '#fdf4ff',
-          headerText: isDark ? '#c084fc' : '#86198f',
-          border: isDark ? '#a855f7' : '#c084fc',
-          chipBg: isDark ? 'rgba(168, 85, 247, 0.25)' : '#fae8ff',
+          headerBg: isDark ? 'rgba(22, 163, 74, 0.2)' : '#f0fdf4',
+          headerText: isDark ? '#4ade80' : '#166534',
+          border: isDark ? '#16a34a' : '#bbf7d0',
+          chipBg: isDark ? 'rgba(22, 163, 74, 0.18)' : '#dcfce7',
           tag: 'EMPIRICAL EVIDENCE',
-          badgeColor: isDark ? '#e9d5ff' : '#9333ea'
+          badgeColor: isDark ? '#86efac' : '#16a34a'
         };
       default:
         return {
           headerBg: isDark ? 'rgba(51, 65, 85, 0.5)' : '#f8fafc',
           headerText: isDark ? '#cbd5e1' : '#475569',
-          border: isDark ? '#64748b' : '#94a3b8',
-          chipBg: isDark ? 'rgba(100, 116, 139, 0.25)' : '#e2e8f0',
+          border: isDark ? '#64748b' : 'rgba(100, 80, 180, 0.14)',
+          chipBg: isDark ? 'rgba(100, 116, 139, 0.2)' : '#f1f5f9',
           tag: 'ENTITY',
           badgeColor: isDark ? '#e2e8f0' : '#64748b'
         };
@@ -390,11 +390,11 @@ export const KnowledgeGraphCanvas = ({
 
   const getRelationColor = (relation) => {
     const rel = (relation || '').toLowerCase();
-    if (rel.includes('obstruct') || rel.includes('inhibit') || rel.includes('contradict')) return '#f43f5e';
-    if (rel.includes('cause') || rel.includes('trigger')) return '#f59e0b';
-    if (rel.includes('support') || rel.includes('confirm')) return '#10b981';
+    if (rel.includes('obstruct') || rel.includes('inhibit') || rel.includes('contradict')) return '#dc2626';
+    if (rel.includes('cause') || rel.includes('trigger')) return '#d97706';
+    if (rel.includes('support') || rel.includes('confirm')) return '#16a34a';
     if (rel.includes('measure') || rel.includes('indicate')) return '#0284c7';
-    return '#64748b';
+    return '#94a3b8';
   };
 
   return (
@@ -402,45 +402,45 @@ export const KnowledgeGraphCanvas = ({
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      background: isDark ? '#090d16' : '#ffffff',
+      background: isDark ? '#090d16' : '#faf7ff',
       position: 'relative',
-      borderRadius: '8px',
+      borderRadius: '10px',
       overflow: 'hidden',
       userSelect: 'none'
     }}>
-      {/* 1. Top Header Toolbar */}
+      {/* 1. Top Header Toolbar - Thinner, Cleaner Scientific Toolbar */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0.55rem 1rem',
-        borderBottom: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
-        background: isDark ? '#0f172a' : '#f8fafc',
+        padding: '0.45rem 0.9rem',
+        borderBottom: isDark ? '1px solid #334155' : '1px solid rgba(100, 80, 180, 0.14)',
+        background: isDark ? '#0f172a' : '#ffffff',
         zIndex: 5
       }}>
         {/* Title and Stats */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <div style={{
-            width: '28px',
-            height: '28px',
+            width: '26px',
+            height: '26px',
             borderRadius: '6px',
-            background: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(2, 132, 199, 0.1)',
-            color: isDark ? '#38bdf8' : '#0284c7',
+            background: isDark ? 'rgba(126, 34, 206, 0.2)' : 'rgba(126, 34, 206, 0.1)',
+            color: '#7e22ce',
             display: 'grid',
             placeItems: 'center'
           }}>
-            <GitFork size={15} />
+            <GitFork size={14} />
           </div>
           <div>
-            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: isDark ? '#f8fafc' : '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: '600', color: isDark ? '#f8fafc' : '#172033', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span>Causal Reasoning Pipeline</span>
               <span style={{
                 fontSize: '0.68rem',
-                fontWeight: '600',
+                fontWeight: '500',
                 padding: '0.1rem 0.45rem',
-                borderRadius: '10px',
-                background: isDark ? 'rgba(56, 189, 248, 0.2)' : '#e0f2fe',
-                color: isDark ? '#7dd3fc' : '#0369a1'
+                borderRadius: '6px',
+                background: isDark ? 'rgba(126, 34, 206, 0.2)' : '#f3e8ff',
+                color: isDark ? '#d8b4fe' : '#7e22ce'
               }}>
                 {nodes.length} nodes · {edges.length} edges
               </span>
@@ -451,23 +451,23 @@ export const KnowledgeGraphCanvas = ({
           </div>
         </div>
 
-        {/* Action Controls (Causal Flow Badge, Zoom, Pan & Fullscreen) */}
+        {/* Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {/* Causal Flow Mode Badge */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            background: isDark ? 'rgba(56, 189, 248, 0.1)' : '#f0fdf4',
-            border: `1px solid ${isDark ? 'rgba(56, 189, 248, 0.25)' : '#bbf7d0'}`,
-            padding: '4px 10px',
+            gap: '5px',
+            background: isDark ? 'rgba(22, 163, 74, 0.12)' : '#f0fdf4',
+            border: `1px solid ${isDark ? 'rgba(22, 163, 74, 0.25)' : '#bbf7d0'}`,
+            padding: '3px 8px',
             borderRadius: '6px',
-            fontSize: '0.72rem',
+            fontSize: '0.7rem',
             fontWeight: '600',
-            color: isDark ? '#38bdf8' : '#15803d'
+            color: isDark ? '#4ade80' : '#16a34a'
           }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isDark ? '#38bdf8' : '#16a34a' }} />
-            Detailed Causal Graph
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
+            Active Reasoning DAG
           </div>
 
           {/* Zoom Controls */}
@@ -476,44 +476,44 @@ export const KnowledgeGraphCanvas = ({
               style={{
                 width: '26px',
                 height: '26px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid rgba(100, 80, 180, 0.2)',
                 background: '#ffffff',
-                borderRadius: '4px',
+                borderRadius: '6px',
                 display: 'grid',
                 placeItems: 'center',
                 cursor: 'pointer'
               }}
               onClick={() => setZoomLevel((z) => Math.max(0.4, z - 0.15))}
-              title="Zoom Out (or scroll down)"
+              title="Zoom Out"
             >
-              <ZoomOut size={13} color="#475569" />
+              <ZoomOut size={12} color="#475569" />
             </button>
-            <span style={{ fontSize: '0.7rem', color: '#64748b', minWidth: '34px', textAlign: 'center', fontWeight: '600' }}>
+            <span style={{ fontSize: '0.7rem', color: '#64748b', minWidth: '32px', textAlign: 'center', fontWeight: '600' }}>
               {Math.round(zoomLevel * 100)}%
             </span>
             <button
               style={{
                 width: '26px',
                 height: '26px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid rgba(100, 80, 180, 0.2)',
                 background: '#ffffff',
-                borderRadius: '4px',
+                borderRadius: '6px',
                 display: 'grid',
                 placeItems: 'center',
                 cursor: 'pointer'
               }}
               onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.15))}
-              title="Zoom In (or scroll up)"
+              title="Zoom In"
             >
-              <ZoomIn size={13} color="#475569" />
+              <ZoomIn size={12} color="#475569" />
             </button>
             <button
               style={{
                 padding: '0 0.45rem',
                 height: '26px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid rgba(100, 80, 180, 0.2)',
                 background: '#ffffff',
-                borderRadius: '4px',
+                borderRadius: '6px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '3px',
@@ -523,7 +523,7 @@ export const KnowledgeGraphCanvas = ({
                 fontWeight: '600'
               }}
               onClick={handleFitToScreen}
-              title="Fit to Screen and Center"
+              title="Fit to Screen"
             >
               <RotateCcw size={11} />
               <span>Fit</span>
@@ -536,15 +536,15 @@ export const KnowledgeGraphCanvas = ({
               style={{
                 height: '26px',
                 padding: '0 0.55rem',
-                border: '1px solid #0284c7',
-                background: isExpanded ? '#0284c7' : 'rgba(2, 132, 199, 0.08)',
-                color: isExpanded ? '#ffffff' : '#0284c7',
-                borderRadius: '4px',
+                border: '1px solid #7e22ce',
+                background: isExpanded ? '#7e22ce' : 'rgba(126, 34, 206, 0.08)',
+                color: isExpanded ? '#ffffff' : '#7e22ce',
+                borderRadius: '6px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
                 fontSize: '0.7rem',
-                fontWeight: '700',
+                fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
@@ -586,31 +586,31 @@ export const KnowledgeGraphCanvas = ({
         >
           <defs>
             {/* Arrowhead Markers */}
-            <marker id="arrow-causes" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+            <marker id="arrow-causes" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#d97706" />
             </marker>
-            <marker id="arrow-supports" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+            <marker id="arrow-supports" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#16a34a" />
             </marker>
-            <marker id="arrow-obstructs" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#f43f5e" />
+            <marker id="arrow-obstructs" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#dc2626" />
             </marker>
-            <marker id="arrow-default" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#0284c7" />
+            <marker id="arrow-default" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#7e22ce" />
             </marker>
 
-            {/* Glowing Drop Shadows */}
-            <filter id="active-card-shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="rgba(2, 132, 199, 0.35)" />
+            {/* Soft, Subtle Scientific Elevation Filters (Reduced Glow by ~70%) */}
+            <filter id="active-card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="rgba(126, 34, 206, 0.18)" />
             </filter>
-            <filter id="cause-card-shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="rgba(245, 158, 11, 0.35)" />
+            <filter id="cause-card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(217, 119, 6, 0.14)" />
             </filter>
-            <filter id="effect-card-shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="rgba(16, 185, 129, 0.35)" />
+            <filter id="effect-card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="rgba(22, 163, 74, 0.14)" />
             </filter>
             <filter id="standard-card-shadow" x="-10%" y="-10%" width="120%" height="120%">
-              <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(0, 0, 0, 0.06)" />
+              <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodColor="rgba(30, 20, 70, 0.05)" />
             </filter>
           </defs>
 
@@ -650,7 +650,13 @@ export const KnowledgeGraphCanvas = ({
                   pathD = `M ${startX} ${startY} Q ${midX} ${midY}, ${endX} ${endY}`;
                 }
 
-                const edgeColor = getRelationColor(edge.relation_type);
+                const relationColor = getRelationColor(edge.relation_type);
+                const strokeColor = isDirectlyActive
+                  ? (edge.relation_type?.includes('cause') ? '#d97706' : edge.relation_type?.includes('support') ? '#16a34a' : '#7e22ce')
+                  : isHoveredEdge
+                  ? relationColor
+                  : (isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(100, 80, 180, 0.22)');
+
                 let marker = 'url(#arrow-default)';
                 if (edge.relation_type?.includes('cause') || edge.relation_type?.includes('trigger')) marker = 'url(#arrow-causes)';
                 if (edge.relation_type?.includes('support') || edge.relation_type?.includes('confirm')) marker = 'url(#arrow-supports)';
@@ -688,38 +694,39 @@ export const KnowledgeGraphCanvas = ({
                       style={{ cursor: 'pointer' }}
                     />
 
-                    {/* Visual Causal Line */}
+                    {/* Visual Causal Line (Thinner & Quieter by Default) */}
                     <path
                       d={pathD}
                       fill="none"
-                      stroke={edgeColor}
-                      strokeWidth={isDirectlyActive ? 3.5 : isHoveredEdge ? 3 : 1.8}
-                      strokeDasharray={edge.relation_type?.includes('obstruct') ? '5,4' : 'none'}
-                      markerEnd={marker}
+                      stroke={strokeColor}
+                      strokeWidth={isDirectlyActive ? 2.4 : isHoveredEdge ? 2 : 1.2}
+                      strokeDasharray={edge.relation_type?.includes('obstruct') ? '4,3' : 'none'}
+                      markerEnd={isDirectlyActive || isHoveredEdge ? marker : undefined}
                       style={{ transition: 'stroke-width 0.2s ease, stroke 0.2s ease' }}
                     />
 
-                    {/* Relationship Badge Chip */}
+                    {/* Relationship Badge Chip (Compact, Less Pill-like) */}
                     <g transform={`translate(${chipX}, ${chipY})`} style={{ cursor: 'pointer' }}>
                       <rect
-                        x="-34"
-                        y="-9"
-                        width="68"
-                        height="18"
-                        rx="9"
+                        x="-27"
+                        y="-7"
+                        width="54"
+                        height="14"
+                        rx="3"
+                        ry="3"
                         fill={isDark ? '#0f172a' : '#ffffff'}
-                        stroke={edgeColor}
-                        strokeWidth={isDirectlyActive || isHoveredEdge ? 2 : 1.5}
+                        stroke={isDirectlyActive || isHoveredEdge ? strokeColor : (isDark ? '#334155' : 'rgba(100, 80, 180, 0.2)')}
+                        strokeWidth="1"
                         filter="url(#standard-card-shadow)"
                       />
                       <text
                         x="0"
-                        y="3.5"
+                        y="3"
                         textAnchor="middle"
-                        fill={edgeColor}
-                        fontSize="8.5px"
+                        fill={isDirectlyActive || isHoveredEdge ? strokeColor : (isDark ? '#94a3b8' : '#64748b')}
+                        fontSize="7.5px"
                         fontFamily="JetBrains Mono, monospace"
-                        fontWeight="700"
+                        fontWeight="600"
                         letterSpacing="0.2px"
                       >
                         {edge.relation_type.toUpperCase()}
@@ -749,20 +756,20 @@ export const KnowledgeGraphCanvas = ({
 
                 let cardShadow = 'url(#standard-card-shadow)';
                 let strokeColor = themeStyle.border;
-                let strokeWidth = 1.5;
+                let strokeWidth = 1;
 
                 if (isFocused) {
                   cardShadow = 'url(#active-card-shadow)';
-                  strokeColor = '#0284c7';
-                  strokeWidth = 2.5;
+                  strokeColor = '#7e22ce';
+                  strokeWidth = 1.6;
                 } else if (isAncestor) {
                   cardShadow = 'url(#cause-card-shadow)';
-                  strokeColor = '#f59e0b';
-                  strokeWidth = 2;
+                  strokeColor = '#d97706';
+                  strokeWidth = 1.3;
                 } else if (isDescendant) {
                   cardShadow = 'url(#effect-card-shadow)';
-                  strokeColor = '#10b981';
-                  strokeWidth = 2;
+                  strokeColor = '#16a34a';
+                  strokeWidth = 1.3;
                 }
 
                 // Multi-line label split
@@ -789,52 +796,52 @@ export const KnowledgeGraphCanvas = ({
                     onMouseEnter={() => setHoveredNodeId(node.id)}
                     onMouseLeave={() => setHoveredNodeId(null)}
                   >
-                    {/* Causal Pathway Status Glow */}
+                    {/* Causal Pathway Status Indicator */}
                     {isAncestor && (
                       <text
                         x="0"
                         y="-5"
-                        fill="#b45309"
-                        fontSize="8.5px"
-                        fontFamily="Outfit, sans-serif"
-                        fontWeight="700"
+                        fill="#d97706"
+                        fontSize="8px"
+                        fontFamily="Inter, sans-serif"
+                        fontWeight="600"
                       >
-                        ▲ UPSTREAM CAUSE
+                        ▲ CAUSE
                       </text>
                     )}
                     {isDescendant && (
                       <text
                         x="0"
                         y="-5"
-                        fill="#047857"
-                        fontSize="8.5px"
-                        fontFamily="Outfit, sans-serif"
-                        fontWeight="700"
+                        fill="#16a34a"
+                        fontSize="8px"
+                        fontFamily="Inter, sans-serif"
+                        fontWeight="600"
                       >
-                        ▼ CONSEQUENCE
+                        ▼ IMPACT
                       </text>
                     )}
 
-                    {/* Main Node Card Body */}
+                    {/* Main Node Card Body (Reduced Border Radius: 10px) */}
                     <rect
                       width={CARD_W}
                       height={CARD_H}
-                      rx="7"
-                      ry="7"
+                      rx="10"
+                      ry="10"
                       fill={isDark ? '#1e293b' : '#ffffff'}
                       stroke={strokeColor}
                       strokeWidth={strokeWidth}
                       filter={cardShadow}
                     />
 
-                    {/* Card Header Strip with Type Badge */}
+                    {/* Card Header Strip with Tinted Category Accent */}
                     <rect
                       x="0"
                       y="0"
                       width={CARD_W}
                       height="16"
-                      rx="7"
-                      ry="7"
+                      rx="10"
+                      ry="10"
                       fill={themeStyle.headerBg}
                     />
                     <rect
@@ -852,52 +859,52 @@ export const KnowledgeGraphCanvas = ({
                       fill={themeStyle.headerText}
                       fontSize="7.5px"
                       fontFamily="JetBrains Mono, monospace"
-                      fontWeight="700"
+                      fontWeight="600"
                       letterSpacing="0.3px"
                     >
                       {themeStyle.tag}
                     </text>
 
-                    {/* Confidence Pill in Header */}
+                    {/* Confidence Tag in Header */}
                     <rect
-                      x={CARD_W - 36}
+                      x={CARD_W - 32}
                       y="2.5"
-                      width="30"
+                      width="26"
                       height="11"
-                      rx="5.5"
+                      rx="3"
                       fill={themeStyle.chipBg}
                     />
                     <text
-                      x={CARD_W - 21}
+                      x={CARD_W - 19}
                       y="10.5"
                       textAnchor="middle"
                       fill={themeStyle.badgeColor}
-                      fontSize="7.5px"
+                      fontSize="7px"
                       fontFamily="JetBrains Mono, monospace"
-                      fontWeight="700"
+                      fontWeight="600"
                     >
                       {Math.round(node.confidence * 100)}%
                     </text>
 
                     {/* Node Title (Line 1 & 2) */}
                     <text
-                      x="6"
-                      y="29"
-                      fill={isDark ? '#f8fafc' : '#0f172a'}
+                      x="7"
+                      y="30"
+                      fill={isDark ? '#f8fafc' : '#172033'}
                       fontSize="10.5px"
-                      fontFamily="Outfit, sans-serif"
+                      fontFamily="Inter, sans-serif"
                       fontWeight="600"
                     >
                       {line1}
                     </text>
                     {line2 && (
                       <text
-                        x="6"
-                        y="41"
-                        fill={isDark ? '#cbd5e1' : '#334155'}
-                        fontSize="9.5px"
-                        fontFamily="Outfit, sans-serif"
-                        fontWeight="500"
+                        x="7"
+                        y="43"
+                        fill={isDark ? '#cbd5e1' : '#475569'}
+                        fontSize="9px"
+                        fontFamily="Inter, sans-serif"
+                        fontWeight="400"
                       >
                         {line2}
                       </text>
@@ -905,17 +912,17 @@ export const KnowledgeGraphCanvas = ({
 
                     {/* Visual Grounding Reticle Badge (if anchored in image) */}
                     {node.visual_anchor && (
-                      <g transform={`translate(6, ${CARD_H - 8})`}>
-                        <circle cx="3" cy="-1" r="2" fill="#0284c7" />
-                        <text x="7" y="1" fill="#0369a1" fontSize="7px" fontFamily="Outfit, sans-serif" fontWeight="700">
+                      <g transform={`translate(7, ${CARD_H - 7})`}>
+                        <circle cx="2.5" cy="-1.5" r="2" fill="#7e22ce" />
+                        <text x="6" y="0.5" fill="#7e22ce" fontSize="6.5px" fontFamily="Inter, sans-serif" fontWeight="600">
                           GROUNDED
                         </text>
                       </g>
                     )}
 
                     {/* Connection Ports */}
-                    <circle cx="0" cy={CARD_H / 2} r="3.5" fill="#ffffff" stroke={themeStyle.border} strokeWidth="1.5" />
-                    <circle cx={CARD_W} cy={CARD_H / 2} r="3.5" fill="#ffffff" stroke={themeStyle.border} strokeWidth="1.5" />
+                    <circle cx="0" cy={CARD_H / 2} r="3" fill="#ffffff" stroke={themeStyle.border} strokeWidth="1.2" />
+                    <circle cx={CARD_W} cy={CARD_H / 2} r="3" fill="#ffffff" stroke={themeStyle.border} strokeWidth="1.2" />
                   </g>
                 );
               })}
@@ -924,19 +931,18 @@ export const KnowledgeGraphCanvas = ({
         </svg>
       </div>
 
-      {/* 3. Dedicated Docked Bottom Inspector Panel (Zero Occlusion of Graph!) */}
-      {/* 3. Dedicated Docked Bottom Inspector Panel (Zero Occlusion of Graph & Responsive Layout) */}
+      {/* 3. Dedicated Docked Bottom Evidence Inspector Panel */}
       {activeInspectedNode ? (
         <div style={{
           minHeight: '85px',
-          maxHeight: '125px',
-          borderTop: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
+          maxHeight: '120px',
+          borderTop: isDark ? '1px solid #334155' : '1px solid rgba(100, 80, 180, 0.14)',
           background: isDark ? '#0f172a' : '#ffffff',
           display: 'grid',
-          gridTemplateColumns: 'minmax(140px, 1.1fr) minmax(130px, 1.1fr) minmax(140px, 1.2fr) auto',
-          gap: '0.65rem',
-          padding: '0.5rem 0.75rem',
-          boxShadow: isDark ? '0 -4px 15px rgba(0, 0, 0, 0.3)' : '0 -4px 15px rgba(0, 0, 0, 0.04)',
+          gridTemplateColumns: 'minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr) auto',
+          gap: '0.75rem',
+          padding: '0.5rem 0.85rem',
+          boxShadow: '0 -2px 10px rgba(30, 20, 70, 0.04)',
           zIndex: 10,
           alignItems: 'center',
           boxSizing: 'border-box',
@@ -944,12 +950,12 @@ export const KnowledgeGraphCanvas = ({
           overflowX: 'auto',
           overflowY: 'hidden'
         }}>
-          {/* Column 1: Node Title, Type & Confidence */}
-          <div style={{ minWidth: 0, borderRight: isDark ? '1px solid #1e293b' : '1px solid #f1f5f9', paddingRight: '0.5rem' }}>
+          {/* Column 1: Node Title, Type & Confidence Bar */}
+          <div style={{ minWidth: 0, borderRight: isDark ? '1px solid #1e293b' : '1px solid #f1f5f9', paddingRight: '0.6rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
               <span style={{
                 fontSize: '0.62rem',
-                fontWeight: '700',
+                fontWeight: '600',
                 padding: '0.1rem 0.35rem',
                 borderRadius: '4px',
                 background: getNodeTheme(activeInspectedNode.node_type).chipBg,
@@ -959,16 +965,16 @@ export const KnowledgeGraphCanvas = ({
                 {getNodeTheme(activeInspectedNode.node_type).tag}
               </span>
               {activeInspectedNode.visual_anchor && (
-                <span style={{ fontSize: '0.62rem', fontWeight: '700', color: '#0284c7', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '0.62rem', fontWeight: '600', color: '#7e22ce', whiteSpace: 'nowrap' }}>
                   ● GROUNDED
                 </span>
               )}
             </div>
             <h4 style={{
               margin: '0.15rem 0',
-              fontSize: '0.82rem',
-              fontWeight: '700',
-              color: isDark ? '#f8fafc' : '#0f172a',
+              fontSize: '0.84rem',
+              fontWeight: '600',
+              color: isDark ? '#f8fafc' : '#172033',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis'
@@ -976,23 +982,25 @@ export const KnowledgeGraphCanvas = ({
               {activeInspectedNode.label}
             </h4>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
-              <span style={{ fontSize: '0.68rem', color: isDark ? '#94a3b8' : '#64748b', whiteSpace: 'nowrap' }}>Confidence:</span>
-              <div style={{ height: '5px', width: '70px', minWidth: '40px', background: isDark ? '#334155' : '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+              <span style={{ fontSize: '0.68rem', color: '#64748b', whiteSpace: 'nowrap' }}>Confidence:</span>
+              <div style={{ height: '4px', width: '65px', background: isDark ? '#334155' : '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%',
                   width: `${Math.round(activeInspectedNode.confidence * 100)}%`,
-                  background: 'linear-gradient(90deg, #38bdf8, #10b981)',
-                  borderRadius: '3px'
+                  background: '#7e22ce',
+                  borderRadius: '2px'
                 }} />
               </div>
-              <strong style={{ fontSize: '0.7rem', color: isDark ? '#f8fafc' : '#0f172a' }}>{Math.round(activeInspectedNode.confidence * 100)}%</strong>
+              <strong style={{ fontSize: '0.7rem', color: isDark ? '#f8fafc' : '#172033', fontFamily: 'JetBrains Mono, monospace' }}>
+                {Math.round(activeInspectedNode.confidence * 100)}%
+              </strong>
             </div>
           </div>
 
           {/* Column 2: Direct Causes (Inflow) */}
-          <div style={{ minWidth: 0, borderRight: '1px solid #f1f5f9', paddingRight: '0.5rem', overflowY: 'auto', maxHeight: '85px' }}>
-            <div style={{ fontSize: '0.67rem', fontWeight: '700', color: '#b45309', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-              <ArrowLeft size={11} />
+          <div style={{ minWidth: 0, borderRight: isDark ? '1px solid #1e293b' : '1px solid #f1f5f9', paddingRight: '0.6rem', overflowY: 'auto', maxHeight: '80px' }}>
+            <div style={{ fontSize: '0.66rem', fontWeight: '600', color: '#d97706', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+              <ArrowLeft size={10} />
               <span>Direct Causes ({directInflowNodes.length}):</span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
@@ -1002,14 +1010,14 @@ export const KnowledgeGraphCanvas = ({
                     key={node.id}
                     onClick={() => onSelectNode(node.id)}
                     style={{
-                      background: '#fef3c7',
+                      background: '#fffbeb',
                       color: '#92400e',
-                      padding: '0.12rem 0.35rem',
+                      padding: '0.1rem 0.35rem',
                       borderRadius: '4px',
                       cursor: 'pointer',
                       fontSize: '0.66rem',
-                      fontWeight: '600',
-                      border: '1px solid #fde68a',
+                      fontWeight: '500',
+                      border: '1px solid #fef08a',
                       maxWidth: '100%',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -1021,16 +1029,16 @@ export const KnowledgeGraphCanvas = ({
                   </span>
                 ))
               ) : (
-                <span style={{ color: '#94a3b8', fontSize: '0.66rem', fontStyle: 'italic' }}>None (Root Environmental Input)</span>
+                <span style={{ color: '#94a3b8', fontSize: '0.66rem', fontStyle: 'italic' }}>Baseline Input</span>
               )}
             </div>
           </div>
 
-          {/* Column 3: Direct Consequences (Outflow) */}
-          <div style={{ minWidth: 0, paddingRight: '0.4rem', overflowY: 'auto', maxHeight: '85px' }}>
-            <div style={{ fontSize: '0.67rem', fontWeight: '700', color: '#047857', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+          {/* Column 3: Direct Impacts (Outflow) */}
+          <div style={{ minWidth: 0, paddingRight: '0.4rem', overflowY: 'auto', maxHeight: '80px' }}>
+            <div style={{ fontSize: '0.66rem', fontWeight: '600', color: '#16a34a', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
               <span>Direct Impacts ({directOutflowNodes.length}):</span>
-              <ArrowRight size={11} />
+              <ArrowRight size={10} />
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
               {directOutflowNodes.length > 0 ? (
@@ -1039,14 +1047,14 @@ export const KnowledgeGraphCanvas = ({
                     key={node.id}
                     onClick={() => onSelectNode(node.id)}
                     style={{
-                      background: '#d1fae5',
-                      color: '#065f46',
-                      padding: '0.12rem 0.35rem',
+                      background: '#f0fdf4',
+                      color: '#166534',
+                      padding: '0.1rem 0.35rem',
                       borderRadius: '4px',
                       cursor: 'pointer',
                       fontSize: '0.66rem',
-                      fontWeight: '600',
-                      border: '1px solid #a7f3d0',
+                      fontWeight: '500',
+                      border: '1px solid #bbf7d0',
                       maxWidth: '100%',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -1058,7 +1066,7 @@ export const KnowledgeGraphCanvas = ({
                   </span>
                 ))
               ) : (
-                <span style={{ color: '#94a3b8', fontSize: '0.66rem', fontStyle: 'italic' }}>None (Terminal Diagnosis)</span>
+                <span style={{ color: '#94a3b8', fontSize: '0.66rem', fontStyle: 'italic' }}>Terminal Diagnosis</span>
               )}
             </div>
           </div>
@@ -1078,7 +1086,7 @@ export const KnowledgeGraphCanvas = ({
               style={{
                 border: 'none',
                 background: '#f1f5f9',
-                borderRadius: '4px',
+                borderRadius: '6px',
                 width: '22px',
                 height: '22px',
                 cursor: 'pointer',
@@ -1089,16 +1097,16 @@ export const KnowledgeGraphCanvas = ({
               onClick={() => onSelectNode(null)}
               title="Close Docked Inspector"
             >
-              <X size={13} />
+              <X size={12} />
             </button>
             {onSendToChat && (
               <button
                 style={{
-                  padding: '0.3rem 0.55rem',
-                  background: '#0284c7',
+                  padding: '0.28rem 0.55rem',
+                  background: '#7e22ce',
                   color: '#ffffff',
                   border: 'none',
-                  borderRadius: '5px',
+                  borderRadius: '6px',
                   fontSize: '0.68rem',
                   fontWeight: '600',
                   cursor: 'pointer',
@@ -1126,9 +1134,9 @@ export const KnowledgeGraphCanvas = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '0.4rem 0.8rem',
-          padding: '0.4rem 0.85rem',
-          borderTop: '1px solid #e2e8f0',
-          background: '#ffffff',
+          padding: '0.35rem 0.85rem',
+          borderTop: isDark ? '1px solid #334155' : '1px solid rgba(100, 80, 180, 0.14)',
+          background: isDark ? '#0f172a' : '#ffffff',
           fontSize: '0.68rem',
           color: '#475569',
           boxSizing: 'border-box',
@@ -1137,25 +1145,25 @@ export const KnowledgeGraphCanvas = ({
         }}>
           {/* Left: Node Type Legend */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap' }}>Legend:</span>
+            <span style={{ fontWeight: '600', color: '#172033', whiteSpace: 'nowrap' }}>Legend:</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#4ade80' }} />
+              <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#22c55e' }} />
               <span>Object</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#60a5fa' }} />
+              <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#7e22ce' }} />
               <span>Sensor</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#22d3ee' }} />
+              <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#0284c7' }} />
               <span>Symptom</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#f59e0b' }} />
+              <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#f59e0b' }} />
               <span>Hypothesis</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#c084fc' }} />
+              <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#16a34a' }} />
               <span>Evidence</span>
             </div>
           </div>
@@ -1163,12 +1171,12 @@ export const KnowledgeGraphCanvas = ({
           {/* Right: Quick Interaction Guide & Causal Direction Markers */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.66rem' }}>
             <span style={{ whiteSpace: 'nowrap', color: '#64748b' }}>
-              💡 Drag to pan · Scroll to zoom
+              Drag to pan · Scroll to zoom
             </span>
-            <span style={{ whiteSpace: 'nowrap', color: '#b45309', fontWeight: '600', background: '#fef3c7', padding: '0.1rem 0.35rem', borderRadius: '4px', border: '1px solid #fde68a' }}>
+            <span style={{ whiteSpace: 'nowrap', color: '#92400e', fontWeight: '500', background: '#fffbeb', padding: '0.08rem 0.3rem', borderRadius: '4px', border: '1px solid #fef08a' }}>
               ▲ Cause
             </span>
-            <span style={{ whiteSpace: 'nowrap', color: '#047857', fontWeight: '600', background: '#d1fae5', padding: '0.1rem 0.35rem', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
+            <span style={{ whiteSpace: 'nowrap', color: '#166534', fontWeight: '500', background: '#f0fdf4', padding: '0.08rem 0.3rem', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
               ▼ Impact
             </span>
           </div>

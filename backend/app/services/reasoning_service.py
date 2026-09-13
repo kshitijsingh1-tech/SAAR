@@ -580,6 +580,54 @@ MANDATORY GUIDELINES:
         if not state:
             return {"error": "Investigation not found."}
 
+        # Extract structured telemetry channels if observations exist
+        telemetry = None
+        if state.dataset_profile and state.observations:
+            channels = {}
+            time_labels = []
+            milestones = []
+            seen_milestones = set()
+
+            col_units = {
+                col.name: getattr(col, "unit", None) or self.ingestion._guess_unit(col.name) or ""
+                for col in state.dataset_profile.columns
+            }
+
+            for o in state.observations:
+                if isinstance(o.value, (int, float)):
+                    if o.feature_name not in channels:
+                        channels[o.feature_name] = []
+                    channels[o.feature_name].append(o.value)
+                if o.timestamp and o.timestamp not in time_labels:
+                    time_labels.append(o.timestamp)
+
+            if not time_labels and channels:
+                first_len = len(next(iter(channels.values())))
+                time_labels = [f"Day {i}" for i in range(first_len)]
+
+            for o in state.observations:
+                feat_lower = o.feature_name.lower()
+                if "intervention" in feat_lower or "stage" in feat_lower:
+                    val_str = str(o.value).strip()
+                    if val_str and val_str.lower() not in ("none", "0", "false", ""):
+                        m_key = f"{o.timestamp}_{val_str}"
+                        if m_key not in seen_milestones:
+                            seen_milestones.add(m_key)
+                            milestones.append({
+                                "timestamp": o.timestamp or "",
+                                "label": val_str.replace("_", " ").title()
+                            })
+
+            telemetry = {
+                "title": f"Telemetry Array: {state.dataset_profile.filename or 'Uploaded Dataset'}",
+                "channels": channels,
+                "units": col_units,
+                "timestamps": time_labels,
+                "milestones": milestones[:12],
+                "row_count": state.dataset_profile.row_count,
+                "column_count": state.dataset_profile.column_count
+            }
+
         return {
             "investigation_id": state.investigation_id,
             "iteration": state.iteration,
@@ -594,6 +642,7 @@ MANDATORY GUIDELINES:
                 "observations_count": len(state.observations),
                 "initial_observations": state.dataset_profile.initial_observations if state.dataset_profile else [],
             },
+            "telemetry": telemetry,
             "concepts": [c.model_dump() for c in state.concepts],
             "relationships": [r.model_dump() for r in state.relationships],
             "trends": [t.model_dump() for t in state.trends],

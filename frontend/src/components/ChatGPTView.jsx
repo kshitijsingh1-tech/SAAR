@@ -6,7 +6,7 @@ import {
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
   PieChart, ChevronRight, MessageSquare, Sprout, Construction, Orbit, Activity,
-  Image as ImageIcon, Film, Sun, Moon, Crosshair
+  Image as ImageIcon, Film, Sun, Moon, Eye, Trash2, ZoomIn, Crosshair
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -145,6 +145,148 @@ const ThoughtProcessPill = ({ thought }) => {
   );
 };
 
+// Human-readable file size formatter
+function formatFileSize(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+// Compact Image Attachment Card with Live Visual Thumbnail
+const ImageAttachmentCard = ({ file, onRemove, onInspect, formatTitle }) => {
+  const [thumbUrl, setThumbUrl] = useState(null);
+
+  useEffect(() => {
+    if (!file) return;
+    if (typeof file === 'string') {
+      setThumbUrl(file);
+      return;
+    }
+    if (file instanceof Blob || file instanceof File) {
+      const url = URL.createObjectURL(file);
+      setThumbUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    if (file.url || file.preview) {
+      setThumbUrl(file.url || file.preview);
+    }
+  }, [file]);
+
+  return (
+    <div
+      className="context-pill-card file-card file-card-image image-preview-card"
+      onClick={() => onInspect(file, thumbUrl)}
+      title="Click to zoom and verify image"
+    >
+      <div className="card-image-thumb-box">
+        {thumbUrl ? (
+          <img src={thumbUrl} alt={file.name || 'Preview'} className="card-image-thumb-img" />
+        ) : (
+          <ImageIcon size={20} color="#7e22ce" />
+        )}
+        <div className="thumb-zoom-overlay">
+          <ZoomIn size={11} color="#ffffff" />
+        </div>
+      </div>
+      <div className="pill-card-text">
+        <div className="pill-card-title" title={file.name}>
+          {formatTitle(file.name, 26)}
+        </div>
+        <div className="pill-card-subtitle">
+          <span>{formatFileSize(file.size)}</span>
+          <span className="pill-dot-sep">·</span>
+          <span className="verify-hint">Verify Image</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="pill-dismiss-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        title="Remove image attachment"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
+};
+
+// Full-Size Image Verification Modal
+const ImageVerificationModal = ({ fileData, onClose, onRemove }) => {
+  if (!fileData || !fileData.file) return null;
+  const { file, url } = fileData;
+
+  return (
+    <div className="image-verify-modal-backdrop" onClick={onClose}>
+      <div className="image-verify-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="image-verify-header">
+          <div className="image-verify-title-group">
+            <div className="image-verify-badge">
+              <ImageIcon size={13} />
+              <span>IMAGE VERIFICATION</span>
+            </div>
+            <h3 className="image-verify-filename" title={file.name}>{file.name}</h3>
+            <span className="image-verify-meta">
+              {formatFileSize(file.size)} · {file.type || 'image'}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="image-verify-close-btn"
+            onClick={onClose}
+            title="Close image verification"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="image-verify-body">
+          <div className="image-verify-viewport">
+            {url ? (
+              <img
+                src={url}
+                alt={file.name}
+                className="image-verify-full-img"
+              />
+            ) : (
+              <div className="image-verify-fallback">
+                <ImageIcon size={48} color="#7e22ce" />
+                <span>Loading preview...</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="image-verify-footer">
+          <button
+            type="button"
+            className="image-verify-btn remove"
+            onClick={() => {
+              onRemove(file);
+              onClose();
+            }}
+          >
+            <Trash2 size={13} />
+            <span>Remove Image</span>
+          </button>
+          <button
+            type="button"
+            className="image-verify-btn confirm"
+            onClick={onClose}
+          >
+            <Check size={14} />
+            <span>Verified & Ready to Send</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export function ChatGPTView({
   messages,
   isProcessing,
@@ -168,12 +310,14 @@ export function ChatGPTView({
   onToggleTheme,
   onSelectTheme,
   onReturnToLanding,
+  onNewSession,
   hasSensorData = true
 }) {
   const [inputText, setInputText] = useState('');
   const [textSnippet, setTextSnippet] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [pendingFile, setPendingFile] = useState(null);
+  const [verifyingImage, setVerifyingImage] = useState(null);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
@@ -368,7 +512,7 @@ export function ChatGPTView({
     }
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = async (e) => {
     const now = Date.now();
     // Guard against rapid duplicate paste events fired within 50ms
     if (now - lastPasteTimeRef.current < 50) {
@@ -420,18 +564,83 @@ export function ChatGPTView({
       return;
     }
 
-    // 3. Convert large text pastes into a staged draft pill card (Claude / ChatGPT behavior)
     const text = clipboardData.getData('text');
-    if (text && text.trim().length > 220) {
-      e.preventDefault();
-      e.stopPropagation();
-      const cleanFirst = text.trim().split('\n')[0].replace(/^[#>*\s-]+/, '').trim();
-      const title = cleanFirst.length > 24 ? `${cleanFirst.slice(0, 24)}..` : (cleanFirst || 'Draft text..');
-      setTextSnippet({
-        title,
-        content: text.trim()
-      });
-      return;
+    if (text) {
+      const trimmed = text.trim();
+
+      // 3. File path / filename detection (e.g. copied file path from VS Code or typed path)
+      const cleanPath = trimmed.replace(/^["']|["']$/g, '').trim();
+      const isFilePathCandidate = /\.(csv|xlsx?|tsv|json|txt|png|jpe?g|webp|pdf)$/i.test(cleanPath) &&
+        (cleanPath.includes('/') || cleanPath.includes('\\') || !cleanPath.includes('\n'));
+
+      if (isFilePathCandidate) {
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+          const res = await fetch(`${apiUrl}/api/saar/read-file?path=${encodeURIComponent(cleanPath)}`);
+          if (res.ok) {
+            e.preventDefault();
+            e.stopPropagation();
+            const blob = await res.blob();
+            const filename = res.headers.get('X-Filename') || cleanPath.split(/[/\\]/).pop() || 'dataset.csv';
+            const fileObj = new File([blob], filename, {
+              type: blob.type || (filename.endsWith('.csv') ? 'text/csv' : 'application/octet-stream')
+            });
+            setAttachedFiles((prev) => [...prev, fileObj]);
+            return;
+          }
+        } catch (fetchErr) {
+          // If backend can't find file, continue to text/tabular logic
+        }
+      }
+
+      // 4. Tabular text detection (CSV or TSV text pasted into chat input)
+      const lines = trimmed.split(/\r?\n/).filter((l) => l.trim().length > 0);
+
+      // Check if text is a tabular CSV or TSV (header + data rows with matching delimiters)
+      if (lines.length >= 2) {
+        const header = lines[0];
+        const commaCount0 = (header.match(/,/g) || []).length;
+        const tabCount0 = (header.match(/\t/g) || []).length;
+        const semiCount0 = (header.match(/;/g) || []).length;
+        const maxDelim0 = Math.max(commaCount0, tabCount0, semiCount0);
+
+        if (maxDelim0 >= 1) {
+          const sampleLine = lines[1];
+          const commaCount1 = (sampleLine.match(/,/g) || []).length;
+          const tabCount1 = (sampleLine.match(/\t/g) || []).length;
+          const semiCount1 = (sampleLine.match(/;/g) || []).length;
+          const maxDelim1 = Math.max(commaCount1, tabCount1, semiCount1);
+
+          if (maxDelim1 >= 1) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const firstCol = header.split(/,|\t|;/)[0].replace(/["']/g, '').trim();
+            const datasetName = firstCol && firstCol.length < 25
+              ? `${firstCol.toLowerCase().replace(/[^a-z0-9_]/g, '_')}_dataset.csv`
+              : 'pasted_dataset.csv';
+
+            const csvBlob = new Blob([trimmed], { type: 'text/csv' });
+            const csvFile = new File([csvBlob], datasetName, { type: 'text/csv' });
+
+            setAttachedFiles((prev) => [...prev, csvFile]);
+            return;
+          }
+        }
+      }
+
+      // 5. Convert large non-tabular text pastes into a staged draft pill card (Claude / ChatGPT behavior)
+      if (trimmed.length > 220) {
+        e.preventDefault();
+        e.stopPropagation();
+        const cleanFirst = trimmed.split('\n')[0].replace(/^[#>*\s-]+/, '').trim();
+        const title = cleanFirst.length > 24 ? `${cleanFirst.slice(0, 24)}..` : (cleanFirst || 'Draft text..');
+        setTextSnippet({
+          title,
+          content: trimmed
+        });
+        return;
+      }
     }
   };
 
@@ -672,19 +881,15 @@ export function ChatGPTView({
           {messages.length === 0 ? (
             /* Welcome / Empty State */
             <div className="chatgpt-welcome-canvas">
-              <div
-                className={`welcome-brand-mark ${onReturnToLanding ? 'clickable' : ''}`}
+              <img
+                src={saarLogoSrc}
+                alt="Saar Logo"
+                className={`welcome-saar-logo-img ${onReturnToLanding ? 'clickable' : ''}`}
                 onClick={onReturnToLanding}
                 title={onReturnToLanding ? "Return to SAAR Landing Page" : undefined}
                 role={onReturnToLanding ? "button" : undefined}
                 tabIndex={onReturnToLanding ? 0 : undefined}
-              >
-                <img
-                  src={saarLogoSrc}
-                  alt="Saar Logo"
-                  className="welcome-saar-logo-img"
-                />
-              </div>
+              />
               <div className="welcome-wordmark-row">
                 <img
                   src={saarWordmarkSrc}
@@ -695,7 +900,7 @@ export function ChatGPTView({
               <h1 className="welcome-heading">Visual Scientific Reasoning Engine</h1>
               <p className="welcome-subheading">
                 Saar pairs multi-modal visual perception with active causal graph reasoning
-                to diagnose root causes across agriculture, civil structures, and astrophysics.
+                to diagnose root causes across agriculture, civil structures, astrophysics, and clinical gait kinematics.
               </p>
 
               {/* Sample Prompt Cards */}
@@ -726,10 +931,10 @@ export function ChatGPTView({
 
                 <button
                   className="prompt-card"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => onSelectScenario ? onSelectScenario('pediatric_gait', 'sample_gait_01', 'Analyze 33-landmark kinematic cadence asymmetry and formulate clinical causal DAG.') : onSendMessage('Analyze 33-landmark kinematic cadence asymmetry and formulate clinical causal DAG.')}
                 >
-                  <div className="prompt-title">Upload Telemetry Dataset</div>
-                  <div className="prompt-desc">Ingest CSV or XLSX dataset for autonomous column profiling and causal modeling.</div>
+                  <div className="prompt-title">Pediatric Gait Kinematics</div>
+                  <div className="prompt-desc">Isolate joint ROM asymmetry, stance duration, and postural tilt.</div>
                 </button>
               </div>
             </div>
@@ -1071,9 +1276,24 @@ export function ChatGPTView({
               </div>
             )}
 
-            {/* Attached Files Cards */}
+            {/* Attached Files Cards (With Rich Live Image Preview & Verification) */}
             {attachedFiles.map((file, idx) => {
               const meta = getFileCardMeta(file);
+
+              // 1. Live Visual Image Thumbnail Card with Zoom & Verification
+              if (meta.kind === 'image') {
+                return (
+                  <ImageAttachmentCard
+                    key={idx}
+                    file={file}
+                    formatTitle={formatCardTitle}
+                    onRemove={() => setAttachedFiles(attachedFiles.filter((_, i) => i !== idx))}
+                    onInspect={(f, url) => setVerifyingImage({ file: f, url })}
+                  />
+                );
+              }
+
+              // 2. Standard document / spreadsheet / video context pill
               return (
                 <div key={idx} className={`context-pill-card file-card file-card-${meta.kind}`}>
                   <div className="card-icon-wrapper">
@@ -1087,8 +1307,6 @@ export function ChatGPTView({
                       <PieChart size={22} color="#10b981" />
                     ) : meta.kind === 'video' ? (
                       <Film size={22} color="#38bdf8" />
-                    ) : meta.kind === 'image' ? (
-                      <ImageIcon size={22} color="#a78bfa" />
                     ) : (
                       <FileText size={22} color="#94a3b8" />
                     )}
@@ -1100,6 +1318,7 @@ export function ChatGPTView({
                     <div className="pill-card-subtitle">{meta.label}</div>
                   </div>
                   <button
+                    type="button"
                     className="pill-dismiss-btn"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1289,6 +1508,16 @@ export function ChatGPTView({
           } else {
             setAttachedFiles((prev) => [...prev, recordedFile]);
           }
+        }}
+      />
+
+      {/* Click-to-Verify Enlarged Image Modal */}
+      <ImageVerificationModal
+        fileData={verifyingImage}
+        onClose={() => setVerifyingImage(null)}
+        onRemove={(f) => {
+          setAttachedFiles((prev) => prev.filter((x) => x !== f));
+          setVerifyingImage(null);
         }}
       />
     </div>
