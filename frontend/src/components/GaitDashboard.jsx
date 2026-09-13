@@ -7,7 +7,8 @@ import {
 import { analyzeGaitVideo, analyzeGaitSample, askGaitQuestion, getGaitSampleVideoUrl } from '../api/client';
 import { MarkdownResponse } from './MarkdownResponse';
 
-export function GaitDashboard({ onRegisterToChat, initialResult = null, initialFile = null }) {
+export function GaitDashboard({ onRegisterToChat, initialResult = null, initialFile = null, selectedDomain = 'pediatrics' }) {
+  const isSportsMode = String(selectedDomain || '').toLowerCase().includes('sport') || String(selectedDomain || '').toLowerCase().includes('athlet');
   const [childAgeMonths, setChildAgeMonths] = useState(24);
   const [selectedFile, setSelectedFile] = useState(initialFile);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState(() => {
@@ -174,53 +175,60 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
               </div>
               <div>
                 <h1 style={{ fontSize: '1.45rem', fontWeight: '800', color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
-                  ToddleAI Child Walking Analysis
+                  {isSportsMode ? 'Sports Biomechanics & Athletic Motion Analysis' : 'ToddleAI Child Walking Analysis'}
                 </h1>
                 <p style={{ fontSize: '0.86rem', color: '#64748b', margin: '4px 0 0 0' }}>
-                  Video-based walking rhythm, leg movement balance, and age-matched developmental insights.
+                  {isSportsMode ? 'Video-based kinetic chain sequencing, joint extension angles, and motion kinematics.' : 'Video-based walking rhythm, leg movement balance, and age-matched developmental insights.'}
                 </p>
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '6px 14px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Child Age:</span>
-              <select
-                value={[14, 18, 24, 36, 48].includes(childAgeMonths) ? childAgeMonths : 'custom'}
-                onChange={(e) => {
-                  if (e.target.value !== 'custom') {
-                    setChildAgeMonths(Number(e.target.value));
-                  }
-                }}
-                style={{ border: 'none', background: 'transparent', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer' }}
-              >
-                <option value={14}>14 months (&lt;18m bracket)</option>
-                <option value={18}>18 months (18–24m bracket)</option>
-                <option value={24}>24 months (24–36m bracket)</option>
-                <option value={36}>36 months (36–48m bracket)</option>
-                <option value={48}>48 months (48m+ mature)</option>
-                <option value="custom">Custom Age (months)...</option>
-              </select>
-              <input
-                type="number"
-                min="6"
-                max="120"
-                value={childAgeMonths}
-                onChange={(e) => setChildAgeMonths(Math.max(6, Math.min(120, Number(e.target.value) || 6)))}
-                style={{
-                  width: '56px',
-                  padding: '2px 6px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  fontWeight: '700',
-                  color: '#0f172a'
-                }}
-                title="Enter exact age in months"
-              />
-              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>mo</span>
-            </div>
+            {!isSportsMode ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '6px 14px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Child Age:</span>
+                <select
+                  value={[14, 18, 24, 36, 48].includes(childAgeMonths) ? childAgeMonths : 'custom'}
+                  onChange={(e) => {
+                    if (e.target.value !== 'custom') {
+                      setChildAgeMonths(Number(e.target.value));
+                    }
+                  }}
+                  style={{ border: 'none', background: 'transparent', fontWeight: '700', color: '#0f172a', outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value={14}>14 months (&lt;18m bracket)</option>
+                  <option value={18}>18 months (18–24m bracket)</option>
+                  <option value={24}>24 months (24–36m bracket)</option>
+                  <option value={36}>36 months (36–48m bracket)</option>
+                  <option value={48}>48 months (48m+ mature)</option>
+                  <option value="custom">Custom Age (months)...</option>
+                </select>
+                <input
+                  type="number"
+                  min="6"
+                  max="120"
+                  value={childAgeMonths}
+                  onChange={(e) => setChildAgeMonths(Math.max(6, Math.min(120, Number(e.target.value) || 6)))}
+                  style={{
+                    width: '56px',
+                    padding: '2px 6px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                    fontWeight: '700',
+                    color: '#0f172a'
+                  }}
+                  title="Enter exact age in months"
+                />
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>mo</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '6px 14px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>Discipline:</span>
+                <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0284c7' }}>Badminton Smash / Kinetic Chain</span>
+              </div>
+            )}
 
             <button
               onClick={handleRunSample}
@@ -241,7 +249,7 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
               }}
             >
               <Play size={16} />
-              {isProcessing ? 'Processing Video...' : 'Load Sample Walk Clip'}
+              {isProcessing ? 'Processing Video...' : (isSportsMode ? 'Load Sample Motion Clip' : 'Load Sample Walk Clip')}
             </button>
           </div>
         </div>
@@ -266,10 +274,12 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
             <Video size={30} color="#0284c7" />
             <div style={{ fontSize: '0.92rem', fontWeight: '600', color: '#1e293b' }}>
-              {selectedFile ? `Selected: ${selectedFile.name}` : 'Upload Toddler Walking Video'}
+              {selectedFile ? `Selected: ${selectedFile.name}` : (isSportsMode ? 'Upload Sports Motion Video' : 'Upload Toddler Walking Video')}
             </div>
             <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-              Prerecorded 10–15s walking clip, side camera view at knee height.
+              {isSportsMode
+                ? 'Prerecorded 5–15s athletic movement clip, side or diagonal view of overhead smash/action.'
+                : 'Prerecorded 10–15s walking clip, side camera view at knee height.'}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
@@ -277,13 +287,13 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
                 onClick={() => fileInputRef.current?.click()}
                 style={{
                   background: '#f1f5f9',
+                  color: '#334155',
                   border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
                   padding: '7px 16px',
-                  fontWeight: '600',
+                  borderRadius: '8px',
                   fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  color: '#334155'
+                  fontWeight: '600',
+                  cursor: 'pointer'
                 }}
               >
                 Browse Video
@@ -304,7 +314,7 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
                     cursor: isProcessing ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {isProcessing ? 'Analyzing...' : 'Analyze Walking Video'}
+                  {isProcessing ? 'Analyzing...' : (isSportsMode ? 'Analyze Athletic Video' : 'Analyze Walking Video')}
                 </button>
               )}
             </div>

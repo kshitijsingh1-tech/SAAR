@@ -43,6 +43,14 @@ def health_check():
 @app.get("/api/keys/status")
 def get_keys_status():
     """Return live load-balancing and quota status of all API key pools."""
+    try:
+        from dotenv import load_dotenv
+        _env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+        if os.path.exists(_env_path):
+            load_dotenv(_env_path, override=True)
+        key_pool.reload_keys_from_env()
+    except Exception as e:
+        print(f"[KeyStatus] Reload error: {e}")
     return {
         "status": "ok",
         "pools": key_pool.get_status()

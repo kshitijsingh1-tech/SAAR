@@ -12,13 +12,13 @@ import { LandingPage } from './components/LandingPage';
 import monsteraInvestigation from './data/monsteraInvestigation.json';
 
 export default function App() {
-  // Theme State (Supports Pure Light, Pure Dark, and Lavender White with Purple Tint)
+  // Theme State (Supports Greyish Theme, Pure Light, Slate Dark, and Lavender Purple)
   const [theme, setTheme] = useState(() => {
     try {
       const saved = localStorage.getItem('saar_theme');
-      if (['light', 'dark', 'purple'].includes(saved)) return saved;
+      if (['grey', 'light', 'dark', 'purple'].includes(saved)) return saved;
     } catch (e) {}
-    return 'dark';
+    return 'grey';
   });
 
   const handleSelectTheme = useCallback((newTheme) => {
@@ -30,7 +30,7 @@ export default function App() {
 
   const handleToggleTheme = useCallback(() => {
     setTheme((prev) => {
-      const cycle = ['dark', 'light', 'purple'];
+      const cycle = ['grey', 'dark', 'light', 'purple'];
       const nextIdx = (cycle.indexOf(prev) + 1) % cycle.length;
       const nextTheme = cycle[nextIdx];
       try {
@@ -424,6 +424,7 @@ export default function App() {
     // Clear custom uploaded media and old session results before loading new preset scenario
     setCustomImageData(null);
     setCustomImageUrl(null);
+    setCustomVideoFile(null);
     setSaarData(null);
     setInvestigationData(null);
     setSelectedNodeId(null);
@@ -527,13 +528,32 @@ export default function App() {
     setSelectedNodeId(null);
     setCustomImageData(base64Data);
     setCustomImageUrl(null);
+    setCustomVideoFile(null); // Explicitly clear any previous video file
     setCameraConnected(true);
 
-    // Auto-detect domain if current domain is default/infrastructure and upload has botanical context
+    // Auto-detect domain:
     let targetDomain = selectedDomain;
     const combinedContext = `${fileName} ${optionalUserText || ''}`.toLowerCase();
-    const isBotanical = /rose|aloe|plant|leaf|flower|cutting|root|propagat|stem|bloom|agri|foliar|sprout|botanical/.test(combinedContext);
-    if (isBotanical && (selectedDomain === 'infrastructure' || !selectedDomain)) {
+    const isBotanical = /rose|aloe|plant|leaf|flower|cutting|root|propagat|stem|bloom|agri|foliar|sprout|botanical|crop|soil|seed|fruit|vegetab|tree|weed|fung|pest/.test(combinedContext);
+    const isInfra = /road|pavement|asphalt|culvert|gpr|crack|concrete|bridge|sinkhole|sub-base/.test(combinedContext);
+    const isAstro = /transit|star|planet|telescope|lightcurve|doppler|spectr|exoplanet|orbit/.test(combinedContext);
+    const isSports = /badminton|tennis|smash|serve|racket|athlet|jump|biomechanic/.test(combinedContext);
+
+    if (isBotanical) {
+      targetDomain = 'agriculture';
+      setSelectedDomain('agriculture');
+    } else if (isInfra) {
+      targetDomain = 'infrastructure';
+      setSelectedDomain('infrastructure');
+    } else if (isAstro) {
+      targetDomain = 'astronomy';
+      setSelectedDomain('astronomy');
+    } else if (isSports) {
+      targetDomain = 'sports';
+      setSelectedDomain('sports');
+    } else if (!selectedDomain || selectedDomain === 'pediatric' || selectedDomain === 'pediatrics') {
+      // If an image was uploaded while in pediatric/toddler domain (which is purely for video walking analysis),
+      // default the image investigation to agriculture so it runs full visual causal reasoning
       targetDomain = 'agriculture';
       setSelectedDomain('agriculture');
     }
@@ -593,9 +613,9 @@ export default function App() {
 
       const thoughtProcess = {
         title: `Thought for ${(Math.random() * 0.5 + 2.1).toFixed(1)}s`,
-        summary: `Grounded ${nodeCount} spatial visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
+        summary: `Grounded ${nodeCount} physical visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
         steps: [
-          `Visual Perception: Grounded ${nodeCount} spatial entities with bounding boxes from "${fileName}"`,
+          `Visual Perception: Grounded ${nodeCount} physical entities with bounding boxes from "${fileName}"`,
           `Causal Graph Formulation: Formulated ${edgeCount} directed dependencies (${confidencePct}% graph confidence)`,
           ...(res.steps && res.steps.length > 0
             ? res.steps.map((s) => `Executed diagnostic tool: ${s.tool_name || s.step_name || 'Specialized Diagnostic'}`)
@@ -656,6 +676,12 @@ export default function App() {
     // If a gait result object is passed directly (e.g. from GaitDashboard registration)
     if (userText && typeof userText === 'object' && userText.assessment_id) {
       const gaitResult = userText;
+      setCustomImageData(null);
+      setCustomImageUrl(null);
+      setInvestigationData(null);
+      setSelectedDomain('pediatrics');
+      setActiveTool('gait');
+      setIsToolDrawerOpen(true);
       let responseText = `### Video Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
       responseText += `- **Video Processed**: \`${gaitResult.video?.filename || 'Sample Video'}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
       responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
@@ -722,8 +748,20 @@ export default function App() {
 
         if (isVideo) {
           try {
-            setSelectedDomain('pediatric');
+            const combinedContext = `${fileName} ${userText || ''}`.toLowerCase();
+            const isSportsVideo = combinedContext.includes('sport') || combinedContext.includes('badminton') || combinedContext.includes('smash') || combinedContext.includes('athlet') || selectedDomain === 'sports';
+            const targetDomain = isSportsVideo ? 'sports' : 'pediatrics';
+            setSelectedDomain(targetDomain);
             setCustomVideoFile(file);
+            setCustomImageData(null);
+            setCustomImageUrl(null);
+            setInvestigationData(null);
+            setSelectedNodeId(null);
+            setActiveTool('gait');
+            setIsToolDrawerOpen(true);
+            setSessions((prev) =>
+              prev.map((s) => (s.id === activeSessionId ? { ...s, domain: targetDomain, imageData: null, imageUrl: null } : s))
+            );
             const gaitResult = await analyzeGaitVideo(file, 24);
             setSaarData(gaitResult);
             let responseText = `### Video Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
@@ -1465,6 +1503,9 @@ export default function App() {
         selectedDomain={selectedDomain}
         selectedNodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
+        sessions={sessions}
+        onSwitchSession={(sessionId) => setActiveSessionId(sessionId)}
+        isProcessing={isProcessing}
         hasSensorData={hasSensorData}
         onUploadSensorData={handleUploadSensorFile}
         onLoadSampleDataset={handleLoadSampleDataset}

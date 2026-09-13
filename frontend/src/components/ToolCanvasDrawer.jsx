@@ -38,7 +38,10 @@ export function ToolCanvasDrawer({
   hasSensorData = true,
   onUploadSensorData = null,
   onLoadSampleDataset = null,
-  customVideoFile = null
+  customVideoFile = null,
+  sessions = [],
+  onSwitchSession = null,
+  isProcessing = false
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(() => {
@@ -118,21 +121,92 @@ export function ToolCanvasDrawer({
 
   if (!isOpen) return null;
 
-  const isPediatricsDomain = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
+  const domainLower = String(selectedDomain || '').toLowerCase();
+  const isPediatricsDomain = domainLower.includes('pediat') || domainLower.includes('gait') || domainLower.includes('toddle');
+  const isSportsDomain = domainLower.includes('sport') || domainLower.includes('athlet') || domainLower.includes('badminton');
+  const isAgriDomain = domainLower.includes('agri') || domainLower.includes('crop') || domainLower.includes('plant') || domainLower.includes('botan');
+  const isInfraDomain = domainLower.includes('infra') || domainLower.includes('road') || domainLower.includes('gpr') || domainLower.includes('pave');
+  const isAstroDomain = domainLower.includes('astro') || domainLower.includes('orbit') || domainLower.includes('transit');
 
-  // Operational tools strictly for active scientific investigations
-  const isMovementAnalysis = isPediatricsDomain || activeTool === 'gait';
+  // Input detection:
+  // When analyzing toddler AI video: strictly ONLY video analysis and clinical references.
+  const isToddlerVideo = isPediatricsDomain || (activeTool === 'gait' && !isSportsDomain && !isAgriDomain);
+  const isSportsVideo = isSportsDomain && (activeTool === 'gait' || Boolean(customVideoFile));
 
-  const toolsMeta = [
-    { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
-    { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
-    { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
-    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'Scientific References', icon: <BookOpen size={15} /> },
-    { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
-  ];
+  // Configure tools uniquely for each domain:
+  let toolsMeta = [];
 
-  // Robust tool alias normalization: map legacy or semantic IDs to active UI tool tabs
+  if (isToddlerVideo) {
+    // When uploading / analyzing toddler AI video:
+    // It should NOT show all options except video analysis and clinical references!
+    toolsMeta = [
+      {
+        id: 'gait',
+        label: 'Video Analysis (Motion & Gait)',
+        icon: <Activity size={15} />
+      },
+      {
+        id: 'rag',
+        label: 'Clinical References',
+        icon: <BookOpen size={15} />
+      }
+    ];
+  } else if (isSportsVideo) {
+    // Sports video analysis:
+    toolsMeta = [
+      {
+        id: 'gait',
+        label: 'Video Analysis (Sports & Motion)',
+        icon: <Activity size={15} />
+      },
+      {
+        id: 'rag',
+        label: 'Scientific References',
+        icon: <BookOpen size={15} />
+      }
+    ];
+  } else if (isAgriDomain) {
+    // Agriculture:
+    // Video option should NOT be visible, rest everything should be visible.
+    toolsMeta = [
+      { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
+      { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
+      { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
+      { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
+      { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
+    ];
+  } else if (isInfraDomain || isAstroDomain) {
+    // Civil Infrastructure / Astrophysics:
+    // Video option is NOT visible, all engineering/astronomy tools enabled.
+    toolsMeta = [
+      { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
+      { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
+      { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
+      { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
+      { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
+    ];
+  } else if (isSportsDomain) {
+    // Sports domain when in multi-session scenario/preset mode:
+    toolsMeta = [
+      { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
+      { id: 'gait', label: 'Video Analysis (Sports & Motion)', icon: <Activity size={15} /> },
+      { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
+      { id: 'analytics', label: 'Kinematic Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
+      { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
+      { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
+    ];
+  } else {
+    // Default fallback:
+    toolsMeta = [
+      { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
+      { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
+      { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
+      { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
+      { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
+    ];
+  }
+
+  // Robust tool alias normalization
   const TOOL_ALIASES = {
     telemetry: 'analytics',
     sensor: 'analytics',
@@ -145,7 +219,11 @@ export function ToolCanvasDrawer({
     inspector: 'grounded',
     image: 'grounded'
   };
-  const effectiveTool = TOOL_ALIASES[activeTool] || (toolsMeta.some((t) => t.id === activeTool) ? activeTool : 'grounded');
+
+  const availableIds = toolsMeta.map((t) => t.id);
+  const defaultTool = (isToddlerVideo || isSportsVideo) ? 'gait' : 'grounded';
+  const aliased = TOOL_ALIASES[activeTool] || activeTool;
+  const effectiveTool = availableIds.includes(aliased) ? aliased : defaultTool;
 
   const currentToolMeta = toolsMeta.find((t) => t.id === effectiveTool) || toolsMeta[0];
 
@@ -211,11 +289,9 @@ export function ToolCanvasDrawer({
           <button
             className="canvas-action-btn"
             onClick={() => setIsExpanded(!isExpanded)}
-            title={isExpanded ? 'Restore window size' : 'Expand full-width'}
-            style={{ width: 'auto', padding: '0.25rem 0.6rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+            title={isExpanded ? 'Exit Fullscreen (Restore window size)' : 'Fullscreen (Expand full-width)'}
           >
-            {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            <span style={{ fontSize: '0.72rem', fontWeight: '600' }}>{isExpanded ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
 
           <button
@@ -230,113 +306,59 @@ export function ToolCanvasDrawer({
 
       {/* Tool Content Body */}
       <div className="canvas-body">
-        {/* Tool: Grounded Split View (Side-by-Side Synchronized Image + Graph with IDE-style Resizable Splitter) */}
+        {/* Tool: Image Analysis Dashboard (Full-width, scrollable) */}
         {effectiveTool === 'grounded' && (
           <div
-            ref={splitContainerRef}
-            className="tool-body-pane"
+            className="tool-body-pane custom-pane-scrollbar"
             style={{
-              display: 'flex',
-              flexDirection: 'row',
               flex: '1 1 0',
               height: '100%',
               minHeight: 0,
               maxHeight: '100%',
-              overflow: 'hidden',
-              padding: '0.65rem',
-              gap: 0,
-              position: 'relative',
-              boxSizing: 'border-box'
+              overflow: 'auto',
+              padding: '0',
+              boxSizing: 'border-box',
+              background: 'var(--bg-card)'
             }}
           >
-            {/* Left Pane: Image Evidence & Regional Labels */}
-            <div
-              className="split-left-pane custom-pane-scrollbar"
-              style={{
-                width: `calc(${splitRatio}% - 6px)`,
-                minWidth: '280px',
-                maxWidth: 'calc(100% - 280px)',
-                height: '100%',
-                maxHeight: '100%',
-                minHeight: 0,
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                paddingRight: '0.65rem',
-                display: 'block',
-                flexShrink: 0,
-                pointerEvents: isSplitResizing ? 'none' : 'auto',
-                boxSizing: 'border-box'
+            <ImageInspector
+              theme={theme}
+              preset={investigationData?.preset}
+              presetId={activePresetId}
+              customImageData={customImageData}
+              customImageUrl={customImageUrl}
+              onUploadCustom={onUploadCustomImage}
+              onPasteUrl={onPasteImageUrl}
+              vlmProvider="auto"
+              cameraConnected={true}
+              onCloseCamera={null}
+              nodes={investigationData?.final_graph?.nodes || saarData?.graph_data?.nodes || []}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={onSelectNode}
+              onOpenTool={(toolId, node) => {
+                if (node?.id && onSelectNode) onSelectNode(node.id);
+                onSelectTool(toolId);
               }}
-            >
-              <ImageInspector
-                preset={investigationData?.preset}
-                presetId={activePresetId}
-                customImageData={customImageData}
-                customImageUrl={customImageUrl}
-                onUploadCustom={onUploadCustomImage}
-                onPasteUrl={onPasteImageUrl}
-                vlmProvider="auto"
-                cameraConnected={true}
-                onCloseCamera={null}
-                nodes={investigationData?.final_graph?.nodes || saarData?.graph_data?.nodes || []}
-                selectedNodeId={selectedNodeId}
-                onSelectNode={onSelectNode}
-                onOpenTool={(toolId, node) => {
-                  if (node?.id && onSelectNode) onSelectNode(node.id);
-                  onSelectTool(toolId);
-                }}
-                onAskQuery={(q) => onSendToChat && onSendToChat(q)}
-                onOpenGlossary={() => onSelectTool('dictionary')}
-                domain={selectedDomain}
-                investigationData={investigationData}
-              />
-            </div>
-
-            {/* IDE-style Draggable Splitter Divider Junction */}
-            <div
-              className={`ide-split-junction ${isSplitResizing ? 'active-resizing' : ''}`}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setIsSplitResizing(true);
+              onAskQuery={(q) => {
+                if (onSendToChat) onSendToChat(q);
+                if (onClose) onClose();
               }}
-              title="Drag anywhere along this divider to adjust split between Image and Graph"
-            >
-              <div className="junction-line" />
-              <div className="junction-knob">
-                <GripVertical size={11} />
-              </div>
-            </div>
-
-            {/* Right Pane: Causal Knowledge Graph */}
-            <div
-              className="split-right-pane"
-              style={{
-                width: `calc(${100 - splitRatio}% - 6px)`,
-                minWidth: '280px',
-                maxWidth: 'calc(100% - 280px)',
-                height: '100%',
-                maxHeight: '100%',
-                minHeight: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                flexShrink: 0,
-                pointerEvents: isSplitResizing ? 'none' : 'auto',
-                boxSizing: 'border-box'
-              }}
-            >
-              <KnowledgeGraphCanvas
-                activeInvestigation={saarData || investigationData}
-                graphData={saarData?.graph_data || investigationData?.final_graph || null}
-                theme={theme}
-                selectedRelationship={selectedRelationship}
-                selectedNodeId={selectedNodeId}
-                onSelectNode={onSelectNode}
-                onSendToChat={onSendToChat}
-                isExpanded={isExpanded}
-                onToggleExpand={() => setIsExpanded(!isExpanded)}
-              />
-            </div>
+              onCloseDrawer={onClose}
+              onOpenGlossary={() => onSelectTool('dictionary')}
+              domain={selectedDomain}
+              investigationData={investigationData}
+              edges={investigationData?.final_graph?.edges || saarData?.graph_data?.edges || []}
+              steps={investigationData?.steps || []}
+              conclusion={investigationData?.conclusion || ''}
+              baseline={investigationData?.baseline || null}
+              sessions={sessions}
+              activeSessionId={activeSessionId}
+              onSwitchSession={onSwitchSession}
+              isProcessing={isProcessing}
+              overallConfidence={investigationData?.final_graph?.overall_confidence ?? saarData?.graph_data?.overall_confidence ?? null}
+              activeHypothesis={investigationData?.final_graph?.active_hypothesis || null}
+              uncertaintyScore={investigationData?.final_graph?.uncertainty_score ?? null}
+            />
           </div>
         )}
 
@@ -385,6 +407,7 @@ export function ToolCanvasDrawer({
           <div className="tool-body-pane">
             <DomainRAGRadar
               theme={theme}
+              selectedDomain={selectedDomain}
               onSendCitationToChat={(citeText) => {
                 if (onSendToChat) onSendToChat(citeText);
               }}
@@ -392,13 +415,14 @@ export function ToolCanvasDrawer({
           </div>
         )}
 
-        {/* Tool: ToddleAI Gait Analysis (GaitDashboard.jsx) */}
+        {/* Tool: Video Motion & Biomechanics Analysis (GaitDashboard.jsx) */}
         {effectiveTool === 'gait' && (
           <div className="tool-body-pane custom-pane-scrollbar" style={{ overflowY: 'auto', height: '100%' }}>
             <GaitDashboard
               onRegisterToChat={onSendToChat}
               initialResult={saarData}
               initialFile={customVideoFile}
+              selectedDomain={selectedDomain}
             />
           </div>
         )}

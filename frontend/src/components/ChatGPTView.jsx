@@ -91,7 +91,7 @@ const extractThoughtFromText = (rawText) => {
     const lines = preamble.split('\n').map(l => l.replace(/[*#]/g, '').trim()).filter(Boolean);
     const thought = {
       title: 'Thought process',
-      summary: lines[1] || 'Grounded spatial entities and formulated causal relationships',
+      summary: lines[1] || 'Grounded physical visual anchors and formulated causal relationships',
       steps: lines.length > 0 ? lines : ['Visual scene grounding completed', 'Causal graph formulated']
     };
     return { thought, cleanText: debugMatch[1].trim() };
@@ -805,43 +805,64 @@ export function ChatGPTView({
                     )}
 
                     {/* Sleek, subtle exploration shortcuts */}
-                    {msg.role === 'assistant' && msg.report && (
-                      <div className="chat-tool-badges-row compact-row">
-                        {selectedDomain === 'pediatrics' && (
-                          <button
-                            type="button"
-                            className="tool-invoke-badge compact"
-                            onClick={() => onOpenTool('gait')}
-                            title="Open Pediatric Gait Video Analysis"
-                          >
-                            <Film size={12} className="text-cyan" />
-                            <span>Video Analysis</span>
-                            <ArrowRight size={10} />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="tool-invoke-badge compact"
-                          onClick={() => onOpenTool('grounded')}
-                          title="Inspect spatial visual bounding boxes on image canvas"
-                        >
-                          <Crosshair size={12} className="text-emerald" />
-                          <span>Image Analysis</span>
-                          <ArrowRight size={10} />
-                        </button>
+                    {msg.role === 'assistant' && msg.report && (() => {
+                      const dLower = String(selectedDomain || '').toLowerCase();
+                      const isPed = dLower.includes('pediat') || dLower.includes('gait') || dLower.includes('toddle');
+                      const isSpo = dLower.includes('sport') || dLower.includes('athlet') || dLower.includes('badminton');
+                      const isMov = isPed || isSpo;
+                      return (
+                        <div className="chat-tool-badges-row compact-row">
+                          {isMov ? (
+                            <>
+                              <button
+                                type="button"
+                                className="tool-invoke-badge compact"
+                                onClick={() => onOpenTool('gait')}
+                                title={isSpo ? "Open Sports Kinematics Video Analysis" : "Open Pediatric Gait Video Analysis"}
+                              >
+                                <Film size={12} className="text-cyan" />
+                                <span>Video Analysis</span>
+                                <ArrowRight size={10} />
+                              </button>
+                              <button
+                                type="button"
+                                className="tool-invoke-badge compact"
+                                onClick={() => onOpenTool('rag')}
+                                title="Open Peer-Reviewed Scientific References"
+                              >
+                                <BookOpen size={12} className="text-indigo" />
+                                <span>{isPed ? "Clinical References" : "Scientific References"}</span>
+                                <ArrowRight size={10} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="tool-invoke-badge compact"
+                                onClick={() => onOpenTool('grounded')}
+                                title="Inspect visual grounding bounding boxes"
+                              >
+                                <Crosshair size={12} className="text-emerald" />
+                                <span>Image Analysis</span>
+                                <ArrowRight size={10} />
+                              </button>
 
-                        <button
-                          type="button"
-                          className="tool-invoke-badge compact"
-                          onClick={() => onOpenTool('graph')}
-                          title="Open active Causal Knowledge Graph"
-                        >
-                          <GitFork size={12} className="text-purple" />
-                          <span>Causal Graph ({msg.report.relationships?.length || (msg.report.final_graph?.edges?.length ?? 5)} Edges)</span>
-                          <ArrowRight size={10} />
-                        </button>
-                      </div>
-                    )}
+                              <button
+                                type="button"
+                                className="tool-invoke-badge compact"
+                                onClick={() => onOpenTool('graph')}
+                                title="Open active Causal Knowledge Graph"
+                              >
+                                <GitFork size={12} className="text-purple" />
+                                <span>Causal Graph ({msg.report.relationships?.length || (msg.report.final_graph?.edges?.length ?? 5)} Edges)</span>
+                                <ArrowRight size={10} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Interactive Human-in-the-Loop Inquiry Cards */}
                     {msg.openQuestions && Array.isArray(msg.openQuestions) && msg.openQuestions.length > 0 && (
