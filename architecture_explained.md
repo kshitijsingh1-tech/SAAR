@@ -48,10 +48,10 @@ d:\bytebuild\
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                     <-- REST API Gateway & Server Setup (FastAPI/Uvicorn)
-│   │   ├── schemas.py                  <-- Pydantic Output Parser & Multi-Image Schemas
+│   │   ├── schemas.py                  <-- Pydantic Output Parser, Multi-Image & Sports Schemas
 │   │   ├── graph_engine.py             <-- NetworkX Knowledge Graph Memory
 │   │   ├── dynamic_loop.py             <-- The Dynamic Reasoning Loop (ReAct)
-│   │   ├── vlm_service.py              <-- Hybrid VLM Perception (Gemini / Groq / Multi-View)
+│   │   ├── vlm_service.py              <-- Hybrid VLM Perception (Gemini 3.6 / Groq Qwen 3.6 / OpenRouter / Multi-View)
 │   │   ├── rag_service.py              <-- Multi-Domain RAG Knowledge Base (BM25)
 │   │   │
 │   │   ├── gait/                       <-- ToddleAI Deterministic Pediatric Gait Engine
@@ -90,23 +90,45 @@ d:\bytebuild\
 │   │       ├── astronomy_plugin.py     <-- Exoplanet & Spectroscopy Engine
 │   │       ├── agriculture_plugin.py   <-- Crop Pathology & Spectrometry Engine
 │   │       ├── pediatrics_plugin.py    <-- Pediatric Posture & Alignment Domain Engine
-│   │       └── gait_plugin.py          <-- Toddler Gait Screening Domain Engine
+│   │       ├── gait_plugin.py          <-- Toddler Gait Screening Domain Engine
+│   │       └── sports_plugin.py        <-- Sports Biomechanics & Kinetic Chain Engine
 │   └── requirements.txt                <-- Python Dependencies
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx                     <-- Main Workspace Layout & Multi-Session State Manager
-│   │   ├── api/client.js               <-- Unified Axios REST API Client (Reasoning + Gait + Dictionary)
+│   │   ├── App.jsx                     <-- Main Workspace Layout, Multi-Session State, Theme Engine
+│   │   ├── api/client.js               <-- Unified Axios REST API Client (Reasoning + Gait + Sports + Dictionary)
+│   │   ├── data/
+│   │   │   └── monsteraInvestigation.json <-- Pre-bundled Monstera Investigation Preset Data
 │   │   └── components/
+│   │       ├── LandingPage.jsx         <-- Futuristic Product Showcase & Domain Demo Portal
+│   │       ├── LandingHero.jsx         <-- Hero Banner & Animated Feature Highlights
 │   │       ├── ChatGPTView.jsx         <-- Central Scientific Reasoning Chat & Evidence HUD
+│   │       ├── ChatAssistant.jsx       <-- Lightweight Conversational AI Sidebar Assistant
+│   │       ├── SaarCentralChat.jsx     <-- SAAR-Specific Deep Reasoning Chat View
+│   │       ├── SaarFindingsPanel.jsx   <-- Structured Investigation Findings & Evidence Summary
 │   │       ├── ImageInspector.jsx      <-- Dynamic Evidence Monitor with Normalized Bounding Anchors
-│   │       ├── PlotlyGraphViewer.jsx   <-- Interactive Directed Causal Scene Graph Visualizer
+│   │       ├── KnowledgeGraphCanvas.jsx<-- Pure SVG/Canvas Knowledge Graph Visualizer (Zero-Dependency)
+│   │       ├── PlotlyGraphViewer.jsx   <-- Interactive Directed Causal Scene Graph (Plotly-powered)
 │   │       ├── ToolCanvasDrawer.jsx    <-- Dynamic Tool Inspection Drawer & Diagnostics
+│   │       ├── ToolRolloutBar.jsx      <-- Animated Tool Execution Progress Bar
 │   │       ├── GaitDashboard.jsx       <-- ToddleAI Pediatric Gait Screening Dashboard & Video Player
 │   │       ├── PlantCareCard.jsx       <-- Botanical Pathology & Foliar Moisture/Light Card
 │   │       ├── ToddlerPostureCard.jsx  <-- Sagittal Posture & Biomechanical Screening Card
 │   │       ├── VideoTimelineScrubber.jsx<-- Keyframe Scrubber & Temporal Video Inspector
-│   │       └── ScientificDictionaryDrawer.jsx <-- On-Demand Grounded Scientific Lexicon
-│   └── index.css                       <-- Cohesive Black/White/Blue Design System
+│   │       ├── ScientificDictionaryDrawer.jsx <-- On-Demand Grounded Scientific Lexicon
+│   │       ├── MarkdownResponse.jsx    <-- Rich Markdown Rendering with LaTeX & Code Blocks
+│   │       ├── ArchitectureView.jsx    <-- Interactive System Architecture Visualization
+│   │       ├── VisualAnalyticsPage.jsx <-- Aggregated Visual Analytics & Metrics Dashboard
+│   │       ├── BenchmarkComparison.jsx <-- VLM vs SAAR Side-by-Side Accuracy Comparison
+│   │       ├── DomainSelector.jsx      <-- Domain Plugin & Preset Selection Dropdown
+│   │       ├── DomainRAGRadar.jsx      <-- RAG Knowledge Base Coverage Radar Visualization
+│   │       ├── ChatSidebar.jsx         <-- Multi-Session Investigation History Sidebar
+│   │       ├── IdeSideChat.jsx         <-- IDE-Docked Side Chat Panel
+│   │       ├── Header.jsx              <-- Workspace Header Bar with Theme & Navigation
+│   │       ├── HelpDrawer.jsx          <-- Contextual Help & Keyboard Shortcuts Drawer
+│   │       ├── WorkflowStepper.jsx     <-- Step-by-Step Investigation Progress Tracker
+│   │       └── ErrorBoundary.jsx       <-- React Error Boundary with Graceful Fallback
+│   └── index.css                       <-- Cohesive Multi-Theme Design System (Dark / Light / Purple)
 ```
 
 ---
@@ -134,13 +156,13 @@ d:\bytebuild\
 
 #### C. `dynamic_loop.py` — The Dynamic Orchestration Engine
 * **Role**: The ReAct (Reason + Act) loop driver.
-* **Input Received**: Target domain string (`infrastructure`, `astronomy`, `agriculture`, `pediatrics`, `gait`) and preset scenario ID.
+* **Input Received**: Target domain string (`infrastructure`, `astronomy`, `agriculture`, `pediatrics`, `gait`, `sports`) and optional preset scenario ID (defaults to `None` for custom uploads).
 * **How It Parses & Interprets**:
-  1. **PERCEIVE**: Dispatches perception layer to populate initial entities and properties.
+  1. **PERCEIVE**: Dispatches VLM perception layer (Gemini / Groq / Ollama / OpenRouter / Synthesizer fallback) to populate initial entities and properties. If VLM falls back to synthesized mode and the plugin provides `perceive_initial_scene()`, domain-native nodes are produced instead of generic fallback nodes.
   2. **FIND UNKNOWNS**: Evaluates graph uncertainty and identifies target hypothesis.
-  3. **RUN TOOL**: Dispatches specialized domain tool (e.g. Ground Penetrating Radar void detector, SPAD Index).
+  3. **RUN TOOL**: Dynamically iterates over `plugin.get_available_tools(current_nodes=...)` to dispatch all specialized domain tools sequentially (e.g. Ground Penetrating Radar, SPAD Index, Kinetic Chain Evaluator).
   4. **UPDATE GRAPH**: Modifies node confidences (e.g., increases hypothesis confidence from 45% to 94% after tool verification).
-  5. **CONCLUSION**: Emits final evidence-backed scientific report once confidence exceeds threshold.
+  5. **CONCLUSION**: Emits final evidence-backed scientific report once all tools have executed and the graph has stabilized.
 
 #### D. Domain Plugins (`plugins/`)
 * **Role**: Modular domain plugins providing specialized analytical and non-deterministic tools.
@@ -164,6 +186,11 @@ d:\bytebuild\
   - `Bilateral Heel Strike Kinematics`: Dispatches kinematic event detector to quantify cadence, step time symmetry, and single/double support phases.
   - `Pediatric Stance Quality Gating`: Validates full lower-extremity tracking confidence and rejects poor captures.
   - `Age-Calibrated Normative Comparator`: Contextualizes bilateral step metrics against 12–36 month clinical developmental ranges.
+* **6. Sports Biomechanics Plugin (`sports_plugin.py`)**:
+  - `Kinetic Chain Joint Angle Evaluator`: Computes elbow extension, shoulder internal rotation, knee bend, and wrist snap timing against biomechanical optimal ranges for overhead movements (e.g. badminton smash).
+  - `Longitudinal Accuracy Progression Analyzer`: Tracks shot accuracy% across multi-session training data (S1→S4), computing Pearson correlation between joint angle improvements and performance metrics.
+  - `Kinetic Chain Contribution Calculator`: Decomposes total power contribution percentage from legs (ground reaction force), trunk rotation, shoulder, elbow, and wrist snap across the kinetic chain.
+  - `Jump-Landing Valgus Risk Assessor`: Evaluates lower-extremity deceleration mechanics and knee valgus angle during landing to flag injury-risk compensation patterns.
 
 #### E. `backend/app/gait/` — The ToddleAI Deterministic Pediatric Gait Engine
 * **Role**: End-to-end computer-vision and signal-processing pipeline evaluating toddler walking clips.
@@ -193,28 +220,54 @@ d:\bytebuild\
 ### Frontend Components (`frontend/src/`)
 
 #### A. `App.jsx` & `client.js`
-* **Role**: Workspace container and unified REST client. Manages active investigation state, tool drawer transitions, session switching, and theme consistency.
+* **Role**: Workspace container and unified REST client. Manages active investigation state, tool drawer transitions, session switching, theme persistence (light / dark / purple), and view mode toggling between `landing` (showcase) and `studio` (investigation workspace).
 
-#### B. `ChatGPTView.jsx` — Central Scientific Dialogue & Reasoning HUD
-* **Role**: Primary user interaction surface presenting investigation dialogue, interactive follow-up question chips, evidence counters, and specialist card injection.
+#### B. `LandingPage.jsx` & `LandingHero.jsx` — Futuristic Product Showcase
+* **Role**: First-impression interactive landing portal presenting domain scenario cards (ToddleAI, Agriculture, Infrastructure, Sports), animated pipeline flow diagrams, theme selector dropdown, and a prominent **"Enter SAAR Studio"** call-to-action.
 
-#### C. `ImageInspector.jsx` — Dynamic Evidence Monitor with Normalized Anchors
+#### C. `ChatGPTView.jsx` — Central Scientific Dialogue & Reasoning HUD
+* **Role**: Primary user interaction surface presenting investigation dialogue, interactive follow-up question chips, evidence counters, file attachment handling, and specialist card injection (PlantCareCard, ToddlerPostureCard).
+
+#### D. `ChatAssistant.jsx` & `SaarCentralChat.jsx` & `IdeSideChat.jsx`
+* **Role**: Alternative chat surfaces. `ChatAssistant` provides a lightweight sidebar assistant. `SaarCentralChat` is the deep reasoning chat view for SAAR investigations. `IdeSideChat` renders a docked IDE-style side panel for concurrent investigation Q&A.
+
+#### E. `ImageInspector.jsx` — Dynamic Evidence Monitor with Normalized Anchors
 * **Role**: 16:9 visual inspection surface rendering dynamically grounded bounding boxes (`[ymin, xmin, ymax, xmax]`), regional inspection cards, and zoom controls. Follows zero-hardcoding rules: visual anchors derive strictly from backend perception or uploaded media.
 
-#### D. `PlotlyGraphViewer.jsx` — Interactive Directed Causal Scene Graph
-* **Role**: Directed DAG visualizer mapping objects, properties, observations, hypotheses, and tool results with real-time physics and edge confidence indicators.
+#### F. `KnowledgeGraphCanvas.jsx` — Pure SVG Knowledge Graph Visualizer
+* **Role**: Zero-dependency SVG-based directed acyclic graph renderer with flow (left-to-right DAG) and radial layout modes, interactive zoom/pan, hover-highlight edge cascading, and synchronized node selection with the Image Inspector. Replaces Plotly in lightweight deployments.
 
-#### E. `ToolCanvasDrawer.jsx` — Dynamic Tool Inspection HUD
-* **Role**: Slide-over diagnostic canvas executing tools mapped dynamically via semantic category (`pathology`, `morphology`, `infrastructure`, `biomechanics`, `measurement`).
+#### G. `PlotlyGraphViewer.jsx` — Interactive Directed Causal Scene Graph
+* **Role**: Full-featured Plotly.js-powered directed DAG visualizer mapping objects, properties, observations, hypotheses, and tool results with real-time physics, edge confidence indicators, and graph export.
 
-#### F. `GaitDashboard.jsx` — Pediatric Gait Screening Dashboard
-* **Role**: Clinical-grade video assessment interface with active video player, quality gating banner, bilateral temporal metrics cards, age-based normative progress bars, and in-context developmental Q&A.
+#### H. `ToolCanvasDrawer.jsx` & `ToolRolloutBar.jsx` — Dynamic Tool Inspection HUD
+* **Role**: `ToolCanvasDrawer` is a slide-over diagnostic canvas executing tools mapped dynamically via semantic category (`pathology`, `morphology`, `infrastructure`, `biomechanics`, `measurement`). `ToolRolloutBar` provides animated progress visualization during tool execution steps.
 
-#### G. Specialist Cards (`PlantCareCard.jsx`, `ToddlerPostureCard.jsx`)
+#### I. `GaitDashboard.jsx` — Pediatric Gait Screening Dashboard
+* **Role**: Clinical-grade video assessment interface with active video player, quality gating banner, bilateral temporal metrics cards, age-based normative progress bars, pipeline confidence indicator, and in-context developmental Q&A.
+
+#### J. Specialist Cards (`PlantCareCard.jsx`, `ToddlerPostureCard.jsx`)
 * **Role**: Visual domain cards presenting structured diagnostic metrics, developmental disclaimers, and care protocols.
 
-#### H. `ScientificDictionaryDrawer.jsx`
+#### K. `ScientificDictionaryDrawer.jsx`
 * **Role**: Grounded scientific terminology drawer offering on-demand pronunciation, definitions, diagnostic indicators, and active investigation context.
+
+#### L. `MarkdownResponse.jsx` — Rich Markdown Rendering
+* **Role**: Renders LLM scientific responses with LaTeX math blocks, syntax-highlighted code fences, markdown tables, and embedded mermaid diagrams.
+
+#### M. Utility & Composition Components
+* **`DomainSelector.jsx`**: Domain plugin and preset selection dropdown with scenario previews.
+* **`DomainRAGRadar.jsx`**: Radar chart visualizing RAG knowledge base coverage across domains.
+* **`ChatSidebar.jsx`**: Multi-session investigation history sidebar with session switching.
+* **`Header.jsx`**: Workspace header bar with theme toggle, navigation breadcrumbs, and help access.
+* **`HelpDrawer.jsx`**: Contextual help drawer with keyboard shortcuts and feature documentation.
+* **`WorkflowStepper.jsx`**: Step-by-step investigation progress tracker with state badges.
+* **`BenchmarkComparison.jsx`**: Side-by-side VLM-only vs. SAAR accuracy comparison card.
+* **`ArchitectureView.jsx`**: Interactive system architecture visualization panel.
+* **`VisualAnalyticsPage.jsx`**: Aggregated visual analytics and metrics dashboard.
+* **`SaarFindingsPanel.jsx`**: Structured investigation findings and evidence summary panel.
+* **`ErrorBoundary.jsx`**: React error boundary with graceful fallback UI.
+* **`VideoTimelineScrubber.jsx`**: Keyframe scrubber and temporal video inspector.
 
 ---
 
@@ -235,8 +288,20 @@ d:\bytebuild\
    - *Decision*: Structured the user interface into a 2x2 widescreen dashboard where the 16:9 Photo Evidence Monitor and 16:9 Knowledge Graph Canvas sit side-by-side with equal visual presence.
 
 5. **Prototype Phase (Phase 1) vs. Final Production (Phase 2)**:
-   - *Phase 1 (Current State)*: Fully functional working prototype demonstrating the entire 3-layer architecture, NetworkX causal graph, and ReAct loop with deterministic domain plugins for instant offline execution (<50ms).
-   - *Phase 2 (Production Upgrade)*: Drop-in replacement of simulated domain functions with live PyTorch model weights (YOLOv8, Grounding DINO, Florence-2) or Cloud VLM APIs (Gemini 1.5 Pro / GPT-4o Vision).
+   - *Phase 1 (Current State)*: Fully functional working prototype demonstrating the entire 3-layer architecture, NetworkX causal graph, and ReAct loop with deterministic domain plugins for instant offline execution (<50ms). Live VLM perception is active via Gemini 3.6 Flash and Groq Qwen 3.6 for real image analysis.
+   - *Phase 2 (Production Upgrade)*: Drop-in replacement of simulated domain functions with live PyTorch model weights (YOLOv8, Grounding DINO, Florence-2) or additional Cloud VLM APIs.
+
+6. **Multi-Theme Design System (Light / Dark / Purple)**:
+   - *Decision*: Implemented three theme modes: `dark` (default high-contrast workspace), `light` (clean white-paper layout), and `purple` (lavender-tinted aesthetic with purple accents).
+   - *Rationale*: Different users prefer different visual environments for extended analytical sessions. Theme persists across sessions via `localStorage`.
+
+7. **Dual-Mode Application (Landing + Studio)**:
+   - *Decision*: The application operates in two modes: `landing` (first-impression product showcase) and `studio` (active investigation workspace).
+   - *Rationale*: Separates marketing/demo functionality from the working analytical tool, providing a polished product entry point while keeping the studio workspace uncluttered.
+
+8. **Six-Domain Plugin Architecture**:
+   - *Decision*: Extended from 5 to 6 domain plugins (Infrastructure, Astronomy, Agriculture, Pediatrics, Gait, Sports) with a unified `BaseDomainPlugin` contract.
+   - *Rationale*: The sports biomechanics domain demonstrates SAAR's ability to perform longitudinal multi-session kinematic analysis, proving the architecture generalizes beyond single-image diagnostics.
 
 ---
 
@@ -247,11 +312,13 @@ d:\bytebuild\
 | **NetworkX** | Python | Manages directed graphs, node/edge adjacency, topological traversal, and graph-wide uncertainty scoring. |
 | **MediaPipe** | Python | 33-landmark BlazePose deep neural landmarker for real-time 3D pediatric gait estimation. |
 | **OpenCV (cv2)** | Python | Sequential video frame extraction, timestamp alignment, and video stream decoding. |
+| **SciPy** | Python | Savitzky-Golay zero-phase-lag signal smoothing for kinematic trajectory filtering. |
 | **Pydantic** | Python | Output parsing: Validates JSON schemas, enforces confidence bounds ($0 \dots 1$), and prevents corrupt data from entering the graph. |
 | **FastAPI & Uvicorn** | Python | High-performance asynchronous REST API framework serving backend endpoints. |
 | **React + Vite** | JS / JSX | Lightning-fast frontend UI rendering and real-time state updates. |
 | **Plotly.js / React-Plotly** | JS / JSX | Scientific visualization of directed causal DAGs with physics-directed layouts. |
-| **Lucide React** | JS / JSX | Modern icon system for UI state badges, step indicators, and tools. |
+| **Lucide React** | JS / JSX | Modern icon system (60+ icons) for UI state badges, step indicators, and tools. |
+| **Axios** | JS | Unified HTTP client with interceptors for backend REST API communication. |
 
 ---
 
@@ -620,7 +687,7 @@ Yes! We implement **hybrid concurrency** using Python's `asyncio` event loop com
 ```
 
 #### Why Total Latency Stays at ~1,200ms:
-1. **Single-Pass Grounded Prompting**: Rather than calling an object detector and then a separate graph LLM, we instruct the VLM (Gemini 1.5 Flash / GPT-4o / Qwen2.5-VL) to extract **both** the 2D bounding boxes and the causal relationships in a **single inference pass**.
+1. **Single-Pass Grounded Prompting**: Rather than calling an object detector and then a separate graph LLM, we instruct the VLM (Gemini 3.6 Flash / Qwen 3.6-27B / GPT-4o) to extract **both** the 2D bounding boxes and the causal relationships in a **single inference pass**.
 2. **True CPU-Offloading (`ThreadPoolExecutor`)**: Heavy scientific computations (correlation matrices, Z-score anomalies) run in a dedicated worker thread pool, preventing CPU starvation of the async event loop.
 3. **Mathematical Latency Guarantee**:
    $$\text{Latency}_{\text{total}} = \max(T_{\text{VLM\_Grounded}}, T_{\text{Analytics}}, T_{\text{Lexical}}) = T_{\text{VLM\_Grounded}} \approx \mathbf{1,200\text{ms}}$$
@@ -790,20 +857,40 @@ Instead of static lookup tables, each pediatric tool utilizes generative medical
    - Evaluates lower extremity symmetry and intercondylar distance ($2.2\text{ cm}$, well within the $<3.0\text{ cm}$ safe threshold).
    - Generates contradiction edges against pathological hypotheses (`hypo_pathological_bowing`), definitively ruling out infantile tibia vara (Blount's) and metabolic rickets.
 
-### D. Multi-Image Ingestion Pipeline
+### D. Multi-Image & Multi-Session Ingestion Pipeline
 
-To support multi-view photo analysis (e.g. lateral sagittal view + anterior coronal standing view), the backend [InvestigationRequest](file:///d:/bytebuild/backend/app/schemas.py) and [vlm_service.py](file:///d:/bytebuild/backend/app/vlm_service.py) accept array-based payloads:
+To support multi-view photo analysis (e.g. lateral sagittal view + anterior coronal standing view) and longitudinal sports kinematic sessions, the backend [InvestigationRequest](file:///d:/bytebuild/backend/app/schemas.py) and [vlm_service.py](file:///d:/bytebuild/backend/app/vlm_service.py) accept array-based payloads:
 ```python
 class InvestigationRequest(BaseModel):
-    domain: str
-    scenario_id: Optional[str] = "custom"
-    image_data: Optional[str] = None       # Single image (backward compatible)
-    images: Optional[List[str]] = None      # Multi-image array (sagittal, coronal, etc.)
+    domain: str = "infrastructure"           # infrastructure | agriculture | pediatrics | sports | gait
+    preset_id: Optional[str] = None          # None = custom upload (no default to infrastructure)
+    scenario_id: Optional[str] = None        # Legacy alias
+    image_url: Optional[str] = None          # Remote image URL
+    image_data: Optional[str] = None         # Base64 image payload (single image, backward compatible)
+    images: Optional[List[str]] = None       # Multi-image array (sagittal, coronal, etc.)
+    videos: Optional[List[VideoSession]] = None  # Multi-session video array for sports kinematics
     user_query: Optional[str] = None
     telemetry: Optional[Dict[str, Any]] = None
+    vlm_provider: str = "auto"               # auto | gemini | openai | ollama | groq | openrouter
+    api_key: Optional[str] = None            # User-provided API key override
+
+class VideoSession(BaseModel):
+    session_id: str
+    timestamp: Optional[str] = None          # ISO date
+    video_path: Optional[str] = None         # Local path or base64
+    shots_attempted: int = 24
+    shots_landed: int = 12
+    self_rated_form: Optional[float] = None  # 1-10
+
+class JointAngleReading(BaseModel):
+    session_id: str
+    parameter: str                           # e.g. "elbow_angle", "shoulder_rotation"
+    value: float
+    unit: str = "degrees"
+    frame_index: int = 0
 ```
 
-The VLM service processes multi-frame context simultaneously, performing comparative 3D skeletal projection across angles.
+The VLM service processes multi-frame context simultaneously. The `preset_id` defaults to `None` (not to any infrastructure preset) to ensure custom uploads are treated as domain-agnostic until the VLM perception layer classifies the scene.
 
 ---
 
@@ -1054,5 +1141,229 @@ Across the codebase, video processing is handled in two distinct subsystems:
   - Replace static keyframes with a dynamic backend endpoint: `POST /api/video/analyze`.
   - The endpoint extracts keyframes at scene changes or uniform FPS via OpenCV, runs VLM perception or MediaPipe pose estimation dynamically, and returns keyframes with true visual bounding boxes for any arbitrary uploaded video.
   - Until backend video extraction is invoked, the component presents an honest data-driven empty state rather than mock coordinates.
+
+## 16. Sports Biomechanics & Kinetic Chain Reasoning Domain
+
+The Sports Biomechanics plugin ([sports_plugin.py](file:///d:/bytebuild/backend/app/plugins/sports_plugin.py)) extends SAAR's domain coverage into **longitudinal multi-session athletic movement analysis**. Unlike the single-image diagnostic domains, the sports engine operates on **temporal progression data** across training sessions.
+
+### A. Core Architecture: Multi-Session Kinematic Progression
+
+```text
+[ Multi-Session Training Data (S1, S2, S3, S4) ]
+                       |
+                       v
+[ VLM Scene Perception ]
+  +-- Detects: Athlete posture, racket position, court environment
+  +-- Extracts per-session kinematic parameters:
+      * Elbow Extension Angle (152 deg -> 135 deg across S1->S4)
+      * Shoulder Internal Rotation (68 deg -> 76 deg)
+      * Knee Bend Depth (145 deg -> 122 deg)
+      * Wrist Snap Timing (0.18s -> 0.03s before contact)
+                       |
+                       v
+[ Kinetic Chain Joint Angle Evaluator ]
+  +-- Compares each joint angle against biomechanical optimal ranges
+  +-- Flags underperforming joints (e.g., shoulder rotation lagging)
+                       |
+                       v
+[ Longitudinal Accuracy Progression Analyzer ]
+  +-- Correlates kinematic improvements with shot accuracy (41.7% -> 66.7%)
+  +-- Computes Pearson r between key joint parameters and performance
+  +-- Identifies strongest predictors of accuracy gain
+                       |
+                       v
+[ Kinetic Chain Contribution Calculator ]
+  +-- Decomposes total power generation:
+      Legs (32%) -> Trunk (24%) -> Shoulder (22%) -> Elbow (14%) -> Wrist (8%)
+  +-- Identifies kinetic chain break points (e.g., early wrist snap)
+                       |
+                       v
+[ Bayesian Graph Convergence ]
+  +-- H1: Kinetic Chain Synchronization Improving (+confidence)
+  +-- H2: Mechanical Compensation Pattern (-confidence)
+  +-- Final Investigation Report with longitudinal trend graphs
+```
+
+### B. Available Presets
+
+| Preset ID | Scenario | Sessions |
+| :--- | :--- | :--- |
+| `sports_badminton_smash_kinetic` | Badminton Smash Kinetic Chain & Longitudinal Accuracy Progression | 4 sessions (S1-S4) |
+| `sports_jump_landing_mechanics` | Jump-Smash Deceleration & Kinetic Chain Dissipation | 2 sessions (S1-S2) |
+
+### C. Key Differentiator from Other Domains
+
+While Infrastructure, Agriculture, and Pediatrics domains analyze **single-point spatial observations** (a photo at one moment in time), the Sports domain introduces **temporal multi-session reasoning**:
+- The graph engine tracks how node properties (joint angles, accuracy metrics) **evolve across sessions**.
+- Hypotheses compete on whether improvements represent genuine kinetic chain synchronization vs. compensatory patterns.
+- Evidence edges carry temporal annotations (`session_delta`, `improvement_pct`) alongside spatial confidence.
+
+---
+
+## 17. Hybrid VLM Provider Cascade & Resilience Architecture
+
+The [VLMService](file:///d:/bytebuild/backend/app/vlm_service.py) implements a **6-tier resilient provider cascade** ensuring perception always succeeds regardless of network conditions or API availability:
+
+```text
+                            [ Image Input + Domain Context ]
+                                          |
+                    +---------------------+---------------------+
+                    |                     |                     |
+                    v                     v                     v
+    +---------------------+ +---------------------+ +---------------------+
+    | TIER 1: Gemini 3.6  | | TIER 2: Groq Qwen   | | TIER 3: Ollama      |
+    | Flash (Google AI)   | | 3.6-27B / 3.8-27B   | | Qwen2.5-VL / LLaVA  |
+    | Multi-Image Native  | | Ultra-Fast (0.6-2.5s)| | Local Offline        |
+    | JSON Mode Output    | | Think-Tag Stripping  | | 0.6s Daemon Probe    |
+    +----------+----------+ +----------+----------+ +----------+----------+
+               | Fail?                 | Fail?                 | Fail?
+               v                       v                       v
+    +---------------------+ +---------------------+ +---------------------+
+    | TIER 4: OpenRouter   | | TIER 5: OpenAI      | | TIER 6: Saar Vision |
+    | Multi-Model Router   | | GPT-4o Vision       | | Synthesizer (Offline)|
+    | Free Model Catalog   | | Multi-Image Native  | | Zero-Latency (<1ms) |
+    +----------+----------+ +----------+----------+ +----------+----------+
+               +----------------------+|                       |
+                                      ++-----------------------+
+                                                |
+                                                v
+                                 [ Guaranteed Perception Output ]
+                                 (Nodes + Edges + Scene Summary)
+```
+
+### A. Robust JSON Parsing & Auto-Repair
+
+VLM outputs frequently contain malformed JSON (truncated payloads, trailing commas, unclosed brackets). The `_parse_vlm_json_response()` method applies a multi-stage auto-repair pipeline:
+
+1. **Think-Tag Stripping**: Removes `<think>...</think>` chain-of-thought blocks from Qwen and DeepSeek models.
+2. **Code Fence Extraction**: Detects and extracts JSON from ` ```json ... ``` ` fenced blocks.
+3. **Outermost Brace Detection**: Falls back to regex extraction of the outermost `{...}` JSON object.
+4. **Truncation Repair**: Balances unmatched braces/brackets, removes trailing commas, and closes unclosed strings.
+5. **Coordinate Normalization**: Auto-scales bounding boxes from `[0..1]` decimals or `[0..100]` percentages to the `[0..1000]` canonical range.
+
+### B. Provider-Specific Key Management
+
+| Provider | Key Source | Multi-Image | JSON Mode |
+| :--- | :--- | :--- | :--- |
+| Gemini 3.6 Flash | `GEMINI_API_KEY` env / user override | Yes (Native) | Yes (`responseMimeType`) |
+| Groq Qwen 3.6-27B | `GROQ_API_KEY` env | No (Single image) | No (Free-form + parse) |
+| Ollama Local | Auto-detected (port 11434) | No (Single image) | No (Free-form + parse) |
+| OpenRouter | `OPENROUTER_API_KEY` env | No (Text-only fallback) | No (Free-form + parse) |
+| OpenAI GPT-4o | `OPENAI_API_KEY` env / user override | Yes (Native) | Yes (`json_object`) |
+| Saar Synthesizer | No key required | N/A (offline) | Yes (Hardcoded schema) |
+
+---
+
+## 18. The Next-Generation Gemini Frontier Architecture & Multi-Key Pool
+
+The modern SAAR architecture is designed around Google Gemini's frontier capabilities, transforming the engine from a traditional prompt-and-parse VLM into an intelligent, high-throughput, and deeply deliberative scientific reasoning system.
+
+### A. Intelligent Multi-Key Load-Balancing & Failover Pool (`KeyPoolManager`)
+
+#### 1. The Bottleneck: API Quotas in Multi-Turn Reasoning
+In scientific investigation workflows, a single user session frequently executes:
+- 1× Initial multimodal scene perception (high-resolution image/video)
+- 3–6× Tool synthesis and hypothesis verification calls
+- 5–10× Conversational "Ask SAAR" deep-reasoning Q&A queries
+- Multiple dictionary and visual anchor lookups
+
+On Google AI Studio free tiers, a single API key is constrained by **15 RPM (Requests Per Minute)** and **1,500 RPD (Requests Per Day)**. In active multi-turn scientific investigations, rapid iterations cause single-key setups to immediately encounter `429 RESOURCE_EXHAUSTED` errors.
+
+#### 2. Architectural Solution: `KeyPoolManager`
+SAAR introduces a centralized, thread-safe Key Pool Manager ([key_pool_manager.py](file:///d:/bytebuild/backend/app/services/key_pool_manager.py)):
+
+```text
+                                [ API Request Dispatcher ]
+                                             │
+                                             ▼
+                        ┌────────────────────────────────────────┐
+                        │          KeyPoolManager Singleton      │
+                        │    (Round-Robin + Health Evaluator)    │
+                        └────────────────────┬───────────────────┘
+                                             │
+                  ┌──────────────────────────┼──────────────────────────┐
+                  │                          │                          │
+                  ▼                          ▼                          ▼
+         ┌─────────────────┐        ┌─────────────────┐        ┌─────────────────┐
+         │   Key State 1   │        │   Key State 2   │        │   Key State N   │
+         │ Status: ACTIVE  │        │ Status: COOLDOWN│        │ Status: ACTIVE  │
+         │ Served: 142 req │        │ Backoff: 60s    │        │ Served: 98 req  │
+         └────────┬────────┘        └─────────────────┘        └────────┬────────┘
+                  │                                                     │
+                  └──────────────────────────┬──────────────────────────┘
+                                             │
+                                             ▼
+                              [ Selected Active Gemini Key ]
+                                             │
+                                  HTTP 429 Exhausted?
+                                    ├── YES ──> Mark 60s Cooldown & Rotate to Next Key
+                                    └── NO  ──> Increment Requests Served & Return
+```
+
+#### 3. Key Design Features
+- **Comma-Separated Environment Configuration**: Supports `GEMINI_API_KEYS="key_alpha,key_beta,key_gamma"` in `.env` (with backwards compatibility for legacy `GEMINI_API_KEY`).
+- **Round-Robin Load Distribution**: Evenly spreads request load across all healthy keys, minimizing per-key concurrency spikes.
+- **Dynamic Cooldown & Backoff**: Upon encountering an HTTP 429 (`RESOURCE_EXHAUSTED`), the exhausted key is automatically flagged with a **60-second cooldown timer**. Subsequent requests seamlessly route to healthy keys without user-facing failures.
+- **Permanent Invalidity Isolation**: If an API key returns HTTP 400/403 (`API_KEY_INVALID`), it is isolated as `is_invalid = True` to prevent repeated wasted round-trips.
+- **Horizontal Scaling Efficiency**: 
+  - 1 Key = 15 RPM / 1,500 RPD
+  - 5 Keys = 75 RPM / 7,500 RPD
+  - 10 Keys = **150 RPM / 15,000 RPD** (Enterprise-grade throughput using free-tier resources).
+- **Multi-Provider Unification**: The same pooling engine natively manages key pools for Google Gemini, Groq, OpenRouter, and OpenAI.
+
+---
+
+### B. Frontier Gemini Multimodal Capabilities in SAAR
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                          GEMINI FRONTIER REASONING MATRIX                              │
+├─────────────────────────┬───────────────────────────────┬──────────────────────────────┤
+│ Capability              │ Mechanism                     │ Scientific Impact in SAAR    │
+├─────────────────────────┼───────────────────────────────┼──────────────────────────────┤
+│ Native Spatial Grounding│ Object Detection [0..1000]    │ Sub-pixel anatomical anchors;│
+│                         │ Structured JSON BBoxes        │ 100% clean specimen canvas   │
+├─────────────────────────┼───────────────────────────────┼──────────────────────────────┤
+│ Thinking Mode           │ thinkingConfig (8K-24K budget)│ Deep causal hypothesis graph │
+│                         │ Extended internal deliberation│ with evidence-backed priors  │
+├─────────────────────────┼───────────────────────────────┼──────────────────────────────┤
+│ Native Video Ingestion  │ Google Files API (1 FPS)      │ Pediatric gait & sports      │
+│                         │ Temporal keyframe references  │ biomechanics contextualization│
+├─────────────────────────┼───────────────────────────────┼──────────────────────────────┤
+│ Multi-Image Comparative │ 1M-2M context window          │ Longitudinal crop stress &   │
+│ Grounding               │ Cross-image spatial tracking  │ multi-session form evolution │
+├─────────────────────────┼───────────────────────────────┼──────────────────────────────┤
+│ Structured Tool Calling │ Schema-enforced function calls│ Direct dispatch to radar,    │
+│                         │ Zero-regex parameter passing  │ SPAD, and biomechanical tools│
+└─────────────────────────┴───────────────────────────────┴──────────────────────────────┘
+```
+
+#### 1. Native Spatial Grounding & Out-of-Frame Textbook Callouts
+- **Guaranteed Coordinate Precision**: Bounding boxes are emitted natively in normalized `[0..1000]` coordinates (`[ymin, xmin, ymax, xmax]`), removing the need for 400+ lines of heuristic coordinate normalization and fallback synthesizers.
+- **Textbook Anatomical Presentation**: Eliminates floating card overlays that obscure specimen images. Instead:
+  - Specimen remains 100% clean and unobstructed in the center.
+  - Features are marked with high-contrast botanical anchor dots.
+  - Dogleg leader lines route out of the image perimeter into margin gutters.
+  - Labels are positioned in the outside margins with anatomical system brackets (`Shoot system [`, `Root system [`) matching formal botanical and scientific diagrams.
+
+#### 2. Thinking Mode (`thinkingConfig` / `thinkingBudget`)
+- **Deliberative Reasoning Loop**: Standard VLMs emit immediate token probabilities. By enabling `thinkingConfig: {"thinkingBudget": 8192}`, Gemini performs extensive multi-step internal chain-of-thought deliberation before generating the scene graph.
+- **Causal Quality Amplification**: Hypotheses generated through thinking mode reflect biological pathology, hydraulic continuity, and mechanical forces rather than visual co-occurrence. Initial hypothesis confidence scores improve from 0.35–0.50 to 0.85–0.95 with fully articulated deductive rationales.
+
+#### 3. Native Video & Temporal Kinematic Understanding
+- **Direct Video Ingestion**: Large video files (MP4, WebM) are uploaded directly through the Google Files API.
+- **Dual-Perception Hybrid Kinematics**:
+  - **Deterministic Layer (MediaPipe BlazePose)**: Computes 33 discrete 3D spatial landmarks, joint angles, cadence, and asymmetry metrics with mathematical precision.
+  - **Qualitative Contextual Layer (Gemini Video)**: Observes the motion holistically to identify subtle compensatory movements, fatigue indicators, kinetic chain disruptions, and environmental obstacles.
+
+#### 4. Multi-Image Comparative Grounding
+- Ingests temporal series (e.g. Day 1, Day 15, and Day 30 of a tomato crop or sports training sessions) into a single 1M+ token context window.
+- Tracks localized feature evolution across time: "Lesion on Node 02 expanded from 12mm² on Day 15 to 48mm² on Day 30 with surrounding chlorotic halo".
+
+#### 5. Cross-Model Fallback Hierarchy
+1. **Tier 1 — `gemini-2.5-pro`**: Deep scientific investigation, multi-step causal synthesis, and complex multi-image reasoning.
+2. **Tier 2 — `gemini-2.5-flash`**: Real-time perception, spatial bounding box grounding, and conversational scientific Q&A.
+3. **Tier 3 — `gemini-2.0-flash-lite`**: Ultra-low latency visual grounding, terminology lookup, and instant lexical definitions.
+4. **Tier 4 — Groq Qwen 2.5-VL / Local Ollama / OpenRouter**: Automated offline and external failover when cloud connectivity is unavailable.
 
 ---

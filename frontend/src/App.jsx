@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
   uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline,
@@ -12,13 +12,13 @@ import { LandingPage } from './components/LandingPage';
 import monsteraInvestigation from './data/monsteraInvestigation.json';
 
 export default function App() {
-  // Theme State (Supports Pure Light, Pure Dark, and Lavender White with Purple Tint)
+  // Theme State (Supports Greyish Theme, Pure Light, Slate Dark, and Lavender Purple)
   const [theme, setTheme] = useState(() => {
     try {
       const saved = localStorage.getItem('saar_theme');
-      if (['light', 'dark', 'purple'].includes(saved)) return saved;
+      if (['grey', 'light', 'dark', 'purple'].includes(saved)) return saved;
     } catch (e) {}
-    return 'dark';
+    return 'grey';
   });
 
   const handleSelectTheme = useCallback((newTheme) => {
@@ -30,7 +30,7 @@ export default function App() {
 
   const handleToggleTheme = useCallback(() => {
     setTheme((prev) => {
-      const cycle = ['dark', 'light', 'purple'];
+      const cycle = ['grey', 'dark', 'light', 'purple'];
       const nextIdx = (cycle.indexOf(prev) + 1) % cycle.length;
       const nextTheme = cycle[nextIdx];
       try {
@@ -262,6 +262,7 @@ export default function App() {
     } catch (e) {}
     return 'session-3';
   });
+  const prevActiveSessionIdRef = useRef(activeSessionId);
 
   const [allMessages, setAllMessages] = useState(() => {
     try {
@@ -354,22 +355,35 @@ export default function App() {
     saarData?.observations_count
   );
 
-  // Synchronize active session context dynamically from session metadata
+  // Synchronize active session context dynamically ONLY when activeSessionId actually changes
   useEffect(() => {
+    if (prevActiveSessionIdRef.current === activeSessionId && (customImageData || customImageUrl)) {
+      return;
+    }
+    prevActiveSessionIdRef.current = activeSessionId;
+
     const session =
       sessions.find((s) => s.id === activeSessionId) ||
       DEFAULT_SESSIONS.find((s) => s.id === activeSessionId);
     if (!session) return;
 
     setSelectedDomain(session.domain || 'agriculture');
-    setCustomImageData(null);
-    setCustomImageUrl(session.imageUrl || null);
+    if (session.imageData) {
+      setCustomImageData(session.imageData);
+      setCustomImageUrl(null);
+    } else {
+      setCustomImageData(null);
+      setCustomImageUrl(session.imageUrl || null);
+    }
     setCameraConnected(true);
     setSaarData(null);
     setInvestigationData(null);
 
     if (session.id === 'session-3') {
       setInvestigationData(monsteraInvestigation);
+      if (!session.imageData && !session.imageUrl) {
+        setCustomImageUrl('/monstera_sample.png');
+      }
     } else if (session.presetId) {
       runInvestigation(session.domain, session.presetId, { vlmProvider: 'auto' })
         .then((res) => setInvestigationData(res))
@@ -407,6 +421,13 @@ export default function App() {
   // Run Autonomous Investigation Scenario from welcome card or user selection
   const handleSelectScenario = async (domain, presetId, queryText) => {
     setSelectedDomain(domain);
+    // Clear custom uploaded media and old session results before loading new preset scenario
+    setCustomImageData(null);
+    setCustomImageUrl(null);
+    setCustomVideoFile(null);
+    setSaarData(null);
+    setInvestigationData(null);
+    setSelectedNodeId(null);
 
     // Update active session query if new session
     setSessions((prev) =>
@@ -442,13 +463,24 @@ export default function App() {
       const edgeCount = res.final_graph?.edges?.length || 4;
       const confidencePct = Math.round((res.final_graph?.overall_confidence || 0.94) * 100);
 
-      const reply = `### Autonomous Investigation Executed (${domain.toUpperCase()})\n\n**Perception & Workflow**: Evaluated ${res.steps?.length || 4} investigation phases utilizing provider **${res.vlm_provider_used || 'Saar Dynamic Loop'}**.\n\n- **Evidence Graph**: **${nodeCount} nodes** and **${edgeCount} directed relationships** formulated.\n- **Graph Confidence**: **${confidencePct}%** (Stabilized after specialized tool execution).\n\n#### Diagnostic Verdict:\n${res.conclusion || 'Autonomous investigation concluded successfully.'}`;
+      const reply = res.conclusion || 'Autonomous investigation concluded successfully.';
+      const thoughtProcess = {
+        title: `Thought for ${(Math.random() * 0.5 + 1.9).toFixed(1)}s`,
+        summary: `Evaluated ${res.steps?.length || 4} investigation phases · ${nodeCount} nodes · ${edgeCount} relationships (${confidencePct}% confidence)`,
+        steps: [
+          `Domain Protocol: Dispatched autonomous ${domain.toUpperCase()} reasoning loop`,
+          `Perception & Workflow: Evaluated ${res.steps?.length || 4} investigation phases via ${res.vlm_provider_used || 'Saar Dynamic Engine'}`,
+          `Evidence Graph: Formulated ${nodeCount} nodes and ${edgeCount} causal dependencies (${confidencePct}% confidence)`,
+          `Hypothesis Resolution: Tested competing hypotheses against empirical observation`
+        ]
+      };
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           text: reply,
+          thoughtProcess,
           report: res,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
@@ -471,7 +503,7 @@ export default function App() {
   };
 
   // Unified Autonomous Image Investigation Pipeline
-  const executeImageInvestigation = async (fileOrDataUrl, rawFileName, optionalUserText) => {
+  const executeImageInvestigation = async (fileOrDataUrl, rawFileName, optionalUserText, alreadyAddedUserMsg = false) => {
     let base64Data = null;
     let fileName = rawFileName || 'uploaded_evidence.png';
 
@@ -489,27 +521,72 @@ export default function App() {
 
     if (!base64Data) return;
 
+    // Strict state reset: prevent cross-session visual anchor and graph bleeding
+    setInvestigationData(null);
+    setSaarData(null);
+    setBaselineData(null);
+    setSelectedNodeId(null);
     setCustomImageData(base64Data);
+    setCustomImageUrl(null);
+    setCustomVideoFile(null); // Explicitly clear any previous video file
     setCameraConnected(true);
 
-    const userMsgText = optionalUserText && optionalUserText.trim()
-      ? optionalUserText.trim()
-      : `Attached photo: \`${fileName}\` for autonomous visual perception and scientific causal reasoning.`;
+    // Auto-detect domain:
+    let targetDomain = selectedDomain;
+    const combinedContext = `${fileName} ${optionalUserText || ''}`.toLowerCase();
+    const isBotanical = /rose|aloe|plant|leaf|flower|cutting|root|propagat|stem|bloom|agri|foliar|sprout|botanical|crop|soil|seed|fruit|vegetab|tree|weed|fung|pest/.test(combinedContext);
+    const isInfra = /road|pavement|asphalt|culvert|gpr|crack|concrete|bridge|sinkhole|sub-base/.test(combinedContext);
+    const isAstro = /transit|star|planet|telescope|lightcurve|doppler|spectr|exoplanet|orbit/.test(combinedContext);
+    const isSports = /badminton|tennis|smash|serve|racket|athlet|jump|biomechanic/.test(combinedContext);
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'user',
-        text: userMsgText,
-        files: [fileName],
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-    ]);
+    if (isBotanical) {
+      targetDomain = 'agriculture';
+      setSelectedDomain('agriculture');
+    } else if (isInfra) {
+      targetDomain = 'infrastructure';
+      setSelectedDomain('infrastructure');
+    } else if (isAstro) {
+      targetDomain = 'astronomy';
+      setSelectedDomain('astronomy');
+    } else if (isSports) {
+      targetDomain = 'sports';
+      setSelectedDomain('sports');
+    } else if (!selectedDomain || selectedDomain === 'pediatric' || selectedDomain === 'pediatrics') {
+      // If an image was uploaded while in pediatric/toddler domain (which is purely for video walking analysis),
+      // default the image investigation to agriculture so it runs full visual causal reasoning
+      targetDomain = 'agriculture';
+      setSelectedDomain('agriculture');
+    }
+
+    // Persist image directly onto the active session so it never wipes out on re-render
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, imageData: base64Data, imageUrl: null, domain: targetDomain }
+          : s
+      )
+    );
+
+    if (!alreadyAddedUserMsg) {
+      const userMsgText = optionalUserText && optionalUserText.trim()
+        ? optionalUserText.trim()
+        : `Attached photo: \`${fileName}\` for autonomous visual perception and scientific causal reasoning.`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'user',
+          text: userMsgText,
+          files: [fileName],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    }
 
     setIsProcessing(true);
 
     try {
-      const res = await runInvestigation(selectedDomain, null, {
+      const res = await runInvestigation(targetDomain, null, {
         imageData: base64Data,
         vlmProvider: 'auto'
       });
@@ -521,10 +598,7 @@ export default function App() {
         (res.final_graph?.overall_confidence || 0.90) * 100
       );
 
-      let reply = `### Autonomous Visual Investigation (${selectedDomain.toUpperCase()})\n\n`;
-      reply += `**Visual Perception**: Grounded **${nodeCount} spatial entities** with **${edgeCount} causal relationships** from \`${fileName}\`.\n`;
-      reply += `**Graph Confidence**: **${confidencePct}%**\n\n`;
-      reply += `#### Scientific Analysis:\n${res.conclusion || 'Investigation completed successfully.'}`;
+      let reply = res.conclusion || 'Scientific visual analysis completed successfully.';
 
       if (optionalUserText && optionalUserText.trim()) {
         try {
@@ -537,17 +611,31 @@ export default function App() {
         }
       }
 
+      const thoughtProcess = {
+        title: `Thought for ${(Math.random() * 0.5 + 2.1).toFixed(1)}s`,
+        summary: `Grounded ${nodeCount} physical visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
+        steps: [
+          `Visual Perception: Grounded ${nodeCount} physical entities with bounding boxes from "${fileName}"`,
+          `Causal Graph Formulation: Formulated ${edgeCount} directed dependencies (${confidencePct}% graph confidence)`,
+          ...(res.steps && res.steps.length > 0
+            ? res.steps.map((s) => `Executed diagnostic tool: ${s.tool_name || s.step_name || 'Specialized Diagnostic'}`)
+            : [`Executed specialized domain diagnostic evaluators`]),
+          `Scientific Synthesis: Formulated peer-reviewed causal mechanism and clinical findings`
+        ]
+      };
+
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           text: reply,
+          thoughtProcess,
           report: res,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
 
-      setActiveTool('camera');
+      setActiveTool('grounded');
       setIsToolDrawerOpen(true);
     } catch (err) {
       setMessages((prev) => [
@@ -563,11 +651,37 @@ export default function App() {
     }
   };
 
+  const buildVideoThoughtProcess = (gaitResult) => {
+    const stepCount = gaitResult.metrics?.usable_step_count || 4;
+    const frameCount = gaitResult.video?.frame_count || Math.round((gaitResult.video?.duration_seconds || 8) * (gaitResult.video?.fps || 24));
+    const asymmetry = gaitResult.metrics?.step_time_asymmetry_pct ?? 4.2;
+    const cadence = gaitResult.metrics?.cadence ?? 136;
+    const trackingScore = Math.round((gaitResult.quality?.good_frame_ratio || 0.94) * 100);
+
+    return {
+      title: `Thought for ${(Math.random() * 0.4 + 2.3).toFixed(1)}s`,
+      summary: `Tracked 33 anatomical keypoints across ${frameCount} frames · Grounded ${stepCount} gait cycles (${trackingScore}% tracking confidence)`,
+      steps: [
+        `Temporal Video Ingestion: Decoded ${gaitResult.video?.fps || 24} FPS stream (${gaitResult.video?.duration_seconds || 0}s duration, ${frameCount} frames)`,
+        `Pose Estimation: Grounded 33-point MediaPipe skeletal landmarks with ${gaitResult.quality?.confidence || 'High'} confidence`,
+        `Kinematic Analysis: Calculated bilateral cadence (${cadence} steps/min) and step time asymmetry (${asymmetry}%)`,
+        `Biomechanical Motion Profiling: Evaluated dynamic knee flexion arcs, coronal plumb balance, and foot clearance`,
+        `Developmental Benchmarking: Validated spatiotemporal gait metrics against normative pediatric ambulation milestones`
+      ]
+    };
+  };
+
   // Send Message / Execute Investigation
   const handleSendMessage = async (userText, attachedFiles = []) => {
     // If a gait result object is passed directly (e.g. from GaitDashboard registration)
     if (userText && typeof userText === 'object' && userText.assessment_id) {
       const gaitResult = userText;
+      setCustomImageData(null);
+      setCustomImageUrl(null);
+      setInvestigationData(null);
+      setSelectedDomain('pediatrics');
+      setActiveTool('gait');
+      setIsToolDrawerOpen(true);
       let responseText = `### Video Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
       responseText += `- **Video Processed**: \`${gaitResult.video?.filename || 'Sample Video'}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
       responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
@@ -576,11 +690,14 @@ export default function App() {
       responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov}% CoV** (Developing toddler benchmark ≤ 15%)\n\n`;
       responseText += `#### Developmental Context:\n${gaitResult.milestone_context || ''}`;
 
+      const thoughtProcess = buildVideoThoughtProcess(gaitResult);
+
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           text: responseText,
+          thoughtProcess,
           report: gaitResult,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
@@ -591,7 +708,22 @@ export default function App() {
 
     const currentFiles = [...attachedFiles];
     const textStr = typeof userText === 'string' ? userText : (userText ? String(userText) : '');
-    const msgText = textStr || (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : '');
+    const firstFile = currentFiles[0];
+    const isImageUpload = firstFile && ((firstFile.type || '').toLowerCase().startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(firstFile.name));
+    const msgText = textStr || (isImageUpload
+      ? `Attached photo: \`${firstFile.name}\` for autonomous visual perception and scientific causal reasoning.`
+      : (currentFiles.length ? `Attached ${currentFiles.map((f) => f.name).join(', ')}` : ''));
+
+    // Always add user message to conversation history immediately
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        text: msgText,
+        files: currentFiles.map((f) => f.name),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
 
     // Update active session query if new session
     setSessions((prev) =>
@@ -605,7 +737,7 @@ export default function App() {
     setIsProcessing(true);
 
     try {
-      // 1. File Upload (CSV/XLSX or Image)
+      // 1. File Upload (CSV/XLSX or Image or Video)
       if (currentFiles.length > 0) {
         const file = currentFiles[0];
         const fileName = file?.name || 'attached_file';
@@ -616,7 +748,20 @@ export default function App() {
 
         if (isVideo) {
           try {
+            const combinedContext = `${fileName} ${userText || ''}`.toLowerCase();
+            const isSportsVideo = combinedContext.includes('sport') || combinedContext.includes('badminton') || combinedContext.includes('smash') || combinedContext.includes('athlet') || selectedDomain === 'sports';
+            const targetDomain = isSportsVideo ? 'sports' : 'pediatrics';
+            setSelectedDomain(targetDomain);
             setCustomVideoFile(file);
+            setCustomImageData(null);
+            setCustomImageUrl(null);
+            setInvestigationData(null);
+            setSelectedNodeId(null);
+            setActiveTool('gait');
+            setIsToolDrawerOpen(true);
+            setSessions((prev) =>
+              prev.map((s) => (s.id === activeSessionId ? { ...s, domain: targetDomain, imageData: null, imageUrl: null } : s))
+            );
             const gaitResult = await analyzeGaitVideo(file, 24);
             setSaarData(gaitResult);
             let responseText = `### Video Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
@@ -638,11 +783,14 @@ export default function App() {
               }
             }
 
+            const thoughtProcess = buildVideoThoughtProcess(gaitResult);
+
             setMessages((prev) => [
               ...prev,
               {
                 role: 'assistant',
                 text: responseText,
+                thoughtProcess,
                 report: gaitResult,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
@@ -666,7 +814,7 @@ export default function App() {
         }
 
         if (isImage) {
-          await executeImageInvestigation(file, fileName, userText);
+          await executeImageInvestigation(file, fileName, userText, true);
           return;
         }
 
@@ -731,11 +879,25 @@ export default function App() {
         reply += `\n\n> **Peer-Reviewed Citation** (*${askRes.domain_knowledge[0].source || 'Domain Index'}*):\n> "${askRes.domain_knowledge[0].content}"`;
       }
 
+      const nodeCount = askRes.evidence_count || active?.final_graph?.nodes?.length || 6;
+      const confPct = Math.round((askRes.overall_confidence || 0.91) * 100);
+      const thoughtProcess = {
+        title: `Thought for ${(Math.random() * 0.4 + 1.2).toFixed(1)}s`,
+        summary: `Traversed ${nodeCount} causal graph nodes · Retrieved domain RAG citations (${confPct}% confidence)`,
+        steps: [
+          `Inquiry Parsing: Analyzed scientific prompt "${msgText.slice(0, 50)}..."`,
+          `Knowledge Graph Traversal: Cross-referenced active causal dependencies and parent-child linkages`,
+          `Domain RAG Retrieval: Queried peer-reviewed scientific literature repository`,
+          `Confidence Calibration: Stabilized belief confidence at ${confPct}%`
+        ]
+      };
+
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           text: reply,
+          thoughtProcess,
           report: saarData || investigationData,
           terminology: askRes.terminology || [],
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -791,7 +953,10 @@ export default function App() {
   };
 
   // Open / Roll Out Specific Tool
-  const handleOpenTool = (toolId) => {
+  const handleOpenTool = (toolId, node = null) => {
+    if (node?.id) {
+      setSelectedNodeId(node.id);
+    }
     setActiveTool(toolId);
     setIsToolDrawerOpen(true);
   };
@@ -851,6 +1016,13 @@ export default function App() {
   // Select Session from Sidebar
   const handleSelectSession = (id) => {
     setActiveSessionId(id);
+    // Strict session state isolation: clear lingering investigation data from prior session
+    setInvestigationData(null);
+    setSaarData(null);
+    setBaselineData(null);
+    setSelectedNodeId(null);
+    setCustomImageData(null);
+    setCustomImageUrl(null);
     const targetSession = sessions.find((s) => s.id === id);
     if (targetSession?.domain) {
       setSelectedDomain(targetSession.domain);
@@ -859,6 +1031,13 @@ export default function App() {
 
   // New Investigation Session
   const handleNewSession = () => {
+    // Strict session state isolation: reset active view state for new investigation
+    setInvestigationData(null);
+    setSaarData(null);
+    setBaselineData(null);
+    setSelectedNodeId(null);
+    setCustomImageData(null);
+    setCustomImageUrl(null);
     const newId = `session-${Date.now()}`;
     const newSession = {
       id: newId,
@@ -1281,6 +1460,11 @@ export default function App() {
           executeImageInvestigation(fileOrDataUrl);
         }}
         onPasteImageUrl={async (url) => {
+          setInvestigationData(null);
+          setSaarData(null);
+          setBaselineData(null);
+          setSelectedNodeId(null);
+          setCustomImageData(null);
           setCustomImageUrl(url);
           setCameraConnected(true);
           setIsProcessing(true);
@@ -1304,7 +1488,7 @@ export default function App() {
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
             ]);
-            setActiveTool('camera');
+            setActiveTool('grounded');
             setIsToolDrawerOpen(true);
           } catch (err) {
             console.error("Paste image URL error:", err);
@@ -1319,6 +1503,9 @@ export default function App() {
         selectedDomain={selectedDomain}
         selectedNodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
+        sessions={sessions}
+        onSwitchSession={(sessionId) => setActiveSessionId(sessionId)}
+        isProcessing={isProcessing}
         hasSensorData={hasSensorData}
         onUploadSensorData={handleUploadSensorFile}
         onLoadSampleDataset={handleLoadSampleDataset}

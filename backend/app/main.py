@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional
 
 from .schemas import InvestigationRequest, InvestigationResponse, BaselineComparisonModel
 from .dynamic_loop import DynamicWorkflowOrchestrator
+from .services.key_pool_manager import key_pool
 
 app = FastAPI(
     title="Saar API - Visual Scientific Reasoning Engine",
@@ -38,6 +39,22 @@ def options_handler(full_path: str):
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "engine": "Saar Scientific Reasoning Engine v1.0"}
+
+@app.get("/api/keys/status")
+def get_keys_status():
+    """Return live load-balancing and quota status of all API key pools."""
+    try:
+        from dotenv import load_dotenv
+        _env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+        if os.path.exists(_env_path):
+            load_dotenv(_env_path, override=True)
+        key_pool.reload_keys_from_env()
+    except Exception as e:
+        print(f"[KeyStatus] Reload error: {e}")
+    return {
+        "status": "ok",
+        "pools": key_pool.get_status()
+    }
 
 @app.get("/domains")
 @app.get("/api/domains")
@@ -335,7 +352,7 @@ def gait_analyze_sample(child_age_months: int = Query(24, ge=6, le=120)):
     pipeline = get_gait_pipeline()
     result = pipeline.analyze_video_file(
         video_path=sample_path,
-        filename="sample_toddler_walk.mp4",
+        filename="Toddler_walking_in_blue_dress.mp4",
         child_age_months=child_age_months
     )
     _gait_assessments[result.assessment_id] = result

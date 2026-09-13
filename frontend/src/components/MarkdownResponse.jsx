@@ -358,40 +358,7 @@ export function MarkdownResponse({
 
   return (
     <div className={`saar-markdown-container ${isCompact ? 'compact' : ''}`}>
-      {/* Top Action Bar for Rich Responses */}
-      <div className="md-top-action-bar">
-        <span className="md-mode-tag">
-          <Sparkles size={11} /> Structured Analysis
-        </span>
-        <div className="md-actions-group">
-          <button
-            onClick={() => setShowRaw(!showRaw)}
-            className="md-action-btn"
-            title="Toggle between formatted and raw view"
-          >
-            <FileText size={11} />
-            {showRaw ? 'Formatted' : 'Raw'}
-          </button>
-          <button
-            onClick={handleCopy}
-            className="md-action-btn"
-            title={pairedQuestion ? "Copy question and response together to clipboard" : "Copy to clipboard"}
-          >
-            {copied ? <Check size={11} color="var(--emerald)" /> : <Copy size={11} />}
-            {copied ? 'Copied Q&A' : (pairedQuestion ? 'Copy Q&A' : 'Copy')}
-          </button>
-          {onAskSaar && (
-            <button
-              onClick={() => onAskSaar(content, pairedQuestion)}
-              className="md-action-btn md-ask-saar-btn"
-              title="Ask Saar a follow-up inquiry about this finding"
-            >
-              <Sparkles size={11} className="text-primary" />
-              <span>Ask Saar</span>
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Content Body */}
 
       {showRaw ? (
         <pre className="md-raw-view">{content}</pre>
@@ -621,6 +588,28 @@ export function MarkdownResponse({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Subtle Bottom Action Bar (only on assistant responses) */}
+      {role === 'assistant' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <button
+            onClick={() => setShowRaw(!showRaw)}
+            title="Toggle between formatted and raw view"
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
+          >
+            <FileText size={11} />
+            <span>{showRaw ? 'Formatted' : 'Raw'}</span>
+          </button>
+          <button
+            onClick={handleCopy}
+            title={pairedQuestion ? "Copy question and response to clipboard" : "Copy to clipboard"}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
+          >
+            {copied ? <Check size={11} color="var(--emerald)" /> : <Copy size={11} />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
         </div>
       )}
     </div>

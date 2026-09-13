@@ -242,4 +242,3 @@ def detect_gait_events(frames: List[PoseFrame], fps: float) -> List[GaitEvent]:
     combined.sort(key=lambda e: e.time_seconds)
 
     return filter_physiologic_step_times(combined)
-
