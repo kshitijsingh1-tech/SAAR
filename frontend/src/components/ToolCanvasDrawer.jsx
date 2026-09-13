@@ -138,8 +138,7 @@ export function ToolCanvasDrawer({
   let toolsMeta = [];
 
   if (isToddlerVideo) {
-    // When uploading / analyzing toddler AI video:
-    // It should NOT show all options except video analysis and clinical references!
+    // When analyzing toddler AI video:
     toolsMeta = [
       {
         id: 'gait',
@@ -152,57 +151,15 @@ export function ToolCanvasDrawer({
         icon: <BookOpen size={15} />
       }
     ];
-  } else if (isSportsVideo) {
-    // Sports video analysis:
-    toolsMeta = [
-      {
-        id: 'gait',
-        label: 'Video Analysis (Sports & Motion)',
-        icon: <Activity size={15} />
-      },
-      {
-        id: 'rag',
-        label: 'Scientific References',
-        icon: <BookOpen size={15} />
-      }
-    ];
-  } else if (isAgriDomain) {
-    // Agriculture:
-    // Video option should NOT be visible, rest everything should be visible.
-    toolsMeta = [
-      { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
-      { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
-      { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-      { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
-      { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
-    ];
-  } else if (isInfraDomain || isAstroDomain) {
-    // Civil Infrastructure / Astrophysics:
-    // Video option is NOT visible, all engineering/astronomy tools enabled.
-    toolsMeta = [
-      { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
-      { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
-      { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-      { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
-      { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
-    ];
-  } else if (isSportsDomain || activeTool === 'badminton') {
-    // Sports domain / Badminton Biomechanics:
+  } else {
+    // Standard and full operational scientific tools:
     toolsMeta = [
       { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
       { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
-      { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
-      { id: 'analytics', label: 'Kinematic Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-      { id: 'rag', label: 'Sports References', icon: <BookOpen size={15} /> },
-      { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
-    ];
-  } else {
-    // Default fallback:
-    toolsMeta = [
-      { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
+      { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
       { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
       { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-      { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
+      { id: 'rag', label: isPediatricsDomain ? 'Clinical References' : isSportsDomain ? 'Sports References' : 'Scientific References', icon: <BookOpen size={15} /> },
       { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
     ];
   }
