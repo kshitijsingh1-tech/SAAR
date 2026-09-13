@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Sparkles, ArrowUp, Paperclip, Camera, FileText,
+  Sparkles, ArrowUp, Square, Paperclip, Camera, FileText,
   X, Loader2, GitFork, BarChart2, ShieldCheck, Sliders,
   BookOpen, ChevronDown, ChevronUp, Brain, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
@@ -345,6 +345,7 @@ export function ChatGPTView({
   messages,
   isProcessing,
   onSendMessage,
+  onStopProcessing,
   onSelectScenario,
   onAnswerInquiry,
   onAttachFiles,
@@ -633,11 +634,15 @@ export function ChatGPTView({
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (isProcessing) {
+        onStopProcessing?.();
+      } else {
+        handleSend();
+      }
     }
   };
 
-  // Global keydown listener so that pressing Enter anywhere when a video/file is attached triggers send
+  // Global keydown listener so that pressing Enter anywhere when a video/file is attached triggers send (or cancel if running)
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -656,8 +661,15 @@ export function ChatGPTView({
           return;
         }
 
+        // If currently processing, Enter cancels the analysis
+        if (isProcessing) {
+          e.preventDefault();
+          onStopProcessing?.();
+          return;
+        }
+
         // If we have attached files or typed text, trigger send on Enter
-        if ((attachedFiles.length > 0 || (inputText && inputText.trim().length > 0)) && !isProcessing) {
+        if (attachedFiles.length > 0 || (inputText && inputText.trim().length > 0)) {
           e.preventDefault();
           handleSend();
         }
@@ -668,7 +680,7 @@ export function ChatGPTView({
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [attachedFiles, inputText, textSnippet, isProcessing]);
+  }, [attachedFiles, inputText, textSnippet, isProcessing, onStopProcessing]);
 
   const handleTextareaChange = (e) => {
     setInputText(e.target.value);
@@ -1587,15 +1599,27 @@ export function ChatGPTView({
             placeholder="Ask Saar anything about the evidence, upload datasets, paste screenshots (Ctrl+V), or simulate interventions..."
           />
 
-          {/* Send Button */}
-          <button
-            className="composer-send-arrow"
-            onClick={handleSend}
-            disabled={isProcessing || (!inputText.trim() && attachedFiles.length === 0)}
-            title="Send message"
-          >
-            <ArrowUp size={17} />
-          </button>
+          {/* Send / Stop Action Button */}
+          {isProcessing ? (
+            <button
+              type="button"
+              className="composer-send-arrow composer-stop-btn"
+              onClick={onStopProcessing}
+              title="Stop generating / Cancel analysis"
+            >
+              <Square size={13} fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="composer-send-arrow"
+              onClick={handleSend}
+              disabled={!inputText.trim() && attachedFiles.length === 0}
+              title="Send message"
+            >
+              <ArrowUp size={17} />
+            </button>
+          )}
         </div>
 
         <div className="composer-footer-note">

@@ -18,7 +18,9 @@ export const runInvestigation = async (domain, presetId, options = {}) => {
     vlm_provider: options.vlmProvider || 'auto',
     api_key: options.apiKey || null
   };
-  const res = await axios.post(`${API_BASE_URL}/investigate`, payload);
+  const res = await axios.post(`${API_BASE_URL}/investigate`, payload, {
+    signal: options.signal
+  });
   return res.data;
 };
 
@@ -33,10 +35,12 @@ export const fetchBaseline = async (domain, presetId) => {
 // SAAR Iterative Reasoning API
 // ------------------------------------------------------------------
 
-export const uploadSaarCsv = async (file) => {
+export const uploadSaarCsv = async (file, options = {}) => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await axios.post(`${API_BASE_URL}/api/saar/upload`, formData);
+  const res = await axios.post(`${API_BASE_URL}/api/saar/upload`, formData, {
+    signal: options.signal
+  });
   return res.data;
 };
 
@@ -54,17 +58,19 @@ export const answerSaarQuestion = async (investigationId, rawAnswer, structuredD
   return res.data;
 };
 
-export const askSaarQuestion = async (investigationId, question) => {
+export const askSaarQuestion = async (investigationId, question, options = {}) => {
+  const config = options.signal ? { signal: options.signal } : {};
   if (!investigationId || investigationId === 'latest' || investigationId === 'general') {
-    const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, { question });
+    const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, { question }, config);
     return res.data;
   }
-  const res = await axios.post(`${API_BASE_URL}/api/saar/investigation/${investigationId}/ask`, { question });
+  const res = await axios.post(`${API_BASE_URL}/api/saar/investigation/${investigationId}/ask`, { question }, config);
   return res.data;
 };
 
-export const askSaarGeneral = async (question, domain = 'agriculture') => {
-  const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, { question, domain });
+export const askSaarGeneral = async (question, domain = 'agriculture', options = {}) => {
+  const config = options.signal ? { signal: options.signal } : {};
+  const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, { question, domain }, config);
   return res.data;
 };
 
@@ -169,10 +175,12 @@ export const analyzeVideo = async (fileOrUrl, domain = 'agriculture', options = 
 // ToddleAI Pediatric Gait Analysis API
 // ------------------------------------------------------------------
 
-export const analyzeGaitVideo = async (file, childAgeMonths = 24) => {
+export const analyzeGaitVideo = async (file, childAgeMonths = 24, options = {}) => {
   const formData = new FormData();
   formData.append('video', file);
-  const res = await axios.post(`${API_BASE_URL}/api/gait/analyze?child_age_months=${childAgeMonths}`, formData);
+  const res = await axios.post(`${API_BASE_URL}/api/gait/analyze?child_age_months=${childAgeMonths}`, formData, {
+    signal: options.signal
+  });
   return res.data;
 };
 
@@ -199,13 +207,15 @@ export const askGaitQuestion = async (assessmentId, question) => {
   return res.data;
 };
 
-export const classifyVideo = async (file, contextText = '') => {
+export const classifyVideo = async (file, contextText = '', options = {}) => {
   const formData = new FormData();
   formData.append('video', file);
   if (contextText) {
     formData.append('context', contextText);
   }
-  const res = await axios.post(`${API_BASE_URL}/api/video/classify`, formData);
+  const res = await axios.post(`${API_BASE_URL}/api/video/classify`, formData, {
+    signal: options.signal
+  });
   return res.data;
 };
 
@@ -213,7 +223,7 @@ export const classifyVideo = async (file, contextText = '') => {
 // Badminton Biomechanics Video Analysis API
 // ------------------------------------------------------------------
 
-export const analyzeBadmintonVideo = async (file, metadata = {}) => {
+export const analyzeBadmintonVideo = async (file, metadata = {}, options = {}) => {
   const formData = new FormData();
   formData.append('video', file);
   const params = new URLSearchParams();
@@ -224,7 +234,9 @@ export const analyzeBadmintonVideo = async (file, metadata = {}) => {
   if (metadata.match_type) params.append('match_type', metadata.match_type);
   const paramStr = params.toString() ? `?${params.toString()}` : '';
 
-  const res = await axios.post(`${API_BASE_URL}/api/sports/badminton/analyze${paramStr}`, formData);
+  const res = await axios.post(`${API_BASE_URL}/api/sports/badminton/analyze${paramStr}`, formData, {
+    signal: options.signal
+  });
   return res.data;
 };
 

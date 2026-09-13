@@ -68,8 +68,27 @@ export default function App() {
   const [selectedRelationship, setSelectedRelationship] = useState(null);
   const [selectedChartType, setSelectedChartType] = useState('histogram');
 
-  // Processing state
+  // Processing state & Abort Controller for immediate analysis cancellation
   const [isProcessing, setIsProcessing] = useState(false);
+  const abortControllerRef = useRef(null);
+
+  const handleStopProcessing = () => {
+    if (abortControllerRef.current) {
+      try {
+        abortControllerRef.current.abort();
+      } catch (e) {}
+      abortControllerRef.current = null;
+    }
+    setIsProcessing(false);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        text: '*Analysis cancelled by user.*',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+  };
 
   // Default Initial Chat Sessions & Pre-warmed Messages
   const DEFAULT_SESSIONS = [
@@ -661,7 +680,8 @@ export default function App() {
         imageData: primaryBase64,
         images: base64DataList.length > 1 ? base64DataList : null,
         imageMetadata: imageMetadataPayload,
-        vlmProvider: 'auto'
+        vlmProvider: 'auto',
+        signal: abortControllerRef.current?.signal
       });
       setInvestigationData(res);
 
@@ -842,6 +862,8 @@ export default function App() {
     );
 
     setIsProcessing(true);
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     try {
       // 1. File Upload (CSV/XLSX or Image or Video)
@@ -858,9 +880,12 @@ export default function App() {
             // Autonomous Video Classification: Differentiates Toddler Gait vs. Badminton Athletic Rally
             let classification = { domain: 'pediatrics', tool: 'gait', confidence: 0.75, rationale: 'Standard video gait screening' };
             try {
-              classification = await classifyVideo(file, userText);
+              classification = await classifyVideo(file, userText, { signal: abortController.signal });
               console.log("[Autonomous Video Classifier] Response:", classification);
             } catch (cErr) {
+              if (cErr.name === 'AbortError' || cErr.name === 'CanceledError' || abortController.signal.aborted) {
+                return;
+              }
               console.warn("Video classification fallback to keyword heuristics:", cErr);
               const combinedContext = `${fileName} ${userText || ''}`.toLowerCase();
               const hasPediatricTerm = combinedContext.includes('toddle') || combinedContext.includes('gait') || combinedContext.includes('pediat') || combinedContext.includes('child') || combinedContext.includes('baby') || combinedContext.includes('infant') || combinedContext.includes('walk');
@@ -892,7 +917,7 @@ export default function App() {
               // -------------------------------------------------------------
               // Badminton Athletic Kinematics Pipeline
               // -------------------------------------------------------------
-              const badmintonResult = await analyzeBadmintonVideo(file);
+              const badmintonResult = await analyzeBadmintonVideo(file, {}, { signal: abortController.signal });
               setSaarData(badmintonResult);
 
               let responseText = `### Badminton Athletic Kinematics (${badmintonResult.status?.toUpperCase() || 'COMPLETED'})\n\n`;
@@ -939,7 +964,7 @@ export default function App() {
               // -------------------------------------------------------------
               // ToddleAI Pediatric Gait Screening Pipeline
               // -------------------------------------------------------------
-              const gaitResult = await analyzeGaitVideo(file, 24);
+              const gaitResult = await analyzeGaitVideo(file, 24, { signal: abortController.signal });
               setSaarData(gaitResult);
               let responseText = `### Video Gait Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
               responseText += `- **Video Processed**: \`${fileName}\` (${gaitResult.video?.fps || 24} FPS, ${gaitResult.video?.duration_seconds || 0}s)\n`;
@@ -951,7 +976,7 @@ export default function App() {
 
               if (userText && userText.trim()) {
                 try {
-                  const questionReply = await askSaarQuestion(gaitResult.assessment_id || 'latest', userText.trim());
+                  const questionReply = await askSaarQuestion(gaitResult.assessment_id || 'latest', userText.trim(), { signal: abortController.signal });
                   if (questionReply?.answer_summary) {
                     responseText += `\n\n---\n\n### Inquiry Response: *"${userText.trim()}"*\n${questionReply.answer_summary}`;
                   }
@@ -988,6 +1013,9 @@ export default function App() {
               return;
             }
           } catch (vErr) {
+            if (vErr.name === 'AbortError' || vErr.name === 'CanceledError' || abortController.signal.aborted) {
+              return;
+            }
             setMessages((prev) => [
               ...prev,
               {
@@ -1013,7 +1041,7 @@ export default function App() {
         }
 
         if (isCsv) {
-          const report = await uploadSaarCsv(file);
+          const report = await uploadSaarCsv(file, { signal: abortController.signal });
           setSaarData(report);
           setSessionSensorData((prev) => ({
             ...prev,
@@ -1042,7 +1070,7 @@ export default function App() {
 
           if (userText && userText.trim()) {
             try {
-              const questionReply = await askSaarQuestion(report?.investigation_id || 'latest', userText.trim());
+              const questionReply = await askSaarQuestion(report?.investigation_id || 'latest', userText.trim(), { signal: abortController.signal });
               if (questionReply?.answer_summary) {
                 responseText = questionReply.answer_summary;
               }
@@ -1075,7 +1103,7 @@ export default function App() {
       // 2. Active or General Investigation Inquiry (Dynamic AI synthesis + RAG retrieval)
       const active = saarData || investigationData;
       const targetInvId = active?.investigation_id || 'latest';
-      const askRes = await askSaarQuestion(targetInvId, msgText);
+      const askRes = await askSaarQuestion(targetInvId, msgText, { signal: abortController.signal });
       let reply = askRes.answer_summary || `Evaluated causal evidence graph against inquiry: "${msgText}".`;
 
       if (askRes.overall_confidence) {
@@ -1111,6 +1139,10 @@ export default function App() {
         }
       ]);
     } catch (err) {
+      if (err.name === 'AbortError' || err.name === 'CanceledError' || (abortControllerRef.current && abortControllerRef.current.signal?.aborted)) {
+        console.log('[SAAR] Inquiry processing cancelled by user.');
+        return;
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -1631,6 +1663,7 @@ export default function App() {
           messages={messages}
           isProcessing={isProcessing}
           onSendMessage={handleSendMessage}
+          onStopProcessing={handleStopProcessing}
           onSelectScenario={handleSelectScenario}
           onAnswerInquiry={handleAnswerInquiry}
           onAttachFiles={(files) => handleSendMessage('', files)}

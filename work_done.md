@@ -772,13 +772,32 @@ When uploading toddler walking videos (including domestic close-ups or sample to
 - `handleFileChange`, `handleDrop`, and `handlePaste` attached the file to `attachedFiles` state but did not auto-focus the textarea.
 - Keydown listeners were previously scoped only to the `<textarea>` component without a window fallback for staged file attachments.
 
+---
+
+## 24. [2026-09-13] In-Flight Analysis Cancellation & Toggle Stop Button
+
+**Primary Files Modified**:
+- [`frontend/src/api/client.js`](file:///d:/bytebuild/frontend/src/api/client.js)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/index.css`](file:///d:/bytebuild/frontend/src/index.css)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+- If a user accidentally uploaded a photo/video or sent an inquiry by mistake, there was no way to cancel or halt the in-flight analysis, requiring the user to wait for full execution to complete.
+
 ### Implemented Solution & Non-Regression Invariants
-1. **Auto-Focus on File Intake**:
-   - In `handleFileChange`, `handleDrop`, and `handlePaste`, automatically focuses `textareaRef.current?.focus()` after file staging.
-2. **Global Enter Dispatch Listener**:
-   - Added a window `keydown` listener in `ChatGPTView.jsx` that listens for `Enter` (without `Shift`) whenever `attachedFiles.length > 0` (or input text is present) and directly invokes `handleSend()`, ignoring inputs inside active modal overlays.
-3. **Verification**:
-   - Production bundle compiled cleanly with `vite build` in 54.70s with 0 errors.
+1. **Toggle Send/Stop Button ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - While `isProcessing` is true, the composer's send button dynamically morphs into a red pulsing Stop button (`<Square fill="currentColor" />`).
+   - Clicking this button (or pressing `Enter` while processing) triggers `onStopProcessing()`.
+2. **AbortSignal Integration Across Client APIs ([`client.js`](file:///d:/bytebuild/frontend/src/api/client.js))**:
+   - Integrated `{ signal }` into `runInvestigation`, `uploadSaarCsv`, `askSaarQuestion`, `classifyVideo`, `analyzeBadmintonVideo`, and `analyzeGaitVideo`.
+3. **Graceful Abort Handling ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Initialized `abortControllerRef` to abort in-flight HTTP requests instantly.
+   - Cleanly catches `AbortError` / `CanceledError` without rendering error toasts or red alert banners, smoothly posting `*Analysis cancelled by user.*` and resetting state.
+4. **Verification**:
+   - Frontend production build (`vite build`) succeeded in 14.27s with 0 errors.
+
 
 
 
