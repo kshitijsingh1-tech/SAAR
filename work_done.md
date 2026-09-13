@@ -13,6 +13,7 @@
 4. [Tool Isolation & Domain Boundary Enforcement](#4-tool-isolation--domain-boundary-enforcement)
 5. [Strict Zero-Hardcoding & Single Source of Truth Alignment](#5-strict-zero-hardcoding--single-source-of-truth-alignment)
 6. [Backend Service Orchestration & Port Architecture](#6-backend-service-orchestration--port-architecture)
+7. [Clean Response Formatting: Thought Process Capsule for Dataset Ingestion](#7-clean-response-formatting-thought-process-capsule-for-dataset-ingestion)
 
 ---
 
@@ -134,6 +135,31 @@ Cross-session state contamination where previously opened specialized drawers re
 
 ### Troubleshooting Protocol (WinError 10013)
 - If `uvicorn` fails with `[WinError 10013] Access forbidden`, check if a background process or prior daemon is already bound to port 8001. Do not start secondary ports (e.g. 8002) without updating `VITE_API_URL`, as the frontend communicates with port 8001.
+
+---
+
+## 7. Clean Response Formatting: Thought Process Capsule for Dataset Ingestion
+- **Date Solved**: 2026-09-13
+- **Primary Files**:
+  - [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+  - [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+
+### Problem Description
+When uploading or pasting a dataset, the chat assistant dumped raw technical boilerplate into the response body:
+- Bulleted lists of telemetry variable counts, observation counts, and topological edge counts.
+- A hardcoded fallback string for tomato: `"Root cause mechanism traced to rhizosphere acidification and iron transport blockage."` which appeared even during rose graft analysis.
+- The sleek collapsible "Thought Process" capsule (`ThoughtProcessPill`), which was already standard for image and video investigations, was omitted for CSV dataset uploads.
+
+### Root Causes
+In [`frontend/src/App.jsx:812`](file:///d:/bytebuild/frontend/src/App.jsx#L812) and [`frontend/src/App.jsx:958`](file:///d:/bytebuild/frontend/src/App.jsx#L958), the CSV response builder directly concatenated raw telemetry counts and a hardcoded tomato diagnostic essence string into `responseText` instead of building a structured `thoughtProcess` object.
+
+### Implemented Solution & Non-Regression Rules
+- **Encapsulated Technical Telemetry**: Replaced the boilerplate bullet points with a structured `thoughtProcess` object:
+  - `title`: Execution duration (e.g. `Thought for 1.9s`)
+  - `summary`: Ingested $N$ variables · Discovered $E$ causal edges · Confidence $C$%
+  - `steps`: Step-by-step breakdown of telemetry ingestion, feature extraction, causal topology computation, belief updating, and sensor tool synchronization.
+- **Removed Hardcoded Fallback**: Completely eliminated the tomato chlorosis string from CSV responses. Responses now dynamically present clean high-signal summaries or direct inquiry answers.
+- **Enforced Non-Regression**: All dataset uploads across both `handleSendMessage` and `handleUploadSensorFile` now use `ThoughtProcessPill` exclusively for technical parsing telemetry.
 
 ---
 
