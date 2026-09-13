@@ -220,7 +220,20 @@ class BadmintonSpeedAnalyzer:
             return peak_m, mean_m, None, None, len(valid_segments)
 
         speeds = [s.speed_km_h for s in valid_segments]
-        peak_val = round(float(np.max(speeds)), 1)
+        # For multi-segment tracking (>5 segments), use 90th percentile to reject single-frame optical flicker
+        if len(speeds) >= 6:
+            raw_peak = float(np.percentile(speeds, 90))
+        else:
+            raw_peak = float(np.max(speeds))
+
+        # Clamp physically implausible tracking spikes for 30fps broadcast cameras
+        if "shuttle" in metric_name_peak.lower():
+            peak_val = round(min(365.0, raw_peak), 1)
+        elif "racket" in metric_name_peak.lower():
+            peak_val = round(min(225.0, raw_peak), 1)
+        else:
+            peak_val = round(raw_peak, 1)
+
         mean_val = round(float(np.mean(speeds)), 1)
         std_val = float(np.std(speeds)) if len(speeds) > 1 else 0.0
 

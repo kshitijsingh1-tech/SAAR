@@ -277,27 +277,46 @@ class BadmintonMovementAnalyzer:
             findings = ["Fewer than 2 calibrated player positions detected; spatial kinematics omitted."]
             return movement_metrics, court_metrics, findings
 
-        # A. Total distance & speeds
+        # A. Total distance & speeds with trajectory smoothing & jitter deadband filtering
+        raw_x = [p.court_x for p in valid_points]
+        raw_y = [p.court_y for p in valid_points]
+
+        # 5-tap moving window median smoothing to eliminate sub-pixel landmark jitter
+        window_size = 5 if len(valid_points) >= 5 else 3 if len(valid_points) >= 3 else 1
+        smoothed_x = []
+        smoothed_y = []
+        for i in range(len(valid_points)):
+            w_start = max(0, i - window_size // 2)
+            w_end = min(len(valid_points), i + window_size // 2 + 1)
+            smoothed_x.append(float(np.median(raw_x[w_start:w_end])))
+            smoothed_y.append(float(np.median(raw_y[w_start:w_end])))
+
         total_distance = 0.0
         speeds: List[float] = []
         total_dt = 0.0
 
         for i in range(len(valid_points) - 1):
-            p1 = valid_points[i]
-            p2 = valid_points[i + 1]
-            dt = max(0.001, (p2.timestamp_ms - p1.timestamp_ms) / 1000.0)
+            dt = max(0.001, (valid_points[i + 1].timestamp_ms - valid_points[i].timestamp_ms) / 1000.0)
             total_dt += dt
 
-            dist = math.hypot(p2.court_x - p1.court_x, p2.court_y - p1.court_y)
-            total_distance += dist
+            # Distance computed on smoothed trajectory
+            dist = math.hypot(smoothed_x[i + 1] - smoothed_x[i], smoothed_y[i + 1] - smoothed_y[i])
 
-            # Instantaneous speed bounded by physiological limit (10 m/s for badminton footwork)
+            # Deadband filter: micro-movements < 2.5cm between frames represent standing landmark jitter
+            if dist >= 0.025:
+                total_distance += dist
+
+            # Instantaneous speed bounded by physiological court movement limit (5.5 m/s maximum badminton sprint)
             spd = dist / dt
-            if spd <= 10.0:
+            if spd <= 5.5:
                 speeds.append(spd)
+            elif spd > 5.5:
+                # Clamp extreme jumps to peak sprint velocity
+                speeds.append(4.8)
 
-        avg_speed = float(round(total_distance / max(0.1, total_dt), 2))
-        max_speed = float(round(np.percentile(speeds, 95), 2)) if speeds else 0.0
+        total_distance = float(round(total_distance, 1))
+        avg_speed = float(round(total_distance / max(0.1, total_dt), 1))
+        max_speed = float(round(np.percentile(speeds, 90), 1)) if speeds else 0.0
 
         # B. Court Coverage Ratio via scipy.spatial.ConvexHull
         coords_2d = np.array([[p.court_x, p.court_y] for p in valid_points], dtype=np.float64)

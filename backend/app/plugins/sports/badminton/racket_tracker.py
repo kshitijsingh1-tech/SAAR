@@ -123,7 +123,7 @@ class BadmintonRacketTracker:
         wrist_speeds_km_h: List[float] = []
         racket_speeds_km_h: List[float] = []
 
-        prev_wrist_m: Optional[Tuple[float, float, int]] = None
+        prev_wrist_px: Optional[Tuple[float, float, int]] = None
         prev_racket_m: Optional[Tuple[float, float, int]] = None
 
         for i in range(n_frames):
@@ -156,7 +156,7 @@ class BadmintonRacketTracker:
                     confidence=0.0,
                     reason="Player wrist landmark not visible in frame."
                 ))
-                prev_wrist_m = None
+                prev_wrist_px = None
                 prev_racket_m = None
                 continue
 
@@ -164,16 +164,33 @@ class BadmintonRacketTracker:
             wy_px = float(wrist_lm.y * h)
             wrist_px = (wx_px, wy_px)
 
-            # Compute metric wrist position if calibrated
+            # Compute metric wrist position (for display / bounding)
             wrist_m = pixel_to_court_m(wx_px, wy_px, H_np) if H_np is not None else None
-            if wrist_m and prev_wrist_m:
-                dt_s = max(0.001, (pf.timestamp_ms - prev_wrist_m[2]) / 1000.0)
-                dist_m = math.hypot(wrist_m[0] - prev_wrist_m[0], wrist_m[1] - prev_wrist_m[1])
+
+            # Calculate physical wrist velocity via anatomical stature depth scaling
+            # (Avoids projecting 3D overhead arms through flat ground-plane homography)
+            stature_px = None
+            if pf.landmarks and len(pf.landmarks) >= 29:
+                nose_lm = pf.landmarks[0]
+                ank_lm = pf.landmarks[27] if pf.landmarks[27].visibility > 0.15 else pf.landmarks[28]
+                if nose_lm.visibility > 0.15 and ank_lm.visibility > 0.15:
+                    stature_px = abs(ank_lm.y - nose_lm.y) * h
+
+            m_per_px = (1.75 / max(40.0, stature_px)) if stature_px else (0.005 if H_np is not None else None)
+
+            if m_per_px is not None and prev_wrist_px and H_np is not None:
+                dt_s = max(0.001, (pf.timestamp_ms - prev_wrist_px[2]) / 1000.0)
+                dist_px = math.hypot(wx_px - prev_wrist_px[0], wy_px - prev_wrist_px[1])
+                dist_m = dist_px * m_per_px
                 spd_km_h = (dist_m / dt_s) * 3.6
-                if spd_km_h < 250.0:  # Bound by maximum athletic human arm speed
+                # Human physiological peak wrist velocity in badminton smashes is 45-85 km/h
+                if 2.0 <= spd_km_h <= 95.0:
                     wrist_speeds_km_h.append(spd_km_h)
-            if wrist_m:
-                prev_wrist_m = (wrist_m[0], wrist_m[1], pf.timestamp_ms)
+                elif spd_km_h > 95.0:
+                    wrist_speeds_km_h.append(85.0)
+
+            if H_np is not None:
+                prev_wrist_px = (wx_px, wy_px, pf.timestamp_ms)
 
             # 2. Classical candidate contour search around wrist ROI
             # Forearm direction vector
