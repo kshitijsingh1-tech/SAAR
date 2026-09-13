@@ -5,11 +5,13 @@ import {
   BookOpen, ChevronDown, ChevronUp, Brain, PanelLeft, AlertTriangle,
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
-  Crosshair, BookA, Image as ImageIcon, Film, Sun, Moon, Zap,
-  PieChart, ChevronRight
+  PieChart, ChevronRight, MessageSquare, Sprout, Construction, Orbit, Activity,
+  Image as ImageIcon, Film
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
+import { MediaAttachmentPreview } from './MediaAttachmentPreview';
+import { ChatCameraRecorder } from './ChatCameraRecorder';
 
 // Built-in grounded domain lexicon for automatic chat dictionary linking
 const SCIENTIFIC_LEXICON = [
@@ -171,6 +173,8 @@ export function ChatGPTView({
   const [inputText, setInputText] = useState('');
   const [textSnippet, setTextSnippet] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
 
@@ -359,7 +363,7 @@ export function ChatGPTView({
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      setAttachedFiles((prev) => [...prev, ...files]);
+      setPendingFile(files[0]);
     }
   };
 
@@ -383,7 +387,6 @@ export function ChatGPTView({
     if (fileItems.length > 0) {
       const pastedFiles = [];
       const seenSignatures = new Set();
-
       for (const item of fileItems) {
         const file = item.getAsFile();
         if (file) {
@@ -397,21 +400,17 @@ export function ChatGPTView({
             name = `pasted_evidence_${Date.now()}.${ext}`;
           }
           const namedFile = new File([file], name, { type: file.type });
-          pastedFiles.push(namedFile);
+          e.preventDefault();
+          setPendingFile(namedFile);
+          return;
         }
-      }
-
-      if (pastedFiles.length > 0) {
-        e.preventDefault();
-        setAttachedFiles((prev) => [...prev, ...pastedFiles]);
-        return;
       }
     }
 
     if (clipboardData.files && clipboardData.files.length > 0) {
       e.preventDefault();
       const files = Array.from(clipboardData.files);
-      setAttachedFiles((prev) => [...prev, ...files]);
+      setPendingFile(files[0]);
       return;
     }
 
@@ -434,7 +433,7 @@ export function ChatGPTView({
     e.stopPropagation();
     if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const droppedFiles = Array.from(e.dataTransfer.files);
-      setAttachedFiles((prev) => [...prev, ...droppedFiles]);
+      setPendingFile(droppedFiles[0]);
     }
   };
 
@@ -801,6 +800,18 @@ export function ChatGPTView({
                     {/* Sleek, subtle exploration shortcuts */}
                     {msg.role === 'assistant' && msg.report && (
                       <div className="chat-tool-badges-row compact-row">
+                        {selectedDomain === 'pediatrics' && (
+                          <button
+                            type="button"
+                            className="tool-invoke-badge compact"
+                            onClick={() => onOpenTool('gait')}
+                            title="Open Pediatric Gait Video Analysis"
+                          >
+                            <Film size={12} className="text-cyan" />
+                            <span>Video Analysis</span>
+                            <ArrowRight size={10} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="tool-invoke-badge compact"
@@ -973,11 +984,28 @@ export function ChatGPTView({
           activeTool={activeTool}
           isDrawerOpen={isToolDrawerOpen}
           floating={true}
+          selectedDomain={selectedDomain}
         />
       </div>
 
       {/* Floating Bottom Composer Capsule */}
       <div className="chatgpt-composer-wrapper">
+        {/* Attachment Preview Popover Dialog */}
+        {pendingFile && (
+          <MediaAttachmentPreview
+            file={pendingFile}
+            onConfirm={() => {
+              setAttachedFiles((prev) => [...prev, pendingFile]);
+              setPendingFile(null);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+            }}
+            onCancel={() => {
+              setPendingFile(null);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+            }}
+          />
+        )}
+
         {/* Context Attachment & Draft Snippet Tray (Claude / ChatGPT style) */}
         {(textSnippet || attachedFiles.length > 0) && (
           <div className="composer-context-tray">
@@ -1069,12 +1097,13 @@ export function ChatGPTView({
             type="file"
             ref={fileInputRef}
             style={{ display: 'none' }}
-            accept=".csv,.xlsx,.xls,.pptx,.ppt,.pdf,.docx,.txt,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.avi"
+            accept=".csv,.xlsx,.xls,.pptx,.ppt,.pdf,.docx,.txt,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.avi,.mkv"
             onChange={handleFileChange}
           />
 
           {/* Plus Attach Button */}
           <button
+            type="button"
             className="composer-action-btn"
             onClick={() => fileInputRef.current?.click()}
             title="Attach dataset, image, or video"
@@ -1082,16 +1111,15 @@ export function ChatGPTView({
             <Paperclip size={18} />
           </button>
 
-          {/* Camera Button */}
-          {onToggleCamera && (
-            <button
-              className={`composer-action-btn ${cameraConnected ? 'camera-live' : ''}`}
-              onClick={onToggleCamera}
-              title="Toggle live camera stream"
-            >
-              <Camera size={18} />
-            </button>
-          )}
+          {/* Real In-Browser Camera Button */}
+          <button
+            type="button"
+            className={`composer-action-btn ${isCameraModalOpen || cameraConnected ? 'camera-live' : ''}`}
+            onClick={() => setIsCameraModalOpen(true)}
+            title="Open camera & record video clip (up to 10s)"
+          >
+            <Camera size={18} />
+          </button>
 
           {/* Auto-expanding Input Area */}
           <textarea
@@ -1219,6 +1247,20 @@ export function ChatGPTView({
           </div>
         </div>
       )}
+
+      {/* Real In-Browser WebRTC Camera Modal */}
+      <ChatCameraRecorder
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onCaptureVideo={(recordedFile, autoSend) => {
+          setIsCameraModalOpen(false);
+          if (autoSend) {
+            onSendMessage('', [recordedFile]);
+          } else {
+            setAttachedFiles((prev) => [...prev, recordedFile]);
+          }
+        }}
+      />
     </div>
   );
 }

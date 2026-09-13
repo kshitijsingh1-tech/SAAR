@@ -37,7 +37,8 @@ export function ToolCanvasDrawer({
   onSelectNode,
   hasSensorData = true,
   onUploadSensorData = null,
-  onLoadSampleDataset = null
+  onLoadSampleDataset = null,
+  customVideoFile = null
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(() => {
@@ -120,13 +121,15 @@ export function ToolCanvasDrawer({
   const isPediatricsDomain = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
 
   // Operational tools strictly for active scientific investigations
+  const isMovementAnalysis = isPediatricsDomain || activeTool === 'gait';
+
   const toolsMeta = [
     { id: 'grounded', label: 'Grounded Split Graph', icon: <Crosshair size={15} /> },
     ...(isPediatricsDomain ? [{ id: 'gait', label: 'Toddler Gait Analysis', icon: <Activity size={15} /> }] : []),
     { id: 'graph', label: 'Causal Graph', icon: <GitFork size={15} /> },
     { id: 'camera', label: 'Evidence Monitor', icon: <Camera size={15} /> },
-    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} /> },
-    { id: 'rag', label: 'References', icon: <BookOpen size={15} /> },
+    { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
+    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'References', icon: <BookOpen size={15} /> },
     { id: 'dictionary', label: 'Dictionary', icon: <BookA size={15} /> }
   ];
 
@@ -419,7 +422,11 @@ export function ToolCanvasDrawer({
         {/* Tool: ToddleAI Gait Analysis (GaitDashboard.jsx) */}
         {effectiveTool === 'gait' && (
           <div className="tool-body-pane custom-pane-scrollbar" style={{ overflowY: 'auto', height: '100%' }}>
-            <GaitDashboard onRegisterToChat={onSendToChat} />
+            <GaitDashboard
+              onRegisterToChat={onSendToChat}
+              initialResult={saarData}
+              initialFile={customVideoFile}
+            />
           </div>
         )}
 
