@@ -249,6 +249,45 @@ Users uploading images for multi-iteration botanical or clinical analysis (e.g. 
 
 ---
 
+## 10. Single Context Text Box & Sequential Two-Stage Multimodal Ingestion Pipeline
+- **Date Solved**: 2026-09-13
+- **Primary Files**:
+  - [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+  - [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+  - [`backend/app/schemas.py`](file:///d:/bytebuild/backend/app/schemas.py)
+  - [`backend/app/vlm_service.py`](file:///d:/bytebuild/backend/app/vlm_service.py)
+  - [`backend/app/dynamic_loop.py`](file:///d:/bytebuild/backend/app/dynamic_loop.py)
+
+### Problem Description & User Goal
+The initial metadata modal presented multiple segregated input fields (Day #, Developmental Stage, Presets, Camera Perspective dropdown, and Notes). This constrained users to predefined botanical schemas and added unnecessary UI friction. The user explicitly requested:
+> *"i dont want multiple areas since we might need to tell aour system some info in diffferent context. what i want is a text box only which is analysed first before image analysis and then the image r file analysis is done and the analysis of text box is attached to the image or file analysis"*
+
+### Root Cause Analysis
+Rigid input fields assumed specific biological or architectural forms and could not accommodate arbitrary instructions, clinical summaries, or variable multi-domain scenarios. Furthermore, text context previously was merely passed as metadata tags without an explicit, structured preliminary analysis phase prior to VLM visual perception.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Single Spacious Context Text Area (`ChatGPTView.jsx`)**:
+   - Eliminated all segregated inputs, presets, and perspective dropdowns from the modal.
+   - Replaced with a single, spacious context textarea (`metaContextText`) where users freely input natural language notes, developmental milestones (e.g. *"Day 10 post-incision"*), physical conditions (*"Parafilm sealed, 95% RH"*), or analytical focal points (*"Inspect callus bridge and vascular reconnection"*).
+   - Thumbnail preview and a clear explanation banner highlight the sequential two-stage pipeline.
+   - Attached pill cards render the dynamic Day badge (e.g. `DAY 10`) and a truncated context preview snippet.
+2. **Stage 1 (Text-First Analysis Engine in `vlm_service.py`)**:
+   - `VLMService.analyze_context_text` executes **before** visual image/file perception.
+   - Leverages fast LLM extraction (`_call_text_analyzer_llm` across Gemini Flash / Groq LLaMA) with deterministic keyword fallback to parse:
+     - `milestone`: `{ day, stage, milestone_label }` for timeline graph pinning.
+     - `focus_targets`: 2–5 specific physical entities the VLM must ground.
+     - `hypotheses`: testable scientific hypotheses extracted from user text.
+     - `context_summary`: concise synthesis of user context.
+3. **Stage 2 (Context-Guided Visual Grounding in `vlm_service.py`)**:
+   - The Stage 1 extracted targets and hypotheses are injected as high-priority prompt parts (`[PRIOR CONTEXT ANALYSIS (STAGE 1 - ANALYZED FIRST)]`) in the VLM payload.
+   - The VLM prioritizes detecting, bounding, and testing the exact structures identified in Stage 1.
+4. **Attachment & Telemetry Synchronization (`dynamic_loop.py` & `App.jsx`)**:
+   - `InvestigationResponse` attaches `text_context_analysis` and generated `telemetry.milestones`.
+   - `App.jsx` dynamically pins the extracted milestone onto the 30-day timeline graph in `PlotlyGraphViewer.jsx`.
+   - Assistant thought process displays Stage 1 step (`Stage 1 (Text-First): Analyzed context into...`) and prepends the Stage 1 context analysis to the final scientific findings.
+
+---
+
 ## How to Maintain This File
 When completing any new task or fixing any bug:
 1. Add a new numbered section under Table of Contents and document:
@@ -258,4 +297,3 @@ When completing any new task or fixing any bug:
    - Root Causes
    - Implemented Solution & Non-Regression Rules
 2. Keep entries chronological and concise.
-

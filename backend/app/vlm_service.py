@@ -263,6 +263,161 @@ Structure:
             except Exception:
                 return None, "image/jpeg"
 
+    def __init__(self):
+        self.last_context_analysis: Optional[Dict[str, Any]] = None
+
+    def analyze_context_text(self, context_text: str, domain: str = "agriculture") -> Dict[str, Any]:
+        """
+        Stage 1 Context Analysis: Analyzes free-form user notes/instructions BEFORE image analysis.
+        Extracts:
+        - temporal milestone (day number, developmental stage, badge label)
+        - physical inspection targets for visual grounding
+        - working hypotheses to verify against the image
+        - structured context summary
+        """
+        if not context_text or not context_text.strip():
+            return {}
+
+        clean_text = context_text.strip()
+
+        # Step A: Deterministic baseline parsing (regex & semantic keywords)
+        day_val = None
+        day_match = re.search(r'(?:day|milestone|timepoint|d|week)\s*[:#-]?\s*(\d+)', clean_text, re.IGNORECASE)
+        if day_match:
+            val = int(day_match.group(1))
+            if "week" in day_match.group(0).lower():
+                val *= 7
+            day_val = val
+
+        # Try LLM-powered context analysis
+        ai_res = self._call_text_analyzer_llm(clean_text, domain, day_val or 1)
+        if ai_res:
+            self.last_context_analysis = ai_res
+            return ai_res
+
+        # Deterministic fallback if offline
+        fallback_targets = []
+        for term in ["junction", "callus", "scion", "rootstock", "cambium", "vascular", "necrosis", "chlorosis", "leaf", "stem", "root", "crack", "gait", "joint", "posture"]:
+            if term in clean_text.lower():
+                fallback_targets.append(term)
+        if not fallback_targets:
+            fallback_targets = ["primary anatomical region", "specimen interface"]
+
+        fallback_hypotheses = [f"Specimen aligns with user-reported condition: {clean_text[:60]}..."]
+
+        res = {
+            "milestone": {
+                "day": day_val or 1,
+                "stage": f"Day {day_val or 1} Observation",
+                "milestone_label": f"Day {day_val or 1} - Milestone" if day_val else "Specimen Context"
+            },
+            "focus_targets": fallback_targets,
+            "hypotheses": fallback_hypotheses,
+            "analytical_priority": "Verify visual evidence against reported specimen condition.",
+            "context_summary": clean_text
+        }
+        self.last_context_analysis = res
+        return res
+
+    def _call_text_analyzer_llm(self, text: str, domain: str, fallback_day: int) -> Optional[Dict[str, Any]]:
+        """Call Gemini or Groq fast text model to analyze context text before image analysis."""
+        prompt = (
+            f"You are the Stage-1 Context Analysis Engine of SAAR (Scientific Automated Analysis & Reasoning).\n"
+            f"The user uploaded a specimen image with the following contextual notes for domain '{domain}':\n\n"
+            f"User Context:\n\"{text}\"\n\n"
+            f"Analyze this text BEFORE image perception to extract:\n"
+            f"1. 'milestone': {{ 'day': <number or null>, 'stage': '<developmental or temporal stage name>', 'milestone_label': '<concise badge label e.g. Day 10 - Callus Union>' }}\n"
+            f"2. 'focus_targets': [list of 2-5 specific physical/anatomical entities the VLM must ground with bounding boxes]\n"
+            f"3. 'hypotheses': [list of 1-3 scientific hypotheses to test against visual evidence]\n"
+            f"4. 'context_summary': '<concise 1-sentence synthesis of user context>'\n\n"
+            f"Return valid JSON ONLY matching this structure. Start with {{ and end with }}."
+        )
+
+        # 1. Try Gemini
+        gemini_keys = [k.key for k in key_pool.get_available_keys("gemini")]
+        if not gemini_keys and os.getenv("GEMINI_API_KEY"):
+            gemini_keys = [os.getenv("GEMINI_API_KEY")]
+
+        for g_key in gemini_keys:
+            for model_name in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"]:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={g_key}"
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2}
+                }
+                try:
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    with urllib.request.urlopen(req, timeout=4) as response:
+                        raw = json.loads(response.read().decode("utf-8"))
+                        res_text = raw["candidates"][0]["content"]["parts"][0]["text"]
+                        parsed = json.loads(res_text)
+                        if isinstance(parsed, dict) and ("focus_targets" in parsed or "milestone" in parsed):
+                            if not parsed.get("milestone"):
+                                parsed["milestone"] = {"day": fallback_day, "stage": f"Day {fallback_day}", "milestone_label": f"Day {fallback_day} Milestone"}
+                            elif parsed["milestone"].get("day") is None:
+                                parsed["milestone"]["day"] = fallback_day
+                            return parsed
+                except Exception as e:
+                    continue
+
+        # 2. Try Groq
+        groq_keys = [k.key for k in key_pool.get_available_keys("groq")]
+        if not groq_keys and os.getenv("GROQ_API_KEY"):
+            groq_keys = [os.getenv("GROQ_API_KEY")]
+
+        for gr_key in groq_keys:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": "You are SAAR Context Analyzer. Output valid JSON only."},
+                    {"role": "user", "content": prompt}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.2
+            }
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {gr_key}"}
+                )
+                with urllib.request.urlopen(req, timeout=4) as response:
+                    raw = json.loads(response.read().decode("utf-8"))
+                    res_text = raw["choices"][0]["message"]["content"]
+                    parsed = json.loads(res_text)
+                    if isinstance(parsed, dict) and ("focus_targets" in parsed or "milestone" in parsed):
+                        if not parsed.get("milestone"):
+                            parsed["milestone"] = {"day": fallback_day, "stage": f"Day {fallback_day}", "milestone_label": f"Day {fallback_day} Milestone"}
+                        elif parsed["milestone"].get("day") is None:
+                            parsed["milestone"]["day"] = fallback_day
+                        return parsed
+            except Exception as e:
+                print(f"[VLMService] Groq context text analysis failed: {e}")
+                continue
+
+        return None
+
+    def _enrich_summary_with_context(self, summary: str) -> str:
+        if getattr(self, "last_context_analysis", None):
+            ca = self.last_context_analysis
+            m = ca.get("milestone", {})
+            m_label = m.get("milestone_label") or f"Day {m.get('day', 1)}"
+            header = (
+                f"### [Stage 1 Prior Context Analysis: {m_label}]\n"
+                f"- **Temporal Milestone**: Day {m.get('day', 1)} ({m.get('stage', 'Observation')})\n"
+                f"- **Prior Context & User Intent**: {ca.get('context_summary', '')}\n"
+                f"- **Inspection Targets Grounded**: {', '.join(ca.get('focus_targets', []))}\n"
+                f"- **Hypotheses Evaluated**: {'; '.join(ca.get('hypotheses', []))}\n\n"
+                f"### [Stage 2 Visual Grounding & Spatial Evidence]\n"
+            )
+            return header + summary
+        return summary
+
     def analyze_image(
         self,
         image_input: Optional[str] = None,
@@ -275,17 +430,33 @@ Structure:
     ) -> Tuple[List[NodeModel], List[EdgeModel], str, str]:
         """
         Main entry point for image visual scene perception & hybrid reasoning.
-        Supports single image or multi-photo sequences (e.g. multi-view toddler posture, longitudinal plant growth).
-        Implements Hybrid Architecture:
-        1. Google Gemini 1.5/2.0 Flash (Primary Vision Perception & Long Context)
-        2. Groq / Cerebras (Ultra-fast LLaMA 3.3 ReAct reasoning loops)
-        3. OpenRouter (Multi-model router & free fallback catalog)
-        4. Saar Vision Synthesizer (Zero-latency offline engine)
+        Supports single image or multi-photo sequences.
+        Executes Two-Stage Pipeline:
+        Stage 1: Context text analyzed first → milestone & focal targets extracted.
+        Stage 2: Visual perception executes with injected prior context hypotheses.
         """
         gemini_key = api_key or os.getenv("GEMINI_API_KEY")
         groq_key = os.getenv("GROQ_API_KEY")
         openrouter_key = os.getenv("OPENROUTER_API_KEY")
         openai_key = api_key or os.getenv("OPENAI_API_KEY")
+
+        # Stage 1: Analyze user-provided context text FIRST (before image visual analysis)
+        context_analysis = None
+        if image_metadata:
+            for meta in image_metadata:
+                ctx = meta.get("context") or meta.get("description")
+                if ctx and str(ctx).strip():
+                    context_analysis = self.analyze_context_text(str(ctx).strip(), domain)
+                    if context_analysis:
+                        m_info = context_analysis.get("milestone", {})
+                        if m_info.get("day") is not None:
+                            meta["day"] = m_info["day"]
+                        if m_info.get("stage"):
+                            meta["stage"] = m_info["stage"]
+                        if m_info.get("milestone_label"):
+                            meta["label"] = m_info["milestone_label"]
+                        break
+        self.last_context_analysis = context_analysis
 
         # Gather all image inputs
         all_images: List[str] = []
@@ -303,7 +474,7 @@ Structure:
                 if res and len(res[0]) > 0:
                     key_pool.record_success("gemini", g_key)
                     masked = g_key[:6] + "..." if len(g_key) > 6 else "***"
-                    return res[0], res[1], res[2], f"Google AI Studio (Gemini Pool [{masked}] - {len(all_images)} frames)"
+                    return res[0], res[1], self._enrich_summary_with_context(res[2]), f"Google AI Studio (Gemini Pool [{masked}] - {len(all_images)} frames)"
 
         # 2. Try Groq API with multi-key failover
         if vlm_provider in ("groq", "qwen", "auto"):
@@ -312,32 +483,32 @@ Structure:
                 res = self._call_groq_vlm(primary_image, domain, gr_key)
                 if res and len(res[0]) > 0:
                     key_pool.record_success("groq", gr_key)
-                    return res[0], res[1], res[2], "Groq Qwen & LLaMA Engine (Ultra-High Speed)"
+                    return res[0], res[1], self._enrich_summary_with_context(res[2]), "Groq Qwen & LLaMA Engine (Ultra-High Speed)"
 
         # 3. Try Local Ollama Engine (Qwen2.5-VL / LLaVA)
         if vlm_provider in ("ollama", "qwen", "auto"):
             res = self._call_ollama_vlm(primary_image, domain)
             if res and len(res[0]) > 0:
-                return res[0], res[1], res[2], "Ollama Local Engine (Qwen2.5-VL / LLaVA)"
+                return res[0], res[1], self._enrich_summary_with_context(res[2]), "Ollama Local Engine (Qwen2.5-VL / LLaVA)"
 
         # 4. Try OpenRouter Multi-Model Router (Resilience & Free Models)
         if (vlm_provider in ("openrouter", "auto")) and openrouter_key:
             res = self._call_openrouter_vlm(primary_image, domain, openrouter_key)
             if res and len(res[0]) > 0:
-                return res[0], res[1], res[2], "OpenRouter Multi-Model Fallback Engine"
+                return res[0], res[1], self._enrich_summary_with_context(res[2]), "OpenRouter Multi-Model Fallback Engine"
 
         # 5. Try OpenAI GPT-4o Vision if key available or requested
         if (vlm_provider == "openai" or (vlm_provider == "auto" and openai_key)) and openai_key:
             res = self._call_openai_vlm(all_images, domain, openai_key)
             if res and len(res[0]) > 0:
-                return res[0], res[1], res[2], f"OpenAI GPT-4o Vision (Live VLM - {len(all_images)} frames)"
+                return res[0], res[1], self._enrich_summary_with_context(res[2]), f"OpenAI GPT-4o Vision (Live VLM - {len(all_images)} frames)"
 
         # 6. Fallback to Saar Intelligent Vision Synthesizer (Zero-latency offline engine)
         nodes, edges, summary = self._synthesize_scene_graph(primary_image, domain, preset_id)
         provider_name = "Saar Vision Engine (Synthesized VLM)"
         if gemini_key or groq_key or openrouter_key or openai_key:
             provider_name += " [Hybrid Live Key Active]"
-        return nodes, edges, summary, provider_name
+        return nodes, edges, self._enrich_summary_with_context(summary), provider_name
 
     def _call_gemini_vlm(
         self,
@@ -362,6 +533,22 @@ Structure:
             f"Analyze this image for domain '{domain}'. Ground every distinct subject instance with its own tight, non-overlapping bounding box. Do not merge separate entities into a single box. Detect all prominent instances and extract the structured visual scene graph."
         )
         parts = [{"text": intro_text}]
+
+        # Inject Stage 1 Prior Context Analysis if available
+        if getattr(self, "last_context_analysis", None):
+            ca = self.last_context_analysis
+            ca_lines = ["[PRIOR CONTEXT ANALYSIS (STAGE 1 - ANALYZED FIRST)]"]
+            if ca.get("milestone"):
+                m = ca["milestone"]
+                ca_lines.append(f"- Milestone: Day {m.get('day')} ({m.get('stage', 'Observation')})")
+            if ca.get("focus_targets"):
+                ca_lines.append(f"- Key Visual Targets to Ground: {', '.join(ca['focus_targets'])}")
+            if ca.get("hypotheses"):
+                ca_lines.append(f"- Working Hypotheses to Verify: {'; '.join(ca['hypotheses'])}")
+            if ca.get("context_summary"):
+                ca_lines.append(f"- Specimen Prior Context: {ca['context_summary']}")
+            ca_lines.append("Directive: You MUST prioritize grounding these specific targets and testing these hypotheses against the visual frames.")
+            parts.append({"text": "\n".join(ca_lines)})
 
         for idx, img in enumerate(image_inputs):
             meta = image_metadata[idx] if (image_metadata and idx < len(image_metadata)) else None

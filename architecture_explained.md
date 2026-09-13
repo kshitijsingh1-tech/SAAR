@@ -193,7 +193,24 @@ d:\bytebuild\
   - `Kinetic Chain Contribution Calculator`: Decomposes total power contribution percentage from legs (ground reaction force), trunk rotation, shoulder, elbow, and wrist snap across the kinetic chain.
   - `Jump-Landing Valgus Risk Assessor`: Evaluates lower-extremity deceleration mechanics and knee valgus angle during landing to flag injury-risk compensation patterns.
 
-#### E. `backend/app/gait/` — The ToddleAI Deterministic Pediatric Gait Engine
+#### E. `vlm_service.py` — Hybrid VLM Perception & Two-Stage Sequential Pipeline
+* **Role**: Multimodal visual grounding, scene graph extraction, and context-first text analysis.
+* **Architecture & Sequential Ingestion Pipeline**:
+  1. **Stage 1 (Text-First Analysis Engine — Analyzed First)**:
+     - When users attach specimen photographs with free-form contextual notes/instructions in the single modal text box, `analyze_context_text()` executes **prior** to visual perception.
+     - Calls fast LLM reasoning (`_call_text_analyzer_llm` via Gemini Flash / Groq LLaMA) with deterministic keyword fallback.
+     - Extracts:
+       - **Temporal Milestone**: `{ day, stage, milestone_label }` (e.g. Day 10 - Callus Formation) for dynamic 30-day timeline graph pinning.
+       - **Focus Targets**: 2–5 specific anatomical/structural entities that the VLM must ground.
+       - **Prior Hypotheses**: Scientific hypotheses to test against visual evidence.
+       - **Context Summary**: Crisp synthesis of user context and conditions.
+  2. **Stage 2 (Context-Guided Visual Grounding & Spatial Perception)**:
+     - The Stage 1 extracted targets and hypotheses are injected as top-priority prompt directives (`[PRIOR CONTEXT ANALYSIS (STAGE 1 - ANALYZED FIRST)]`) into the VLM.
+     - VLM models (Google Gemini 2.0/1.5 Flash, Groq Qwen/LLaMA, Ollama, OpenAI GPT-4o) detect individual entity instances and output normalized bounding boxes `[ymin, xmin, ymax, xmax]`.
+  3. **Attachment & Telemetry Synchronization**:
+     - The Stage 1 context analysis is attached directly to the investigation report (`InvestigationResponse.text_context_analysis`), prepended to findings summaries, and returned in `telemetry.milestones` to dynamically pin the photo to the 30-day timeline graph.
+
+#### F. `backend/app/gait/` — The ToddleAI Deterministic Pediatric Gait Engine
 * **Role**: End-to-end computer-vision and signal-processing pipeline evaluating toddler walking clips.
 * **Key Submodules**:
   - `video_processor.py`: Decouples video frames via OpenCV (`cv2.VideoCapture`) with timestamp indexing.
@@ -204,7 +221,7 @@ d:\bytebuild\
   - `quality/recording_quality.py`: Evaluates tracking jitter, occlusion, and minimum step count to gate recordings into `HIGH`, `MEDIUM`, `LOW`, or `REJECT`.
   - `observations/observation_engine.py`: Emits objective clinical screening observations with developmental context.
 
-#### F. `main.py` — REST API Gateway
+#### G. `main.py` — REST API Gateway
 * **Role**: FastAPI web server running on Uvicorn (`http://127.0.0.1:8001`).
 * **Endpoints**:
   - `GET /domains`: Lists available domain plugins and scenario presets.

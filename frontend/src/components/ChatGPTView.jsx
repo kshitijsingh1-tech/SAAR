@@ -178,13 +178,9 @@ export function ChatGPTView({
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
 
-  // Image Milestone & Longitudinal Metadata Modal State
+  // Image Milestone & Longitudinal Metadata Modal State (Single Context Text Box)
   const [metaModalFileIdx, setMetaModalFileIdx] = useState(null);
-  const [metaDay, setMetaDay] = useState('');
-  const [metaStage, setMetaStage] = useState('');
-  const [metaLabel, setMetaLabel] = useState('');
-  const [metaViewAngle, setMetaViewAngle] = useState('Lateral (Side View)');
-  const [metaNotes, setMetaNotes] = useState('');
+  const [metaContextText, setMetaContextText] = useState('');
   const [metaColor, setMetaColor] = useState('#0284c7');
 
   // Floating "Ask Saar" Selection Popover State (ChatGPT style)
@@ -380,11 +376,7 @@ export function ChatGPTView({
     if (!file) return;
     const existing = file._saarMeta || {};
     setMetaModalFileIdx(idx);
-    setMetaDay(existing.day != null ? String(existing.day) : String(idx + 1));
-    setMetaStage(existing.stage || '');
-    setMetaLabel(existing.label || '');
-    setMetaViewAngle(existing.viewAngle || 'Lateral (Side View)');
-    setMetaNotes(existing.notes || '');
+    setMetaContextText(existing.context || existing.notes || '');
     const palette = ['#0284c7', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#06b6d4'];
     setMetaColor(existing.color || palette[idx % palette.length]);
   };
@@ -395,15 +387,18 @@ export function ChatGPTView({
       const next = [...prev];
       const target = next[metaModalFileIdx];
       if (target) {
-        const rawDay = metaDay.trim();
-        const parsedDay = rawDay ? (isNaN(Number(rawDay.replace(/^day\s*/i, ''))) ? rawDay : Number(rawDay.replace(/^day\s*/i, ''))) : (metaModalFileIdx + 1);
-        const generatedLabel = metaLabel.trim() || (metaStage.trim() ? `Day ${parsedDay} - ${metaStage.trim()}` : `Day ${parsedDay} Milestone`);
+        const text = metaContextText.trim();
+        const dayMatch = text.match(/(?:day|milestone|timepoint|d)\s*[:#-]?\s*(\d+)/i);
+        const parsedDay = dayMatch ? Number(dayMatch[1]) : (metaModalFileIdx + 1);
+        const snippet = text.slice(0, 35) + (text.length > 35 ? '...' : '');
+        const generatedLabel = text ? (dayMatch ? `Day ${parsedDay}: ${snippet}` : snippet) : `Milestone ${metaModalFileIdx + 1}`;
+
         target._saarMeta = {
           day: parsedDay,
-          stage: metaStage.trim() || 'Milestone Stage',
+          context: text,
+          notes: text,
           label: generatedLabel,
-          viewAngle: metaViewAngle,
-          notes: metaNotes.trim(),
+          stage: dayMatch ? `Day ${parsedDay}` : 'Specimen Context',
           color: metaColor
         };
       }
@@ -422,14 +417,13 @@ export function ChatGPTView({
           imgIdx++;
           const dayOffsets = [1, 10, 20, 30, 45, 60, 90, 120];
           const assignedDay = imgIdx <= dayOffsets.length ? dayOffsets[imgIdx - 1] : imgIdx * 10;
-          const stagePresets = ['Incision / Attachment', 'Callus Bridge', 'Vascular Union', 'Shoot Elongation', 'Foliar Expansion', 'Maturation'];
-          const assignedStage = f._saarMeta?.stage || stagePresets[(imgIdx - 1) % stagePresets.length];
+          const defaultContext = `Day ${assignedDay} specimen observation. Track developmental progression and tissue status.`;
           f._saarMeta = {
-            day: f._saarMeta?.day ?? assignedDay,
-            stage: assignedStage,
-            label: f._saarMeta?.label || `Day ${f._saarMeta?.day ?? assignedDay} - ${assignedStage}`,
-            viewAngle: f._saarMeta?.viewAngle || 'Lateral (Side View)',
-            notes: f._saarMeta?.notes || `Specimen record at Day ${f._saarMeta?.day ?? assignedDay}`,
+            day: assignedDay,
+            context: f._saarMeta?.context || defaultContext,
+            notes: f._saarMeta?.notes || defaultContext,
+            label: `Day ${assignedDay}: Specimen ${imgIdx}`,
+            stage: `Day ${assignedDay}`,
             color: f._saarMeta?.color || palette[(imgIdx - 1) % palette.length]
           };
         }
@@ -1320,23 +1314,18 @@ export function ChatGPTView({
                           DAY {saarMeta.day}
                         </span>
                       )}
-                      {saarMeta?.stage && (
-                        <span style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>
-                          {saarMeta.stage}
+                      {saarMeta?.context ? (
+                        <span style={{ fontSize: '0.7rem', color: '#cbd5e1', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={saarMeta.context}>
+                          {saarMeta.context}
                         </span>
-                      )}
-                      {saarMeta?.viewAngle && (
-                        <span style={{ fontSize: '0.66rem', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}>
-                          {saarMeta.viewAngle}
-                        </span>
-                      )}
-                      {isImg && !saarMeta && (
+                      ) : isImg ? (
                         <span style={{ fontSize: '0.68rem', color: '#a78bfa', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                           <Tag size={10} />
-                          <span>Click to add metadata</span>
+                          <span>Click to add context for AI (analyzed first)</span>
                         </span>
+                      ) : (
+                        <span>{meta.label}</span>
                       )}
-                      {!isImg && !saarMeta && <span>{meta.label}</span>}
                     </div>
                   </div>
 
@@ -1552,7 +1541,7 @@ export function ChatGPTView({
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Tag size={16} color="#38bdf8" />
                 <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
-                  Tag Milestone & Image Metadata
+                  Tag Specimen Context (Analyzed First)
                 </h3>
               </div>
               <button
@@ -1581,144 +1570,50 @@ export function ChatGPTView({
                       <img
                         src={modalPreview}
                         alt="Preview"
-                        style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.4)' }}
+                        style={{ width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.4)' }}
                       />
                     ) : (
-                      <ImageIcon size={36} color="#a78bfa" />
+                      <ImageIcon size={32} color="#a78bfa" />
                     )}
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {targetFile?.name}
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
-                        Annotate this specimen photo for chronological milestones, cross-iteration tracking, and VLM comparative grounding.
+                      <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Sliders size={11} />
+                        <span>Two-Stage Pipeline: Text analyzed first → attached to image findings</span>
                       </div>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* Day # and Stage inputs */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>
-                    Milestone Day #
-                  </label>
-                  <input
-                    type="text"
-                    value={metaDay}
-                    onChange={(e) => setMetaDay(e.target.value)}
-                    placeholder="e.g. 1, 10, 30"
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      background: 'rgba(0,0,0,0.3)',
-                      color: '#fff',
-                      fontSize: '0.82rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>
-                    Developmental Stage / Action
-                  </label>
-                  <input
-                    type="text"
-                    value={metaStage}
-                    onChange={(e) => setMetaStage(e.target.value)}
-                    placeholder="e.g. Scion Attached, Callus Union"
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      background: 'rgba(0,0,0,0.3)',
-                      color: '#fff',
-                      fontSize: '0.82rem',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Quick stage suggestions */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Presets:</span>
-                {['Incision / Graft', 'Callus Bridge', 'Shoot Expansion', 'Foliar Bloom', 'Root Collar', 'Baseline / Pre-Op'].map((stageName) => (
-                  <button
-                    key={stageName}
-                    type="button"
-                    onClick={() => {
-                      setMetaStage(stageName);
-                      if (!metaLabel) setMetaLabel(`Day ${metaDay || '1'} - ${stageName}`);
-                    }}
-                    style={{
-                      fontSize: '0.68rem',
-                      padding: '2px 7px',
-                      borderRadius: '4px',
-                      background: metaStage === stageName ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.06)',
-                      border: metaStage === stageName ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
-                      color: metaStage === stageName ? '#38bdf8' : '#cbd5e1',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {stageName}
-                  </button>
-                ))}
-              </div>
-
-              {/* View / Perspective angle */}
+              {/* Single Context Text Box */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>
-                  Camera Perspective / Anatomical Angle
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
+                  Specimen Context, Milestone & Analytical Instructions
                 </label>
-                <select
-                  value={metaViewAngle}
-                  onChange={(e) => setMetaViewAngle(e.target.value)}
+                <div style={{ fontSize: '0.71rem', color: '#94a3b8', marginBottom: '8px', lineHeight: 1.4 }}>
+                  Enter any chronological milestones (e.g. <em>Day 10</em>, <em>Pre-Op Baseline</em>), physical conditions, or focal targets. The AI analyzes this text first, extracts milestones for dynamic graph pinning, and guides the visual reasoning engine.
+                </div>
+                <textarea
+                  value={metaContextText}
+                  onChange={(e) => setMetaContextText(e.target.value)}
+                  rows={5}
+                  autoFocus
+                  placeholder="e.g. Day 10 post-incision specimen. Parafilm sealed, high humidity. Focus on scion junction: inspect for parenchymal callus bridging, vascular connection, or necrosis."
                   style={{
                     width: '100%',
-                    padding: '8px 10px',
+                    padding: '10px 12px',
                     borderRadius: '8px',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    background: '#27272a',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    background: 'rgba(0,0,0,0.35)',
                     color: '#fff',
                     fontSize: '0.82rem',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="Lateral (Side View)">Lateral (Side View)</option>
-                  <option value="Apical (Top View)">Apical (Top View)</option>
-                  <option value="Macro Cut Surface">Macro Cut Surface / Cross-Section</option>
-                  <option value="Frontal (Anterior)">Frontal (Anterior View)</option>
-                  <option value="Sagittal (Profile)">Sagittal (Profile View)</option>
-                  <option value="Substrate / Root Zone">Substrate / Root Zone</option>
-                  <option value="Wide Canopy">Wide Canopy / Field Scale</option>
-                </select>
-              </div>
-
-              {/* Clinical / Field Notes */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>
-                  Specimen Notes / Physiological Observations (Optional)
-                </label>
-                <textarea
-                  value={metaNotes}
-                  onChange={(e) => setMetaNotes(e.target.value)}
-                  rows={2}
-                  placeholder="e.g. Sealed with parafilm, 95% sub-tape RH, active cambial callus visible under 10x lens."
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    background: 'rgba(0,0,0,0.3)',
-                    color: '#fff',
-                    fontSize: '0.8rem',
+                    lineHeight: 1.45,
                     outline: 'none',
-                    resize: 'none'
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -1759,7 +1654,7 @@ export function ChatGPTView({
                 }}
               >
                 <Check size={14} />
-                <span>Save Milestone Tag</span>
+                <span>Save Context</span>
               </button>
             </div>
           </div>

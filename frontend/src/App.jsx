@@ -687,6 +687,18 @@ export default function App() {
 
       let reply = res.conclusion || 'Scientific visual analysis completed successfully.';
 
+      // Attach Stage 1 Prior Text Analysis if available
+      if (res.text_context_analysis && !reply.includes('[Stage 1 Prior Context Analysis')) {
+        const tca = res.text_context_analysis;
+        const m = tca.milestone || {};
+        const targets = tca.focus_targets?.length ? `- **Focal Targets Grounded**: ${tca.focus_targets.join(', ')}\n` : '';
+        const hypos = tca.hypotheses?.length ? `- **Prior Hypotheses Evaluated**: ${tca.hypotheses.join('; ')}\n` : '';
+        const summaryText = tca.context_summary ? `- **Context**: *"${tca.context_summary}"*\n` : '';
+        const stage1Callout = `### Stage 1: Prior Context Analysis (${m.milestone_label || `Day ${m.day || 1}`})\n` +
+          `${summaryText}${targets}${hypos}\n---\n\n### Stage 2: Visual Grounding & Scene Perception\n`;
+        reply = stage1Callout + reply;
+      }
+
       if (csvReport) {
         const featCount = csvReport?.perception?.features_detected ?? (csvReport?.telemetry?.columnCount || 'several');
         const obsCount = csvReport?.perception?.observations_count ?? (csvReport?.telemetry?.rowCount || 'multiple');
@@ -715,6 +727,9 @@ export default function App() {
           ? `Comparative analysis across ${base64DataList.length} milestone frames · Grounded ${nodeCount} visual entities (${confidencePct}% confidence)`
           : `Grounded ${nodeCount} spatial visual entities · Formulated ${edgeCount} causal relationships (${confidencePct}% confidence)`,
         steps: [
+          ...(res.text_context_analysis ? [
+            `Stage 1 (Text-First): Analyzed context into ${res.text_context_analysis.milestone?.milestone_label || 'Milestone'} · Extracted ${res.text_context_analysis.focus_targets?.length || 0} visual focal targets & ${res.text_context_analysis.hypotheses?.length || 0} testable hypotheses`
+          ] : []),
           isMultiFrame
             ? `Comparative Perception: Grounded ${base64DataList.length} sequential milestone frames: ${newMilestones.map((m) => m.badge + ' (' + m.stage + ')').join(' -> ')}`
             : `Visual Perception: Grounded ${nodeCount} spatial entities with bounding boxes from "${fileName}"`,
