@@ -85,3 +85,9 @@ test_image_response.json
 
 # MediaPipe & ML Models
 *.task
+
+# Secondary readmes ignore (keep only root README.md)
+*README*
+*readme*
+!README.md
+!README.markdown
