@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Maximize2, Minimize2, BarChart2, BookOpen,
-  Camera, GitFork, BookA, Crosshair, GripVertical, Sparkles, Activity
+  Camera, GitFork, BookA, Crosshair, GripVertical, Sparkles, Activity, Zap
 } from 'lucide-react';
 import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { ImageInspector } from './ImageInspector';
@@ -9,6 +9,7 @@ import { PlotlyGraphViewer } from './PlotlyGraphViewer';
 import { DomainRAGRadar } from './DomainRAGRadar';
 import { ScientificDictionaryDrawer } from './ScientificDictionaryDrawer';
 import { GaitDashboard } from './GaitDashboard';
+import { BadmintonDashboard } from './BadmintonDashboard';
 
 export function ToolCanvasDrawer({
   isOpen,
@@ -185,14 +186,14 @@ export function ToolCanvasDrawer({
       { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
       { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
     ];
-  } else if (isSportsDomain) {
-    // Sports domain when in multi-session scenario/preset mode:
+  } else if (isSportsDomain || activeTool === 'badminton') {
+    // Sports domain / Badminton Biomechanics:
     toolsMeta = [
+      { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
       { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
-      { id: 'gait', label: 'Video Analysis (Sports & Motion)', icon: <Activity size={15} /> },
       { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
       { id: 'analytics', label: 'Kinematic Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-      { id: 'rag', label: 'Scientific References', icon: <BookOpen size={15} /> },
+      { id: 'rag', label: 'Sports References', icon: <BookOpen size={15} /> },
       { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
     ];
   } else {
@@ -208,11 +209,13 @@ export function ToolCanvasDrawer({
 
   // Robust tool alias normalization
   const TOOL_ALIASES = {
+    badminton: 'badminton',
+    sports: 'badminton',
+    biomechanics: 'badminton',
     telemetry: 'analytics',
     sensor: 'analytics',
     sensors: 'analytics',
     spectrometry: 'analytics',
-    biomechanics: 'gait',
     posture: 'gait',
     morphology: 'grounded',
     camera: 'grounded',
@@ -221,7 +224,7 @@ export function ToolCanvasDrawer({
   };
 
   const availableIds = toolsMeta.map((t) => t.id);
-  const defaultTool = (isToddlerVideo || isSportsVideo) ? 'gait' : 'grounded';
+  const defaultTool = (isToddlerVideo) ? 'gait' : (isSportsDomain || activeTool === 'badminton') ? 'badminton' : 'grounded';
   const aliased = TOOL_ALIASES[activeTool] || activeTool;
   const effectiveTool = availableIds.includes(aliased) ? aliased : defaultTool;
 
@@ -423,6 +426,17 @@ export function ToolCanvasDrawer({
               initialResult={saarData}
               initialFile={customVideoFile}
               selectedDomain={selectedDomain}
+            />
+          </div>
+        )}
+
+        {/* Tool: Badminton Athletic Biomechanics (BadmintonDashboard.jsx) */}
+        {effectiveTool === 'badminton' && (
+          <div className="tool-body-pane custom-pane-scrollbar" style={{ overflowY: 'auto', height: '100%' }}>
+            <BadmintonDashboard
+              onRegisterToChat={onSendToChat}
+              initialResult={saarData?.domain === 'sports' || saarData?.analysis_id ? saarData : null}
+              initialFile={customVideoFile}
             />
           </div>
         )}

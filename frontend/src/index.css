@@ -5973,6 +5973,272 @@ body {
   color: #6b7280;
 }
 
+/* ═══════════════════════════════════════════════════════════════════ */
+/* ATTACHED IMAGE PILL & IMAGE VERIFICATION MODAL                      */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.card-image-thumb-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-image-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumb-zoom-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-image-thumb-box:hover .thumb-zoom-overlay {
+  opacity: 1;
+}
+
+.verify-hint {
+  color: #3b82f6;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.context-pill-card.image-preview-card {
+  cursor: pointer;
+}
+
+.context-pill-card.image-preview-card:hover {
+  border-color: #3b82f6;
+}
+
+/* Modal Backdrop */
+.image-verify-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+.image-verify-modal-card {
+  width: 100%;
+  max-width: 840px;
+  max-height: 88vh;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35), 0 0 1px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: popInCard 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.image-verify-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.image-verify-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.image-verify-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #2563eb;
+  text-transform: uppercase;
+}
+
+.image-verify-filename {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 580px;
+}
+
+.image-verify-meta {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.image-verify-close-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.image-verify-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: scale(1.05);
+}
+
+.image-verify-body {
+  padding: 1.25rem;
+  background: #090d16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 260px;
+  max-height: 58vh;
+  position: relative;
+}
+
+.image-verify-viewport {
+  width: 100%;
+  height: 100%;
+  max-height: 54vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-verify-full-img {
+  max-width: 100%;
+  max-height: 54vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.image-verify-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  padding: 2rem;
+}
+
+.image-verify-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.4rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.image-verify-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  border: 1px solid transparent;
+}
+
+.image-verify-btn.remove {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.image-verify-btn.remove:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+  transform: translateY(-1px);
+}
+
+.image-verify-btn.confirm {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.image-verify-btn.confirm:hover {
+  background: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Dark theme overrides for Image Verification Modal */
+[data-theme='dark'] .image-verify-modal-card {
+  background: #18181b;
+  border-color: #27272a;
+}
+
+[data-theme='dark'] .image-verify-header,
+[data-theme='dark'] .image-verify-footer {
+  background: #121215;
+  border-color: #27272a;
+}
+
+[data-theme='dark'] .image-verify-filename {
+  color: #f4f4f5;
+}
+
+[data-theme='dark'] .image-verify-close-btn {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #a1a1aa;
+}
+
+[data-theme='dark'] .image-verify-close-btn:hover {
+  background: #3f3f46;
+  color: #f4f4f5;
+}
+
 .composer-capsule {
   width: 100%;
   max-width: 800px;

@@ -143,41 +143,30 @@ class RAGKnowledgeService:
             })
         return result
 
-    def _normalize_domain(self, domain: Optional[str]) -> Optional[str]:
-        """Normalize domain aliases across pediatric, toddler, sports, and technical names."""
-        if not domain:
-            return None
-        d = str(domain).lower().strip()
-        if any(k in d for k in ["pediat", "toddle", "gait", "child", "walk"]):
-            return "gait"
-        if any(k in d for k in ["sport", "athlet", "badminton", "smash"]):
-            return "sports"
-        if any(k in d for k in ["agri", "crop", "plant", "botan"]):
-            return "agriculture"
-        if any(k in d for k in ["infra", "road", "gpr", "pave"]):
-            return "infrastructure"
-        if any(k in d for k in ["astro", "orbit", "transit", "star"]):
-            return "astronomy"
-        return d
-
     def query(
         self,
         query_text: str,
         domain: Optional[str] = None,
         top_k: int = 5,
     ) -> List[RAGResult]:
-        """Retrieve the most relevant knowledge chunks for a query strictly bounded to the target domain."""
-        norm_domain = self._normalize_domain(domain)
-        candidates = self.domains.get(norm_domain, []) if norm_domain else self.chunks
-        if not candidates and not norm_domain:
-            candidates = self.chunks
-        if not candidates:
+        """Retrieve the most relevant knowledge chunks for a query."""
+        query_tokens = _tokenize(query_text)
+        if not query_tokens:
             return []
 
-        query_tokens = _tokenize(query_text) if query_text else []
-        if not query_tokens:
-            # If no search tokens provided, return the top representative chunks for the domain
-            return [RAGResult(chunk=c, score=0.95 - (i * 0.02)) for i, c in enumerate(candidates[:top_k])]
+        if domain:
+            d_lower = domain.lower().replace("_", " ").strip()
+            matched = []
+            for d_key, chunks in self.domains.items():
+                k_lower = d_key.lower()
+                if d_lower == k_lower or d_lower in k_lower or k_lower in d_lower:
+                    matched.extend(chunks)
+            candidates = matched if matched else self.chunks
+        else:
+            candidates = self.chunks
+
+        if not candidates:
+            return []
 
         scored: List[Tuple[float, KnowledgeChunk]] = []
         for chunk in candidates:
@@ -186,10 +175,7 @@ class RAGKnowledgeService:
                 scored.append((score, chunk))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        if scored:
-            return [RAGResult(chunk=c, score=s) for s, c in scored[:top_k]]
-        # Fallback to domain chunks if strict keyword search yielded 0 matches
-        return [RAGResult(chunk=c, score=0.88 - (i * 0.02)) for i, c in enumerate(candidates[:top_k])]
+        return [RAGResult(chunk=c, score=s) for s, c in scored[:top_k]]
 
     def ingest_text(self, text: str, domain: str, source: str = "user_upload") -> int:
         """Ingest raw text into a domain knowledge base. Returns chunk count."""
@@ -265,12 +251,3 @@ class RAGKnowledgeService:
                     for token in set(chunk.tokens):
                         self.doc_freq[token] += 1
                     self.total_docs += 1
-
-        # Register aliases for seamless domain lookup
-        if "gait" in self.domains:
-            self.domains["pediatrics"] = self.domains["gait"]
-            self.domains["pediatric"] = self.domains["gait"]
-            self.domains["toddler"] = self.domains["gait"]
-        if "sports" in self.domains:
-            self.domains["athletic"] = self.domains["sports"]
-            self.domains["biomechanics"] = self.domains["sports"]
