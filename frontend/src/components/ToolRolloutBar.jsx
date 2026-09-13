@@ -60,9 +60,10 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     }
   ];
 
-  const tools = selectedDomain === 'pediatrics'
+  const isPediatric = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
+  const tools = isPediatric
     ? allTools.filter((t) => ['grounded', 'gait', 'rag'].includes(t.id))
-    : allTools;
+    : allTools.filter((t) => t.id !== 'gait');
 
   useEffect(() => {
     function handleClickOutside(event) {

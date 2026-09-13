@@ -375,6 +375,7 @@ export default function App() {
       setCustomImageData(null);
       setCustomImageUrl(session.imageUrl || null);
     }
+    setCustomVideoFile(session.videoFile || null);
     setCameraConnected(true);
     setSaarData(null);
     setInvestigationData(null);
@@ -421,9 +422,9 @@ export default function App() {
   // Run Autonomous Investigation Scenario from welcome card or user selection
   const handleSelectScenario = async (domain, presetId, queryText) => {
     setSelectedDomain(domain);
-    // Clear custom uploaded media and old session results before loading new preset scenario
     setCustomImageData(null);
     setCustomImageUrl(null);
+    setCustomVideoFile(null);
     setSaarData(null);
     setInvestigationData(null);
     setSelectedNodeId(null);
@@ -524,9 +525,9 @@ export default function App() {
     setInvestigationData(null);
     setSaarData(null);
     setBaselineData(null);
-    setSelectedNodeId(null);
     setCustomImageData(base64Data);
     setCustomImageUrl(null);
+    setCustomVideoFile(null);
     setCameraConnected(true);
 
     // Auto-detect domain if current domain is default/infrastructure and upload has botanical context
@@ -542,7 +543,7 @@ export default function App() {
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId
-          ? { ...s, imageData: base64Data, imageUrl: null, domain: targetDomain }
+          ? { ...s, imageData: base64Data, imageUrl: null, videoFile: null, domain: targetDomain }
           : s
       )
     );
@@ -724,6 +725,15 @@ export default function App() {
           try {
             setSelectedDomain('pediatric');
             setCustomVideoFile(file);
+            setCustomImageData(null);
+            setCustomImageUrl(null);
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === activeSessionId
+                  ? { ...s, videoFile: file, imageData: null, imageUrl: null, domain: 'pediatric' }
+                  : s
+              )
+            );
             const gaitResult = await analyzeGaitVideo(file, 24);
             setSaarData(gaitResult);
             let responseText = `### Video Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;

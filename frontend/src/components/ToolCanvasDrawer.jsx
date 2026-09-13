@@ -118,17 +118,17 @@ export function ToolCanvasDrawer({
 
   if (!isOpen) return null;
 
-  const isPediatricsDomain = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
+  const isPediatricsDomain = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait') || String(selectedDomain || '').toLowerCase().includes('biomechanic');
 
-  // Operational tools strictly for active scientific investigations
-  const isMovementAnalysis = isPediatricsDomain || activeTool === 'gait';
+  // Video/motion analysis is strictly private to pediatric/movement inquiries or when video media is loaded
+  const hasVideoContent = Boolean(customVideoFile) || isPediatricsDomain;
 
   const toolsMeta = [
     { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
-    { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
+    ...(hasVideoContent ? [{ id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> }] : []),
     { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
     { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
-    { id: 'rag', label: isMovementAnalysis ? 'Clinical References' : 'Scientific References', icon: <BookOpen size={15} /> },
+    { id: 'rag', label: isPediatricsDomain ? 'Clinical References' : 'Scientific References', icon: <BookOpen size={15} /> },
     { id: 'dictionary', label: 'Scientific Dictionary', icon: <BookA size={15} /> }
   ];
 
@@ -145,7 +145,10 @@ export function ToolCanvasDrawer({
     inspector: 'grounded',
     image: 'grounded'
   };
-  const effectiveTool = TOOL_ALIASES[activeTool] || (toolsMeta.some((t) => t.id === activeTool) ? activeTool : 'grounded');
+
+  // If activeTool is 'gait' but hasVideoContent is false (e.g. botanical inquiry), fall back to 'grounded'
+  const resolvedActive = (!hasVideoContent && activeTool === 'gait') ? 'grounded' : activeTool;
+  const effectiveTool = TOOL_ALIASES[resolvedActive] || (toolsMeta.some((t) => t.id === resolvedActive) ? resolvedActive : 'grounded');
 
   const currentToolMeta = toolsMeta.find((t) => t.id === effectiveTool) || toolsMeta[0];
 
