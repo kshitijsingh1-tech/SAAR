@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
 
 export const fetchDomains = async () => {
   const res = await axios.get(`${API_BASE_URL}/domains`);
@@ -13,6 +13,8 @@ export const runInvestigation = async (domain, presetId, options = {}) => {
     preset_id: presetId,
     image_data: options.imageData || null,
     image_url: options.imageUrl || null,
+    images: options.images || null,
+    image_metadata: options.imageMetadata || options.image_metadata || null,
     vlm_provider: options.vlmProvider || 'auto',
     api_key: options.apiKey || null
   };
