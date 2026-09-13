@@ -60,9 +60,21 @@ export function ToolRolloutBar({ onOpenTool, activeTool, isDrawerOpen, floating 
     }
   ];
 
-  const isPediatric = String(selectedDomain || '').toLowerCase().includes('pediat') || String(selectedDomain || '').toLowerCase().includes('gait');
-  const tools = isPediatric
-    ? allTools.filter((t) => ['grounded', 'gait', 'rag'].includes(t.id))
+  const domainLower = String(selectedDomain || '').toLowerCase();
+  const isPediatrics = domainLower.includes('pediat') || domainLower.includes('gait') || domainLower.includes('toddle');
+  const isSports = domainLower.includes('sport') || domainLower.includes('athlet') || domainLower.includes('badminton');
+  const isAgri = domainLower.includes('agri') || domainLower.includes('crop') || domainLower.includes('plant') || domainLower.includes('botan');
+
+  const tools = isPediatrics
+    ? allTools
+        .filter((t) => ['gait', 'rag'].includes(t.id))
+        .map((t) => (t.id === 'rag' ? { ...t, label: 'Clinical References' } : t))
+    : isSports && activeTool === 'gait'
+    ? allTools
+        .filter((t) => ['gait', 'rag'].includes(t.id))
+        .map((t) => (t.id === 'gait' ? { ...t, label: 'Video Analysis (Sports & Motion)' } : t))
+    : isAgri
+    ? allTools.filter((t) => t.id !== 'gait')
     : allTools.filter((t) => t.id !== 'gait');
 
   useEffect(() => {
