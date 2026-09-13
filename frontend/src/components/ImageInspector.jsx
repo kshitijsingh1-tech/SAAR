@@ -3,7 +3,7 @@ import {
   Eye, EyeOff, Radio, Upload, Sparkles, Link as LinkIcon,
   Camera, X, Crosshair, Target, Layers, Activity, Droplets,
   HelpCircle, ExternalLink, Zap, Check, Film, Play, Pause,
-  Sprout, RotateCcw, AlertCircle
+  Sprout, RotateCcw, AlertCircle, Maximize2, Minimize2, ZoomIn, ZoomOut
 } from 'lucide-react';
 import { VideoTimelineScrubber } from './VideoTimelineScrubber';
 import { PlantCareCard } from './PlantCareCard';
@@ -121,6 +121,80 @@ export const ImageInspector = ({
 
   const isPediatrics = (presetId?.startsWith('toddler')) && !customImageData && !customImageUrl;
   const isAgriculture = (presetId?.startsWith('agri') || presetId === 'session-3') && !customImageData && !customImageUrl;
+
+  // ------------------------------------------------------------------
+  // Fullscreen & Synchronous Zoom/Pan State
+  // ------------------------------------------------------------------
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+        setZoomLevel(1.0);
+        setPanOffset({ x: 0, y: 0 });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
+  const handleZoomIn = (e) => {
+    e?.stopPropagation?.();
+    setZoomLevel((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 4.0));
+  };
+
+  const handleZoomOut = (e) => {
+    e?.stopPropagation?.();
+    setZoomLevel((prev) => {
+      const next = Math.max(Number((prev - 0.25).toFixed(2)), 0.5);
+      if (next <= 1.0) setPanOffset({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleResetZoom = (e) => {
+    e?.stopPropagation?.();
+    setZoomLevel(1.0);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const handleWheelZoom = (e) => {
+    if (!isFullscreen) return;
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      setZoomLevel((prev) => Math.min(Number((prev + 0.15).toFixed(2)), 4.0));
+    } else {
+      setZoomLevel((prev) => {
+        const next = Math.max(Number((prev - 0.15).toFixed(2)), 0.5);
+        if (next <= 1.0) setPanOffset({ x: 0, y: 0 });
+        return next;
+      });
+    }
+  };
+
+  const handleMouseDownPan = (e) => {
+    if (e.button !== 0) return;
+    if (zoomLevel <= 1.0) return;
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+  };
+
+  const handleMouseMovePan = (e) => {
+    if (!isPanning) return;
+    setPanOffset({
+      x: e.clientX - panStart.x,
+      y: e.clientY - panStart.y
+    });
+  };
+
+  const handleMouseUpPan = () => {
+    setIsPanning(false);
+  };
 
   // Pre-configured temporal keyframe streams for video analysis demonstrations
   const temporalKeyframes = useMemo(() => {
@@ -458,17 +532,22 @@ export const ImageInspector = ({
             )}
           </div>
           <div>
-            <span style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)' }}>
-              {mediaMode === 'video' ? 'Temporal Video Grounding Engine' : 'Visual Evidence Grounding'}
-            </span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
-              ({groundedNodes.length} active anchors)
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontWeight: '700', fontSize: '0.86rem', color: 'var(--text-main)' }}>
+                {mediaMode === 'video' ? 'Temporal Video Grounding Engine' : 'Visual Evidence Grounding'}
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
+                ({groundedNodes.length} active anchors)
+              </span>
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              {mediaMode === 'video' ? 'Time-synced 33-point keyframe tracking' : 'Interactive spatial anchors & bounding coordinates'}
+            </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {/* Video mode indicator + reset (only visible when a video is loaded) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          {/* Video mode indicator + reset */}
           {mediaMode === 'video' && (
             <button
               type="button"
@@ -486,20 +565,46 @@ export const ImageInspector = ({
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
-              title="Exit video mode and return to photo inspection"
+              title="Reset to image evidence"
             >
-              <Camera size={11} />
-              <span>Back to Photo</span>
+              <Film size={11} />
+              <span>Video Active (Reset)</span>
             </button>
           )}
+          {/* Fullscreen with Zoom Toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsFullscreen(true);
+              setZoomLevel(1.0);
+              setPanOffset({ x: 0, y: 0 });
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '0.25rem 0.55rem',
+              borderRadius: '6px',
+              background: 'var(--bg-dark)',
+              border: '1px solid var(--border-color)',
+              fontSize: '0.72rem',
+              color: 'var(--primary)',
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+            title="Open Fullscreen with Zoom & Pan (Labels stay in frame)"
+          >
+            <Maximize2 size={12} />
+            <span>Fullscreen</span>
+          </button>
 
-          {/* Quick upload button (Accepts images and video clips — mode auto-detects) */}
+          {/* Quick upload button */}
           <input
-            type="file"
             ref={fileInputRef}
-            onChange={handleFileChange}
+            type="file"
             accept="image/*,video/*"
             style={{ display: 'none' }}
+            onChange={handleFileSelect}
           />
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -516,13 +621,13 @@ export const ImageInspector = ({
               cursor: 'pointer',
               fontWeight: 500
             }}
-            title="Upload specimen photo or video clip"
+            title="Upload local photo or video clip"
           >
             <Upload size={12} />
             <span>Upload</span>
           </button>
 
-          {/* Stream URL Toggle */}
+          {/* URL Input Toggle */}
           <button
             onClick={() => setShowUrlInput(!showUrlInput)}
             style={{
@@ -1435,6 +1540,482 @@ export const ImageInspector = ({
                 </div>
               );
             }))}
+          </div>
+        </div>
+      )}
+
+      {/* 5. Fullscreen Overlay with Interactive Zoom, Pan, and Synchronous Labels */}
+      {isFullscreen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(5, 8, 15, 0.97)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            userSelect: 'none'
+          }}
+        >
+          {/* Top Floating Control Bar */}
+          <div
+            style={{
+              padding: '0.75rem 1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'rgba(15, 23, 42, 0.88)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+              zIndex: 100
+            }}
+          >
+            {/* Title & Metadata */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#38bdf8',
+                  boxShadow: '0 0 8px #38bdf8'
+                }}
+              />
+              <span style={{ fontWeight: 600, fontSize: '0.92rem', color: '#f8fafc', letterSpacing: '-0.01em' }}>
+                {mediaMode === 'video' ? 'Video Evidence Fullscreen Inspection' : (preset?.title || 'Visual Evidence Fullscreen Inspection')}
+              </span>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '999px',
+                  background: 'rgba(56, 189, 248, 0.12)',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  fontFamily: 'var(--font-mono)'
+                }}
+              >
+                {groundedNodes.length} Anchors Detected
+              </span>
+            </div>
+
+            {/* Center Controls: Zoom In / Out / Reset / Wheel Hint */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '8px',
+                  padding: '2px'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleZoomOut}
+                  disabled={zoomLevel <= 0.5}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: zoomLevel <= 0.5 ? 'rgba(255,255,255,0.3)' : '#f8fafc',
+                    padding: '0.35rem 0.55rem',
+                    borderRadius: '6px',
+                    cursor: zoomLevel <= 0.5 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Zoom Out (-)"
+                >
+                  <ZoomOut size={16} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#38bdf8',
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.78rem',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    minWidth: '58px',
+                    textAlign: 'center'
+                  }}
+                  title="Reset Zoom (Fit to Screen)"
+                >
+                  {Math.round(zoomLevel * 100)}%
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleZoomIn}
+                  disabled={zoomLevel >= 4.0}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: zoomLevel >= 4.0 ? 'rgba(255,255,255,0.3)' : '#f8fafc',
+                    padding: '0.35rem 0.55rem',
+                    borderRadius: '6px',
+                    cursor: zoomLevel >= 4.0 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Zoom In (+)"
+                >
+                  <ZoomIn size={16} />
+                </button>
+              </div>
+
+              {/* Fit button */}
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: '#f8fafc',
+                  padding: '0.35rem 0.65rem',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+                title="Fit to Screen"
+              >
+                Fit
+              </button>
+
+              {/* Toggle Labels */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (visibleBoxIds.size > 0) hideAllBoxes();
+                  else showAllBoxes();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: visibleBoxIds.size > 0 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                  border: visibleBoxIds.size > 0 ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
+                  color: visibleBoxIds.size > 0 ? '#38bdf8' : '#94a3b8',
+                  padding: '0.35rem 0.7rem',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+                title={visibleBoxIds.size > 0 ? 'Hide Labels' : 'Show Labels'}
+              >
+                {visibleBoxIds.size > 0 ? <Eye size={14} /> : <EyeOff size={14} />}
+                <span>{visibleBoxIds.size > 0 ? 'Labels Visible' : 'Labels Hidden'}</span>
+              </button>
+            </div>
+
+            {/* Right: Hint + Close Fullscreen */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                Scroll wheel to zoom • Drag to pan
+              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFullscreen(false);
+                  setZoomLevel(1.0);
+                  setPanOffset({ x: 0, y: 0 });
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  color: '#fca5a5',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Exit Fullscreen (Esc)"
+              >
+                <Minimize2 size={14} />
+                <span>Exit Fullscreen</span>
+                <span style={{ fontSize: '0.65rem', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>[ESC]</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Main Zoom & Pan Canvas */}
+          <div
+            style={{
+              flex: 1,
+              width: '100%',
+              height: '100%',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              cursor: zoomLevel > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'
+            }}
+            onWheel={handleWheelZoom}
+            onMouseDown={handleMouseDownPan}
+            onMouseMove={handleMouseMovePan}
+            onMouseUp={handleMouseUpPan}
+            onMouseLeave={handleMouseUpPan}
+          >
+            {/* The synchronized media + SVG container */}
+            <div
+              style={{
+                position: 'relative',
+                display: 'inline-block',
+                transformOrigin: 'center center',
+                transform: `scale(${zoomLevel}) translate(${panOffset.x / zoomLevel}px, ${panOffset.y / zoomLevel}px)`,
+                transition: isPanning ? 'none' : 'transform 0.12s ease-out',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
+                borderRadius: '8px',
+                overflow: 'hidden'
+              }}
+            >
+              {mediaMode === 'video' ? (
+                customVideoUrl ? (
+                  <video
+                    src={customVideoUrl}
+                    controls
+                    playsInline
+                    style={{
+                      display: 'block',
+                      maxWidth: '88vw',
+                      maxHeight: '82vh',
+                      width: 'auto',
+                      height: 'auto',
+                      objectFit: 'contain'
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={displayImage}
+                    alt="Keyframe Fullscreen"
+                    style={{
+                      display: 'block',
+                      maxWidth: '88vw',
+                      maxHeight: '82vh',
+                      width: 'auto',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      userSelect: 'none',
+                      pointerEvents: 'none'
+                    }}
+                  />
+                )
+              ) : displayImage ? (
+                <img
+                  src={displayImage}
+                  alt="Visual Evidence Fullscreen"
+                  onError={(e) => {
+                    if (!e.target.src.includes('monstera_sample.png')) {
+                      e.target.src = '/monstera_sample.png';
+                    }
+                  }}
+                  style={{
+                    display: 'block',
+                    maxWidth: '88vw',
+                    maxHeight: '82vh',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    userSelect: 'none',
+                    pointerEvents: 'none'
+                  }}
+                />
+              ) : (
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                  No visual evidence loaded
+                </div>
+              )}
+
+              {/* Synchronized SVG Bounding Boxes Overlay - locked 1:1 onto the media pixels */}
+              {groundedNodes.length > 0 && (
+                <svg
+                  viewBox="0 0 1000 1000"
+                  preserveAspectRatio="none"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'none',
+                    zIndex: 20
+                  }}
+                >
+                  <defs>
+                    <filter id="fs-box-glow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="6" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                  </defs>
+
+                  {groundedNodes.map((node, idx) => {
+                    if (!visibleBoxIds.has(node.id)) return null;
+
+                    const color = ANCHOR_COLORS[idx % ANCHOR_COLORS.length];
+                    const [ymin, xmin, ymax, xmax] = node.bbox;
+                    const width = Math.max(30, xmax - xmin);
+                    const height = Math.max(30, ymax - ymin);
+                    const isSelected =
+                      (selectedNodeId &&
+                        (node.id === selectedNodeId ||
+                          node.id.toLowerCase() === selectedNodeId.toLowerCase() ||
+                          node.label?.toLowerCase().includes(selectedNodeId.toLowerCase()))) ||
+                      (activeHudNode && activeHudNode.id === node.id);
+                    const isHovered = hoveredBoxId === node.id;
+                    const labelWidth = Math.min(Math.max(width, 140), 240);
+
+                    return (
+                      <g
+                        key={`fs-${node.id}`}
+                        style={{ pointerEvents: 'auto', cursor: 'pointer', transition: 'all 0.15s ease-out' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const next = activeHudNode?.id === node.id ? null : node;
+                          setActiveHudNode(next);
+                          if (onSelectNode) onSelectNode(next ? node.id : null);
+                        }}
+                        onMouseEnter={() => setHoveredBoxId(node.id)}
+                        onMouseLeave={() => setHoveredBoxId(null)}
+                      >
+                        {/* Bounding Box Rectangle */}
+                        <rect
+                          x={xmin}
+                          y={ymin}
+                          width={width}
+                          height={height}
+                          rx="6"
+                          fill={
+                            isSelected
+                              ? color.fill.replace('0.18', '0.35')
+                              : isHovered
+                              ? color.fill.replace('0.18', '0.26')
+                              : color.fill
+                          }
+                          stroke={isSelected ? '#ffffff' : color.stroke}
+                          strokeWidth={isSelected ? 3.5 : isHovered ? 2.8 : 2}
+                          strokeDasharray={isSelected ? '7,3' : 'none'}
+                          filter={isSelected || isHovered ? 'url(#fs-box-glow)' : 'none'}
+                        />
+
+                        {/* Reticles */}
+                        {isSelected && (
+                          <>
+                            <circle cx={xmin} cy={ymin} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                            <circle cx={xmax} cy={ymin} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                            <circle cx={xmin} cy={ymax} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                            <circle cx={xmax} cy={ymax} r="4.5" fill={color.stroke} stroke="#ffffff" strokeWidth="1.5" />
+                          </>
+                        )}
+
+                        {/* Label Badge */}
+                        <g transform={`translate(${xmin}, ${Math.max(6, ymin - 26)})`}>
+                          <rect
+                            x="0"
+                            y="0"
+                            width={labelWidth}
+                            height="24"
+                            rx="5"
+                            fill={isSelected ? color.stroke : isHovered ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.88)'}
+                            stroke={color.stroke}
+                            strokeWidth="1.2"
+                          />
+                          <circle cx="12" cy="12" r="4.5" fill={isSelected ? '#ffffff' : color.stroke} />
+                          <text
+                            x="22"
+                            y="16"
+                            fill={isSelected ? '#0f172a' : '#ffffff'}
+                            fontSize="11px"
+                            fontFamily="Outfit, sans-serif"
+                            fontWeight="600"
+                          >
+                            {node.label.length > 24 ? node.label.substring(0, 22) + '…' : node.label}
+                          </text>
+                        </g>
+                      </g>
+                    );
+                  })}
+                </svg>
+              )}
+            </div>
+
+            {/* Floating Active Node Card inside Fullscreen */}
+            {activeHudNode && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '24px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'rgba(15, 23, 42, 0.92)',
+                  backdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6)',
+                  borderRadius: '10px',
+                  padding: '0.75rem 1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  maxWidth: '700px',
+                  zIndex: 110,
+                  color: '#f8fafc'
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.88rem', color: '#38bdf8' }}>
+                      {activeHudNode.label}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: '#94a3b8' }}>
+                      {activeHudNode.category || 'entity'}
+                    </span>
+                    {activeHudNode.confidence && (
+                      <span style={{ fontSize: '0.7rem', color: '#4ade80', fontFamily: 'var(--font-mono)' }}>
+                        {Math.round(activeHudNode.confidence * 100)}% conf
+                      </span>
+                    )}
+                  </div>
+                  {activeHudNode.properties && Object.keys(activeHudNode.properties).length > 0 && (
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {Object.entries(activeHudNode.properties).map(([k, v]) => (
+                        <span key={k}><strong>{k}:</strong> {String(v)}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveHudNode(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: '4px'
+                  }}
+                  title="Close Inspector"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
