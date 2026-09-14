@@ -1264,7 +1264,7 @@ export function ChatGPTView({
                     )}
 
                     {/* Sleek, subtle exploration shortcuts */}
-                    {msg.role === 'assistant' && msg.report && (() => {
+                    {msg.role === 'assistant' && (msg.report || (concludedSessions[index] && msg.subjectId?.includes('badminton'))) && (() => {
                       const rep = msg.report;
                       // Determine modality strictly by active report data structure
                       const isImageInvestigation = Boolean(rep?.final_graph || rep?.vlm_raw_analysis || rep?.image_metadata || rep?.preset_metadata || rep?.nodes?.length > 0);

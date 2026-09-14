@@ -2419,6 +2419,97 @@ The user provided two side-by-side screenshots:
    - Production build `npm run build` executed in 14.76s with **0 errors**.
    - Browser subagent verified live on `http://localhost:3000/`: confirmed the concluded card renders as a single white elevated card with purple section headers, purple bullets, and bottom action buttons matching Photo 1.
 
+---
+
+## 37. [2026-09-15] Badminton Tool Gating & Post-Inquiry Unlock Protocol
+
+**Primary Files Modified**:
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/components/AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Goal
+The user requested:
+> *"also implement after all the required question answerd for analysis then only we will be getting the badminton tool frontend"*
+
+When an inquiry prompt (e.g. *"Why does my smash clip the net tape?"*) was sent in chat or during multimodal intake, the badminton tool was prematurely unlocked or opened before the user completed the diagnostic triage questions. The badminton studio frontend (in `ToolRolloutBar`, drawer canvas, and assistant message badges) must remain locked while questions are pending, and unlock ONLY after all required questions are answered and the diagnostic assessment concludes.
+
+### Root Cause Analysis
+1. **Premature Semantic Unlocking in `handleSendMessage`**:
+   - `handleSendMessage` called `detectAndUnlockTools(msgText, currentFiles, askRes)` immediately when processing the user's message.
+   - Even when `adaptiveConcern` was triggered and questions were initiated, `badminton` was prematurely being added to `unlockedTools` and the drawer was allowed to open.
+2. **Missing `onAdaptiveInquiryComplete` Link in `App.jsx`**:
+   - `<ChatGPTView>` received `onAdaptiveInquiryComplete` as a prop in `ChatGPTView.jsx`, but `App.jsx` had not passed `onAdaptiveInquiryComplete={handleAdaptiveInquiryComplete}` to the `<ChatGPTView>` instance in its JSX render tree.
+3. **Badge Visibility Condition in `ChatGPTView.jsx`**:
+   - The message badge row previously required `msg.report` to be populated; when an interactive inquiry ran from a textual prompt, `msg.report` was initially unassigned, meaning the badminton badge would not reliably show up once concluded.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Strict Tool Locking During Active Questions ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - In `handleSendMessage`:
+     ```javascript
+     if (!adaptiveConcern) {
+       detectAndUnlockTools(msgText, currentFiles, askRes);
+     } else {
+       // While interactive diagnostic questions are pending for analysis, domain studio tools remain locked!
+       // Domain studio (Badminton / Gait) unlocks ONLY after all required questions are answered.
+       setSessionTools(['dictionary', 'rag'], activeSessionId);
+     }
+     ```
+   - In video processing (`executeImageInvestigation`):
+     ```javascript
+     if (userConcernText) {
+       // When diagnostic questions are initiated, keep studio locked until questions are answered!
+       setSessionTools(['dictionary', 'rag'], activeSessionId);
+     } else {
+       detectAndUnlockTools(userText, currentFiles, badmintonResult, 'sports', true);
+       setActiveTool('badminton');
+       setIsToolDrawerOpen(true);
+     }
+     ```
+2. **Post-Inquiry Completion Handler ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Implemented `handleAdaptiveInquiryComplete`:
+     ```javascript
+     const handleAdaptiveInquiryComplete = useCallback((completedSession) => {
+       if (!completedSession) return;
+       const domain = completedSession.domain || (completedSession.subjectId?.includes('badminton') ? 'sports' : '');
+       const isBadminton = domain === 'sports' ||
+         domain === 'badminton' ||
+         completedSession.subjectId?.includes('badminton') ||
+         completedSession.subjectId?.includes('player') ||
+         /badminton|smash|racket|shuttle/.test(completedSession.conclusion || '');
+
+       if (isBadminton) {
+         // All required questions answered for analysis — now unlock badminton tool!
+         unlockTools(['badminton', 'verdict', 'rag', 'analytics']);
+       } else {
+         const isGait = domain === 'clinical' ||
+           completedSession.subjectId?.includes('child') ||
+           /gait|walk|step/.test(completedSession.conclusion || '');
+         if (isGait) {
+           unlockTools(['gait', 'verdict', 'rag']);
+         }
+       }
+     }, [unlockTools]);
+     ```
+   - Passed `onAdaptiveInquiryComplete={handleAdaptiveInquiryComplete}` to `<ChatGPTView>`.
+3. **Session Completion Signal in Card & Chat View ([`AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx) & [`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - `AdaptiveInquiryCard` invokes `onSessionComplete(session)` whenever `status === 'concluded'`.
+   - `ChatGPTView` sets `concludedSessions[index] = true` and relays to `onAdaptiveInquiryComplete`.
+   - Badge row condition updated: `{msg.role === 'assistant' && (msg.report || (concludedSessions[index] && msg.subjectId?.includes('badminton'))) && ...}`.
+   - While `hasActiveInquiry` is `true`, `isBadmintonSports` badge is hidden.
+   - Once concluded, `isBadmintonSports` evaluates to `true`, revealing `[🏸 Badminton Studio ➔]`, which launches the studio.
+   - On the report card itself, `[Launch Badminton Biomechanics Studio ➔]` button is displayed.
+4. **Empirical Verification**:
+   - Production build `npm run build` passed with **0 errors** in 14.67s.
+   - Live browser subagent validation:
+     - Verified: When questions are pending (Question 1 & Question 2), Badminton tool is NOT visible in the rollout bar or header (`badminton_locked_during_questions_1789427269407.png`).
+     - Answered Question 1 ("Hits the net tape...") and Question 2 ("Slightly behind my head...").
+     - Triage concluded: report card rendered with purple numbered headers (`### 1. Root Cause Finding`).
+     - Tool rollout bar immediately transitioned to unlocked state for `Badminton Biomechanics` (`badminton_unlocked_after_questions_1789427476559.png`).
+     - Clicked `Badminton Biomechanics`: Badminton Biomechanics & Kinematics Studio drawer opened with full video player, court heatmap, and stroke analytics (`badminton_studio_drawer_opened_1789427498643.png`).
+
+
 
 
 

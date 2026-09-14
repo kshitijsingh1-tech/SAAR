@@ -1364,9 +1364,14 @@ export default function App() {
                 ]
               };
 
-              if (checkIsAborted()) return;
-
-              detectAndUnlockTools(userText, currentFiles, badmintonResult, 'sports', true);
+              if (userConcernText) {
+                // When diagnostic questions are initiated, keep studio locked until questions are answered!
+                setSessionTools(['dictionary', 'rag'], activeSessionId);
+              } else {
+                detectAndUnlockTools(userText, currentFiles, badmintonResult, 'sports', true);
+                setActiveTool('badminton');
+                setIsToolDrawerOpen(true);
+              }
 
               setMessages((prev) => [
                 ...prev,
@@ -1381,8 +1386,10 @@ export default function App() {
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
               ]);
-              setActiveTool('badminton');
-              setIsToolDrawerOpen(true);
+              if (!userConcernText) {
+                setActiveTool('badminton');
+                setIsToolDrawerOpen(true);
+              }
               setIsProcessing(false);
               return;
             } else {
@@ -1636,13 +1643,19 @@ export default function App() {
 
       if (checkIsAborted()) return;
 
-      detectAndUnlockTools(msgText, currentFiles, askRes);
-
       const msgLower = (msgText || '').toLowerCase();
       const isBadmintonQuery = ['badminton', 'smash', 'racket', 'shuttle', 'court', 'stroke', 'rally'].some(k => msgLower.includes(k));
       const isPedGaitQuery = !isBadmintonQuery && ['walk', 'limp', 'gait', 'toddler', 'asymmetry', 'optimal', 'step'].some(k => msgLower.includes(k));
       const adaptiveConcern = (isPedGaitQuery || isBadmintonQuery) ? msgText.trim() : null;
       const targetSubjectId = isBadmintonQuery ? 'player_badminton' : 'child_leo_24m';
+
+      if (!adaptiveConcern) {
+        detectAndUnlockTools(msgText, currentFiles, askRes);
+      } else {
+        // While interactive diagnostic questions are pending for analysis, domain studio tools remain locked!
+        // Domain studio (Badminton / Gait) unlocks ONLY after all required questions are answered.
+        setSessionTools(['dictionary', 'rag'], activeSessionId);
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -2255,6 +2268,7 @@ export default function App() {
           onNewSession={handleNewSession}
           hasSensorData={hasSensorData}
           unlockedTools={unlockedTools}
+          onAdaptiveInquiryComplete={handleAdaptiveInquiryComplete}
         />
       </main>
 
