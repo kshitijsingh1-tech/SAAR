@@ -769,7 +769,9 @@ RESPONSE STYLE RULES:
             tca = getattr(state, "text_context", None)
             if tca:
                 m = tca.get("milestone", {})
-                brief_lines.append(f"Stage 1 Prior Context: {m.get('milestone_label', f'Day {m.get('day', 1)}')}")
+                day_val = m.get('day', 1)
+                m_label = m.get('milestone_label', f"Day {day_val}")
+                brief_lines.append(f"Stage 1 Prior Context: {m_label}")
                 if tca.get("focus_targets"):
                     brief_lines.append(f"Stage 1 Focus Targets: {', '.join(tca['focus_targets'])}")
                 if tca.get("hypotheses"):
