@@ -1568,10 +1568,15 @@ body {
 .light .md-heading.h3 { color: #0f172a; }
 
 .md-heading.h4 {
-  font-size: 0.94rem;
-  font-weight: 600;
+  font-size: 0.96rem;
+  font-weight: 700;
   color: #4338ca;
   letter-spacing: -0.01em;
+}
+
+[data-theme="light"] .md-heading.h4,
+.light .md-heading.h4 {
+  color: #4338ca;
 }
 
 [data-theme="dark"] .md-heading.h4,
@@ -12074,14 +12079,21 @@ body {
   color: #0284c7;
 }
 
-/* Concluded State Verdict */
+/* Concluded State Verdict — renders cleanly as elevated report card matching Photo 1 */
+.adaptive-conclusion-wrapper {
+  width: 100%;
+}
+
 .adaptive-inquiry-card.adaptive-concluded {
-  border-color: #a7f3d0;
-  background: linear-gradient(145deg, #ffffff 0%, #f0fdf4 100%);
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .adaptive-inquiry-card.adaptive-concluded::before {
-  background: linear-gradient(90deg, #10b981, #34d399, #6ee7b7);
+  display: none !important;
 }
 
 .adaptive-hypothesis-outcomes {

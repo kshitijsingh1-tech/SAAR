@@ -2376,6 +2376,50 @@ During the previous refactoring to remove hardcoded scenario cascades in the loa
    - Frontend production build (`npm run build`) succeeded in 20.55s with 0 errors.
    - Browser subagent reloaded `http://localhost:3000` and inspected console logs: verified 0 ReferenceErrors and 0 uncaught exceptions.
 
+---
+
+## 36. [2026-09-15] Alignment of Concluded Diagnostic Assessment Div with Single White Report Card Layout
+
+**Primary Files Modified**:
+- [`frontend/src/components/AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx)
+- [`frontend/src/components/MarkdownResponse.jsx`](file:///d:/bytebuild/frontend/src/components/MarkdownResponse.jsx)
+- [`frontend/src/index.css`](file:///d:/bytebuild/frontend/src/index.css)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Feedback
+The user provided two side-by-side screenshots:
+1. **Photo 1**: The desired clean, elevated single report card with document title divider, purple section headers (`#4338ca`), purple bullets, auto-bolded keys, and bottom-right actions.
+2. **Photo 2**: An older triage conclusion wrapped inside a secondary outer green border box (`border: 2px solid #10b981`), a top banner (`Adaptive Diagnostic Assessment` / `Restart Triage`), and black section headers (`1. Root Cause Finding`).
+3. **User Request**: *"i donot ask you to implement this hardcoded i asked the answers comming should be in this format and i want to change the second photo div like first photo"*
+
+### Root Cause Analysis
+1. **Double-Nested Div Structure in Concluded State**:
+   - `AdaptiveInquiryCard.jsx` wrapped `<MarkdownResponse />` inside `<div className="adaptive-inquiry-card adaptive-concluded">`, which had explicit green border rules (`border-color: #a7f3d0`), green top gradient pseudo-element (`::before`), and an extra top toolbar.
+   - This created a visually jarring "card-inside-a-green-box" appearance rather than the single clean white card from Photo 1.
+2. **Black Section Headers (`1. Root Cause Finding`)**:
+   - The markdown text produced by `adaptive_inquiry.py` and other services used `### 1. Root Cause Finding`.
+   - In `MarkdownResponse.jsx`, `trimmed.startsWith('#')` was checked *before* semantic numbered section detection.
+   - As a result, `### 1. Root Cause Finding` was classified as `level: 3` (`h3`), which was styled as dark text (`#0f172a`), rather than `level: 4` (`h4`), which provides the signature `#4338ca` purple styling with bottom divider.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Elimination of Outer Nested Green Div ([`AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx))**:
+   - In `status === 'concluded'`, replaced the outer `.adaptive-inquiry-card.adaptive-concluded` container and top banner with a clean, transparent `.adaptive-conclusion-wrapper`.
+   - Directly renders `<MarkdownResponse content={conclusion} onRestartTriage={initSession} onClose={onClose} />`.
+2. **Integrated `Restart Triage` in Action Bar ([`MarkdownResponse.jsx`](file:///d:/bytebuild/frontend/src/components/MarkdownResponse.jsx))**:
+   - Extended `MarkdownResponse` to accept `onRestartTriage`.
+   - Renders `[Restart Triage]` on the left of `.md-bottom-action-bar` alongside `[Raw]` and `[Copy]` on the right.
+3. **Dynamic Numbered Section Parser for ANY Answer Format ([`MarkdownResponse.jsx`](file:///d:/bytebuild/frontend/src/components/MarkdownResponse.jsx))**:
+   - Evaluates `cleanHeading = trimmed.replace(/^#{1,6}\s*/, '').trim()`.
+   - Any numbered diagnostic heading (e.g. `### 1. Root Cause Finding`, `## 1. Locomotion Kinematics & Symmetry`, or `1. Primary Root Cause Finding`) is automatically classified as `level: 4`, rendering in rich purple (`#4338ca` in light mode, `#818cf8` in dark mode) with full-width bottom divider.
+   - Any document assessment title (e.g. `## Personalized Diagnostic Assessment: ... (62% Confidence)` or `Calibrated Pediatric Gait Diagnostic Report (95% Confidence)`) is automatically classified as `level: 3`, rendering as the clean top document title with underline rule.
+4. **CSS Neutralization ([`index.css`](file:///d:/bytebuild/frontend/src/index.css))**:
+   - Neutralized `.adaptive-inquiry-card.adaptive-concluded` so it never injects green borders or background gradients.
+   - Styled `.md-heading.h4` with `font-weight: 700` and `color: #4338ca`.
+5. **Empirical Verification**:
+   - Production build `npm run build` executed in 14.76s with **0 errors**.
+   - Browser subagent verified live on `http://localhost:3000/`: confirmed the concluded card renders as a single white elevated card with purple section headers, purple bullets, and bottom action buttons matching Photo 1.
+
+
 
 
 

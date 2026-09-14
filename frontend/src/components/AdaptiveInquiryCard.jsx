@@ -172,89 +172,16 @@ const AdaptiveInquiryCard = ({
 
   const { hypotheses = [], current_question, status, conclusion, turn, max_questions, preamble, case_state, personalized_recommendations = [] } = session;
 
-  // Concluded state — show personalized verdict & action plan directly via elevated card
+  // Concluded state — render directly as the single elevated report card (matching Photo 1)
   if (status === 'concluded') {
+    if (!conclusion) return null;
     return (
-      <div className="adaptive-inquiry-card adaptive-concluded" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        width: '100%'
-      }}>
-        {/* Subtle Top Navigation / Action Controls */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '2px 4px',
-          flexWrap: 'wrap',
-          gap: '10px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
-              background: '#eef2ff',
-              color: '#4f46e5',
-              borderRadius: '8px',
-              padding: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <ShieldCheck size={18} />
-            </div>
-            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#64748b' }}>
-              Adaptive Diagnostic Assessment
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={initSession}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                fontSize: '0.78rem',
-                fontWeight: '600',
-                color: '#475569',
-                cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-              }}
-              title="Test the questioning flow again"
-            >
-              <RotateCcw size={13} />
-              <span>Restart Triage</span>
-            </button>
-            {onClose && (
-              <button
-                onClick={onClose}
-                style={{
-                  background: '#0f172a',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '6px 14px',
-                  fontSize: '0.78rem',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Done
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Conclusion Markdown */}
-        {conclusion && (
-          <div className="adaptive-conclusion-container">
-            <MarkdownResponse content={conclusion} />
-          </div>
-        )}
+      <div className="adaptive-conclusion-wrapper" style={{ width: '100%' }}>
+        <MarkdownResponse
+          content={conclusion}
+          onRestartTriage={initSession}
+          onClose={onClose}
+        />
       </div>
     );
   }

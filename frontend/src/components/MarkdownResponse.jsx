@@ -3,7 +3,7 @@ import {
   Copy, Check, FileText, BarChart2, Activity,
   HelpCircle, Sparkles, CheckCircle2, ChevronRight,
   TrendingUp, TrendingDown, ArrowRight, ShieldCheck,
-  ExternalLink, Network, PieChart
+  ExternalLink, Network, PieChart, RotateCcw
 } from 'lucide-react';
 
 /**
@@ -187,7 +187,38 @@ function parseMarkdownBlocks(rawText) {
       }
     }
 
-    // 3. Headings
+    // Strip leading markdown hashes (#) to evaluate semantic heading text
+    const cleanHeading = trimmed.replace(/^#{1,6}\s*/, '').trim();
+
+    // 1. Numbered Section Header (e.g. "1. Locomotion Kinematics & Symmetry", "### 1. Root Cause Finding", "## 2. Evidence Synthesis...")
+    const isSectionHeader = /^\d+\.\s+[A-Z][A-Za-z0-9\s&,/:–—()'-]{3,80}$/.test(cleanHeading) && !cleanHeading.endsWith('.');
+    if (isSectionHeader) {
+      blocks.push({
+        type: 'heading',
+        level: 4,
+        text: cleanHeading
+      });
+      i++;
+      continue;
+    }
+
+    // 2. Unmarked or Markdown Document / Assessment Title
+    // e.g. "Calibrated Pediatric Gait Diagnostic Report (95% Confidence)"
+    // or "## Personalized Diagnostic Assessment: Benign Developmental Variation (62% Confidence)"
+    // or "Badminton Biomechanical Assessment: Kinetic Chain Sequencing / Dropped Elbow (100% Confidence)"
+    const isDocTitle = (blocks.length === 0 || (blocks.length === 1 && blocks[0].type === 'quote')) &&
+      /^[A-Z][A-Za-z0-9\s&,/:–—()-]+?\((?:\d+%|CONFIDENCE|HIGH|MEDIUM|LOW|CRITICAL)[^)]*\)$/i.test(cleanHeading);
+    if (isDocTitle) {
+      blocks.push({
+        type: 'heading',
+        level: 3,
+        text: cleanHeading
+      });
+      i++;
+      continue;
+    }
+
+    // 3. Standard Headings (#, ##, ###, ####, etc.)
     if (trimmed.startsWith('#')) {
       const match = trimmed.match(/^(#{1,6})\s+(.*)$/);
       if (match) {
@@ -201,21 +232,6 @@ function parseMarkdownBlocks(rawText) {
         i++;
         continue;
       }
-    }
-
-    // Unmarked Document/Assessment Title (e.g. at the very start of message or report)
-    // e.g. "Badminton Biomechanical Assessment: Kinetic Chain Sequencing / Dropped Elbow (100% Confidence)"
-    // or "Calibrated Kinematic Diagnostic Report (96% Confidence)"
-    const isDocTitle = (blocks.length === 0 || (blocks.length === 1 && blocks[0].type === 'quote')) &&
-      /^[A-Z][A-Za-z0-9\s&,/:–—()-]+?\((?:\d+%|CONFIDENCE|HIGH|MEDIUM|LOW|CRITICAL)[^)]*\)$/i.test(trimmed);
-    if (isDocTitle) {
-      blocks.push({
-        type: 'heading',
-        level: 3,
-        text: trimmed
-      });
-      i++;
-      continue;
     }
 
     // 4. Horizontal Rule
@@ -236,18 +252,6 @@ function parseMarkdownBlocks(rawText) {
         type: 'quote',
         content: quoteLines.join(' ')
       });
-      continue;
-    }
-
-    // Numbered Section Header e.g. "1. Primary Root Cause Finding" or "2. Evidence Synthesis from Your Responses"
-    const isSectionHeader = /^\d+\.\s+[A-Z][A-Za-z0-9\s&,/:–—()'-]{3,80}$/.test(trimmed) && !trimmed.endsWith('.');
-    if (isSectionHeader) {
-      blocks.push({
-        type: 'heading',
-        level: 4,
-        text: trimmed
-      });
-      i++;
       continue;
     }
 
@@ -440,7 +444,9 @@ export function MarkdownResponse({
   isCompact = false,
   relationships = [],
   onNavigateToAnalytics = null,
-  onAskSaar = null
+  onAskSaar = null,
+  onRestartTriage = null,
+  onClose = null
 }) {
   const [copied, setCopied] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
@@ -697,6 +703,17 @@ export function MarkdownResponse({
       {/* Subtle Bottom Action Bar (only on assistant responses) */}
       {role === 'assistant' && (
         <div className="md-bottom-action-bar">
+          {onRestartTriage && (
+            <button
+              onClick={onRestartTriage}
+              title="Restart diagnostic triage inquiry"
+              className="md-bottom-action-btn"
+              style={{ marginRight: 'auto' }}
+            >
+              <RotateCcw size={12} />
+              <span>Restart Triage</span>
+            </button>
+          )}
           <button
             onClick={() => setShowRaw(!showRaw)}
             title="Toggle between formatted and raw view"
