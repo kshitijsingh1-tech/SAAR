@@ -1264,7 +1264,7 @@ class AdaptiveInquiryEngine:
         is_badminton = any(k in session.domain for k in ["badminton", "sport", "racket", "smash", "shuttle"])
 
         if is_badminton:
-            conclusion_md = f"""## Badminton Biomechanical Assessment: {top_name} ({top_prob}% Confidence)
+            conclusion_md = f"""## Calibrated Kinematic Diagnostic Report: {top_name} ({top_prob}% Confidence)
 
 ### 1. Primary Root Cause Finding
 Based on computer vision kinematic tracking and your interactive diagnostic responses, your stroke mechanics and shot variance are primarily driven by **{top_name}**.

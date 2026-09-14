@@ -2541,6 +2541,29 @@ To provide complete architectural transparency and open-source documentation int
    - Staged and committed all changes cleanly to `main` branch.
    - Pushed commits to GitHub remote `origin/main`.
 
+---
+
+## 39. [2026-09-15] Badminton Ingestion Response Alignment & Adaptive Diagnostic Sequencing
+
+**Primary Files Modified**:
+- [`backend/app/services/adaptive_inquiry.py`](file:///d:/bytebuild/backend/app/services/adaptive_inquiry.py)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Goal
+When a user uploaded a badminton video accompanied by a specific concern (e.g., smash lack of penetration, footwork recovery delay), the chat stream immediately synthesized a final "Calibrated Kinematic Diagnostic Report" prior to the user answering any of the adaptive triage questions. This created contradictory UX where the final diagnostic report was visible before the diagnostic questions were answered. Furthermore, an undefined reference `contextPrior` was present when constructing the ingestion perception summary.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Response Decoupling & Ingestion Perception Fact Summary**:
+   - In `App.jsx`, when `userConcernText` is present, the message first renders the video ingestion and perception facts (homography court plane calibration %, 33 BlazePose joint tracking counts, optical flow peak speed km/h, and court displacement meters), guiding the user into the active interactive triage.
+2. **Diagnostic Conclusion Sequencing**:
+   - The final `Calibrated Kinematic Diagnostic Report` with purple numbered section headers is formulated and displayed upon completion of the adaptive inquiry questions via `AdaptiveInquiryCard.jsx`.
+3. **Reference Resolution**:
+   - Explicitly defined `contextPrior` to prevent runtime reference errors during message generation.
+4. **Unified Diagnostic Header**:
+   - Aligned conclusion title in `adaptive_inquiry.py` to `## Calibrated Kinematic Diagnostic Report: {top_name} ({top_prob}% Confidence)`.
+
+
 
 
 

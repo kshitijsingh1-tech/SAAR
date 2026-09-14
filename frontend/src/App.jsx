@@ -1332,24 +1332,31 @@ export default function App() {
                 ? userText.trim()
                 : 'Focus on overhead smash velocity and contact reach';
 
-              let responseText = `### Calibrated Kinematic Diagnostic Report (${calibConf}% Confidence)\n\n`;
-              responseText += `Subject biomechanical model successfully calibrated with contextual prior: **"${contextPrior}"**.\n\n`;
-
-              responseText += `1. Kinematic Stroke Execution\n\n`;
-              responseText += `• **Stroke Isolation**: Detected **${strokeCount || 5} contact phases** with 33-point BlazePose 3D joint tracking.\n`;
-              responseText += `• **Primary Stroke**: \`${shotType}\` at timestamp **${sTime}s – ${eTime}s**.\n\n`;
-
-              responseText += `2. Ballistic Speeds & Dynamic Energy\n\n`;
-              responseText += `• **Kinetic Transfer**: Frame-differentiated optical flow velocity calibrated at **${peakSpeed} km/h** equivalent.\n`;
-              responseText += `• **Court Displacement**: **${distVal}m** traversed across **${covVal}%** court area.\n\n`;
-
-              responseText += `3. AI Kinematic Supervision & Coaching Action\n\n`;
-              responseText += `• **Kinematic Recommendation**: ${coachingRec}\n`;
-              responseText += `• **Adaptive Baseline**: Stored to athlete profile memory to track longitudinal improvement over future sessions.`;
-
               const userConcernText = userText && userText.trim() ? userText.trim() : (
                 "Badminton stroke power, smash penetration, and trajectory inquiry"
               );
+
+              let responseText;
+              if (userConcernText) {
+                responseText = `### 🏸 Badminton Rally Kinematic Ingestion & Perception\n\n` +
+                  `Ingested video footage with contextual inquiry: **"${contextPrior}"**.\n\n` +
+                  `• **Court Geometry**: BWF court plane calibrated with perspective homography (${calibConf}% confidence).\n` +
+                  `• **Stroke Isolation**: Grounded 33 BlazePose 3D joint keypoints across **${strokeCount || 5} stroke phase(s)** (Primary: \`${shotType}\` at ${sTime}s–${eTime}s).\n` +
+                  `• **Ballistic Speeds**: Optical flow transfer registered at **${peakSpeed} km/h** with **${distVal}m** court displacement.\n\n` +
+                  `To isolate stroke variance, evaluate biomechanical pathologies, and formulate your calibrated diagnostic assessment, please complete the interactive triage below:`;
+              } else {
+                responseText = `### Calibrated Kinematic Diagnostic Report (${calibConf}% Confidence)\n\n` +
+                  `Subject biomechanical model successfully calibrated with contextual prior: **"${contextPrior}"**.\n\n` +
+                  `1. Kinematic Stroke Execution\n\n` +
+                  `• **Stroke Isolation**: Detected **${strokeCount || 5} contact phases** with 33-point BlazePose 3D joint tracking.\n` +
+                  `• **Primary Stroke**: \`${shotType}\` at timestamp **${sTime}s – ${eTime}s**.\n\n` +
+                  `2. Ballistic Speeds & Dynamic Energy\n\n` +
+                  `• **Kinetic Transfer**: Frame-differentiated optical flow velocity calibrated at **${peakSpeed} km/h** equivalent.\n` +
+                  `• **Court Displacement**: **${distVal}m** traversed across **${covVal}%** court area.\n\n` +
+                  `3. AI Kinematic Supervision & Coaching Action\n\n` +
+                  `• **Kinematic Recommendation**: ${coachingRec}\n` +
+                  `• **Adaptive Baseline**: Stored to athlete profile memory to track longitudinal improvement over future sessions.`;
+              }
 
               const thoughtProcess = {
                 title: `Thought for ${(Math.random() * 0.4 + 2.1).toFixed(1)}s`,
