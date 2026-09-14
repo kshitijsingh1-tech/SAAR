@@ -1,5 +1,5 @@
-"""
-Badminton Movement Analysis and Court-Plane Spatial Tracking.
+"""Badminton Movement Analysis and Court-Plane Spatial Tracking.
+
 Computes pelvis/hip player center trajectory, transforms image coordinates
 to metric court plane via calibrated homography, and evaluates spatial metrics
 (distance, speed, convex-hull coverage, 9-zone dynamic region occupancy).
@@ -9,6 +9,7 @@ This module strictly produces objective OBSERVATION-category facts.
 It must NEVER emit prescriptive hypotheses (e.g. "player should utilize left space more").
 Hypothesis synthesis is strictly delegated to downstream strategic analysis (Phase 13).
 """
+
 import math
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np

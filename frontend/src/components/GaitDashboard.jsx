@@ -147,6 +147,23 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
   const references = gaitProfile?.references || assessmentResult?.reference_comparisons || [];
   const curves = assessmentResult?.joint_angle_curves;
 
+  // Option 1: Automatic Anomaly Triage - automatically trigger adaptive inquiry if an elevated pattern is detected
+  React.useEffect(() => {
+    if (assessmentResult && !activeAdaptiveConcern) {
+      const asym = temporal?.step_time_asymmetry_pct || symmetry?.step_time_asymmetry_pct || assessmentResult?.metrics?.step_time_asymmetry_pct || 0;
+      const cov = temporal?.step_time_variability_pct || assessmentResult?.metrics?.step_time_cov || 0;
+      const tilt = posture?.trunk_angle_deg || 0;
+
+      if (asym > 10.0) {
+        setActiveAdaptiveConcern(`Child exhibits ${Math.round(asym)}% step time asymmetry and uneven weight bearing.`);
+      } else if (tilt > 12.0) {
+        setActiveAdaptiveConcern(`Child exhibits ${Math.round(tilt)}° lateral trunk tilt during walking.`);
+      } else if (cov > 15.0) {
+        setActiveAdaptiveConcern(`Child exhibits elevated step rhythm variation (${Math.round(cov)}%) and unsteady balance.`);
+      }
+    }
+  }, [assessmentResult, temporal, symmetry, posture]);
+
   return (
 
     <div className="gait-dashboard-container" style={{ padding: '24px', maxWidth: '1280px', margin: '0 auto', color: '#0f172a' }}>
@@ -456,8 +473,129 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
             </div>
           )}
 
+          {/* OPTION 1: PROACTIVE ADAPTIVE DIAGNOSTIC TRIAGE (HERO CARD) */}
+          {activeAdaptiveConcern && (
+            <div style={{
+              background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)',
+              border: '2px solid #0284c7',
+              borderRadius: '16px',
+              padding: '20px',
+              boxShadow: '0 8px 30px -4px rgba(2, 132, 199, 0.18)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #0284c7, #4f46e5)',
+                    color: '#fff',
+                    borderRadius: '10px',
+                    padding: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
+                  }}>
+                    <Brain size={20} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '1rem', fontWeight: '800', color: '#0f172a' }}>
+                        Adaptive Diagnostic Triage
+                      </span>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: '800',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: '#e0f2fe',
+                        color: '#0369a1'
+                      }}>
+                        Active Inquiry
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '2px 0 0 0' }}>
+                      Elevated gait pattern detected. Answer discriminating questions below to dynamically test competing hypotheses.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveAdaptiveConcern(null)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '5px 12px',
+                    color: '#64748b',
+                    fontSize: '0.78rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#0f172a'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                >
+                  Dismiss Triage
+                </button>
+              </div>
+
+              <AdaptiveInquiryCard
+                investigationId={assessmentResult?.assessment_id || "latest"}
+                userConcern={activeAdaptiveConcern}
+                onClose={() => setActiveAdaptiveConcern(null)}
+              />
+            </div>
+          )}
+
+          {!activeAdaptiveConcern && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Brain size={18} color="#0284c7" />
+                <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#334155' }}>
+                  Have a specific question about balance or limping?
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  Launch guided diagnostic questioning with competing hypotheses.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveAdaptiveConcern("Child walking pattern balance and asymmetry inquiry")}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7, #4f46e5)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '7px 16px',
+                  fontSize: '0.82rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Brain size={15} />
+                Start Adaptive Triage
+              </button>
+            </div>
+          )}
+
           {/* UNIFIED PARENT DEVELOPMENTAL MOBILITY SUMMARY CARD */}
           {devSummary && (
+
             <div style={{
               background: '#ffffff',
               border: '1px solid #e2e8f0',

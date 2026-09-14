@@ -1879,3 +1879,35 @@ When uploading an optical camera image of a botanical specimen (e.g. flower or p
 - **Frontend Production Build**:
   - `npm run build` completed cleanly with 0 errors.
 
+---
+
+## [2026-09-14] Feature: Proactive Adaptive Diagnostic Triage (Option 1) in Gait Dashboard
+
+### Primary Files Modified
+- [`frontend/src/components/GaitDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/GaitDashboard.jsx)
+- [`backend/app/plugins/sports/badminton/movement_analyzer.py`](file:///d:/bytebuild/backend/app/plugins/sports/badminton/movement_analyzer.py)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Need
+- In the initial adaptive inquiry implementation, after video analysis the dashboard immediately displayed the entire report and relegated the adaptive questioning card to the bottom of the page.
+- As a result, evaluators and users were not immediately engaged in the 9-stage Bayesian diagnostic loop unless they scrolled down and manually typed an inquiry.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Automatic Anomaly Detection & Triage Auto-Trigger (`GaitDashboard.jsx`)**:
+   - Added a reactive `useEffect` monitoring `assessmentResult` metrics:
+     - Detects elevated Robinson Step Time Asymmetry ($>10\%$), elevated Step Rhythm CoV ($>15\%$), or lateral trunk tilt ($>12^\circ$).
+     - Automatically synthesizes the clinical triage concern (e.g. *"Child exhibits 25% step time asymmetry and uneven weight bearing."*) and activates the adaptive inquiry.
+2. **Prominent Hero Placement at Top of Results (`GaitDashboard.jsx`)**:
+   - Elevated the `AdaptiveInquiryCard` to appear directly beneath the Quality Banner as the **Primary Diagnostic Triage Stage**.
+   - Displays real-time competing hypotheses ($40\%, 30\%, 30\%$) and the discriminating question with single-tap answer chips immediately upon loading the video results.
+   - Includes a sleek trigger banner when no active inquiry is running, allowing instant 1-click launch.
+3. **Clean Docstring Formatting (`movement_analyzer.py`)**:
+   - Standardized the module-level docstring header on line 1, ensuring clean AST parsing across all linters.
+
+### Verification & Empirical Confirmation
+- Verified end-to-end 9-step adaptive loop with live Google AI Studio Gemini API (`scratch/test_adaptive_inquiry_loop.py`):
+  - Step 1 Perception $\to$ 3 Competing Hypotheses $\to$ Discriminating Question ($IG = 0.75$) $\to$ Simulated Answer $\to$ Bayesian probability update ($40\% \to 85\%$ Confirmed, $30\% \to 4.5\%$ Eliminated) $\to$ Final Assessment & Action Plan.
+- `python -m py_compile` on `movement_analyzer.py` passed with 0 errors.
+- `npm run build` passed with 0 errors (Vite production bundle successfully generated).
+
+
