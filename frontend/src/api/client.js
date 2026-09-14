@@ -90,7 +90,7 @@ export const answerSaarQuestion = async (investigationId, rawAnswer, structuredD
 export const askSaarQuestion = async (investigationId, question, options = {}) => {
   const config = options.signal ? { signal: options.signal } : {};
   if (!investigationId || investigationId === 'latest' || investigationId === 'general') {
-    const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, { question }, config);
+    const res = await axios.post(`${API_BASE_URL}/api/saar/ask`, { question, domain: options.domain || 'agriculture' }, config);
     return res.data;
   }
   const res = await axios.post(`${API_BASE_URL}/api/saar/investigation/${investigationId}/ask`, { question }, config);
@@ -407,10 +407,11 @@ export const classifyImage = async (imageData, userText = '') => {
 // Adaptive Diagnostic Questioning API
 // ------------------------------------------------------------------
 
-export const startAdaptiveSession = async (investigationId, userConcern) => {
+export const startAdaptiveSession = async (investigationId, userConcern, subjectId = 'child_leo_24m') => {
   const res = await axios.post(`${API_BASE_URL}/api/adaptive/start`, {
     investigation_id: investigationId || 'latest',
-    user_concern: userConcern
+    user_concern: userConcern,
+    subject_id: subjectId
   });
   return res.data;
 };
@@ -426,4 +427,30 @@ export const submitAdaptiveAnswer = async (sessionId, optionId) => {
   });
   return res.data;
 };
+
+
+// ------------------------------------------------------------------
+// Personalized Gait Baseline API (ToddleAI)
+// ------------------------------------------------------------------
+
+export const fetchGaitBaselines = async () => {
+  const res = await axios.get(`${API_BASE_URL}/api/gait/baselines`);
+  return res.data;
+};
+
+export const getGaitBaseline = async (subjectId = 'child_leo_24m') => {
+  const res = await axios.get(`${API_BASE_URL}/api/gait/baselines/${subjectId}`);
+  return res.data;
+};
+
+export const updateGaitBaseline = async (subjectId, assessmentData) => {
+  const res = await axios.post(`${API_BASE_URL}/api/gait/baselines/${subjectId}/update`, assessmentData);
+  return res.data;
+};
+
+export const compareGaitBaseline = async (subjectId, assessmentData) => {
+  const res = await axios.post(`${API_BASE_URL}/api/gait/baselines/${subjectId}/compare`, assessmentData);
+  return res.data;
+};
+
 

@@ -355,17 +355,29 @@ class DiagnosticQuestion(BaseModel):
     turn_number: int = 1
 
 
+class CaseState(BaseModel):
+    """Structured case state representing verified observations, user context, and current uncertainties."""
+    observations: Dict[str, Any] = Field(default_factory=dict)
+    user_answers: Dict[str, Any] = Field(default_factory=dict)
+    uncertainties: List[str] = Field(default_factory=list)
+    confidence: float = 0.5
+    baseline_deviation_detected: bool = False
+    baseline_summary: Optional[str] = None
+
+
 class AdaptiveSession(BaseModel):
     """Full state of an adaptive diagnostic questioning session."""
     session_id: str = Field(default_factory=lambda: f"ADS-{str(uuid.uuid4())[:8]}")
     investigation_id: str = ""
     user_concern: str = ""
     domain: str = "general"
+    case_state: Optional[CaseState] = None
     hypotheses: List[Hypothesis] = Field(default_factory=list)
     questions_asked: List[DiagnosticQuestion] = Field(default_factory=list)
     answers_given: List[Dict[str, Any]] = Field(default_factory=list)
     measured_context: Dict[str, Any] = Field(default_factory=dict)
     status: str = "questioning"  # questioning, concluded
+    preamble: Optional[str] = None
     conclusion: Optional[str] = None
     personalized_recommendations: List[str] = Field(default_factory=list)
     current_question: Optional[DiagnosticQuestion] = None
@@ -373,4 +385,5 @@ class AdaptiveSession(BaseModel):
     max_questions: int = 5
     confidence_threshold: float = 0.85
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
 

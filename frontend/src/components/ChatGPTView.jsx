@@ -12,6 +12,7 @@ import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
 import { MediaAttachmentPreview } from './MediaAttachmentPreview';
 import { ChatCameraRecorder } from './ChatCameraRecorder';
+import AdaptiveInquiryCard from './AdaptiveInquiryCard';
 import { API_BASE_URL } from '../api/client';
 
 // Built-in grounded domain lexicon for automatic chat dictionary linking
@@ -1166,10 +1167,10 @@ export function ChatGPTView({
 
                 <button
                   className="prompt-card"
-                  onClick={() => onSelectScenario ? onSelectScenario('pediatric_gait', 'sample_gait_01', 'Analyze 33-landmark kinematic cadence asymmetry and formulate clinical causal DAG.') : onSendMessage('Analyze 33-landmark kinematic cadence asymmetry and formulate clinical causal DAG.')}
+                  onClick={() => onSelectScenario ? onSelectScenario('gait', 'gait_toddler_blue_dress', 'Analyze toddler 24-month kinematic walking clip (Blue Dress) for cadence, step asymmetry, and gait rhythm stability.') : onSendMessage('Analyze toddler 24-month kinematic walking clip (Blue Dress) for cadence, step asymmetry, and gait rhythm stability.')}
                 >
                   <div className="prompt-title">Pediatric Gait Kinematics</div>
-                  <div className="prompt-desc">Isolate joint ROM asymmetry, stance duration, and postural tilt.</div>
+                  <div className="prompt-desc">Isolate joint ROM asymmetry, cadence, and step rhythm stability.</div>
                 </button>
               </div>
             </div>
@@ -1227,6 +1228,15 @@ export function ChatGPTView({
                                 role={msg.role}
                                 onAskSaar={handleAskSaarFromAction}
                               />
+                              {msg.adaptiveConcern && (
+                                <div style={{ marginTop: '16px', maxWidth: '780px' }}>
+                                  <AdaptiveInquiryCard
+                                    investigationId={msg.investigationId || "latest"}
+                                    userConcern={msg.adaptiveConcern}
+                                    subjectId={msg.subjectId || 'child_leo_24m'}
+                                  />
+                                </div>
+                              )}
                             </>
                           );
                         })()}

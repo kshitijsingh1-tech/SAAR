@@ -32,6 +32,9 @@
 23. [Comprehensive Fix: Enter Key Send & Instant Stop Analysis Cancellation](#23-2026-09-13-comprehensive-fix-enter-key-send--instant-stop-analysis-cancellation)
 24. [Fix TDZ Initialization Ordering for setMessages and handleStopProcessing](#24-2026-09-13-fix-tdz-initialization-ordering-for-setmessages-and-handlestopprocessing)
 25. [Dynamic Tool Discovery & Question-Driven Tool Unlocking](#25-2026-09-13-dynamic-tool-discovery--question-driven-tool-unlocking)
+26. [Personalized Child Gait Baseline & Information-Gain Adaptive Questioning Engine](#26-2026-09-15-personalized-child-gait-baseline--information-gain-adaptive-questioning-engine)
+27. [Main Chat In-Stream Adaptive Questioning Integration](#27-2026-09-15-main-chat-in-stream-adaptive-questioning-integration)
+28. [Deep Clinical Pediatric Question Bank Expansion (16 Dynamic Discriminators)](#28-2026-09-15-deep-clinical-pediatric-question-bank-expansion-16-dynamic-discriminators)
 
 ---
 
@@ -1909,5 +1912,291 @@ When uploading an optical camera image of a botanical specimen (e.g. flower or p
   - Step 1 Perception $\to$ 3 Competing Hypotheses $\to$ Discriminating Question ($IG = 0.75$) $\to$ Simulated Answer $\to$ Bayesian probability update ($40\% \to 85\%$ Confirmed, $30\% \to 4.5\%$ Eliminated) $\to$ Final Assessment & Action Plan.
 - `python -m py_compile` on `movement_analyzer.py` passed with 0 errors.
 - `npm run build` passed with 0 errors (Vite production bundle successfully generated).
+
+---
+
+## 26. [2026-09-15] Personalized Child Gait Baseline & Information-Gain Adaptive Questioning Engine
+
+### Primary Files Modified & Created
+- [`backend/app/gait/baseline_service.py`](file:///d:/bytebuild/backend/app/gait/baseline_service.py) *(NEW)*
+- [`backend/app/models/saar_models.py`](file:///d:/bytebuild/backend/app/models/saar_models.py)
+- [`backend/app/services/adaptive_inquiry.py`](file:///d:/bytebuild/backend/app/services/adaptive_inquiry.py)
+- [`backend/app/services/reasoning_service.py`](file:///d:/bytebuild/backend/app/services/reasoning_service.py)
+- [`backend/app/main.py`](file:///d:/bytebuild/backend/app/main.py)
+- [`backend/tests/test_gait_baseline_adaptive.py`](file:///d:/bytebuild/backend/tests/test_gait_baseline_adaptive.py) *(NEW)*
+- [`frontend/src/api/client.js`](file:///d:/bytebuild/frontend/src/api/client.js)
+- [`frontend/src/components/AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx)
+- [`frontend/src/components/GaitDashboard.jsx`](file:///d:/bytebuild/frontend/src/components/GaitDashboard.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Hackathon Motivation
+In previous iterations:
+1. Gait analysis compared every child against a static population average ("normal gait") rather than evaluating whether a movement pattern was unusual *for this specific child*.
+2. The questioning engine lacked dynamic branching, running a fixed sequence of inquiries rather than an adaptive, hypothesis-driven Bayesian loop that selects questions mathematically based on Information Gain and current uncertainty.
+3. Hackathon evaluators needed a way to witness live dynamic branching between **Case A (Acute Fall / Antalgic Guarding)** and **Case B (Chronic Habit / Benign Motor Maturation)** without manual typing.
+
+### Implemented Solution & Non-Regression Invariants
+
+1. **Personalized Child Baseline Engine (`backend/app/gait/baseline_service.py`)**:
+   - Implemented `MetricBaseline` with Welford's running algorithm tracking `baseline_mean`, `baseline_variability` (std dev), sample count $n$, min/max, and history across 6 core kinematics:
+     - `step_time_asymmetry_pct`
+     - `cadence`
+     - `mean_step_time`
+     - `step_time_cov`
+     - `trunk_angle_deg`
+     - `knee_rom_deg`
+   - Pre-seeded realistic demo profile `"child_leo_24m"` ($n=3$, asymmetry $3.4\% \pm 1.1\%$, cadence $142.5$, knee ROM $58.2^\circ$).
+   - Statistical Deviation Detection: Evaluates $|z| \ge 2.0$ or relative shift $\ge 25\%$.
+   - Today's recording ($15.2\%$ asymmetry) triggers `has_meaningful_deviation = True` ($z = +10.73$, marked $+11.8\%$ departure from Leo's personal baseline).
+
+2. **Information-Gain Adaptive Questioning Engine (`backend/app/services/adaptive_inquiry.py`)**:
+   - Structured `CaseState`: Tracks verified `observations`, `user_answers`, remaining `uncertainties`, and cumulative `confidence`.
+   - Domain Question Bank: Features discriminating candidate questions with `info_gain`, dynamic `relevance_fn(state)`, and targeted hypotheses.
+   - Dynamic Question Selection: Ranks candidates via $\text{Score} = \text{InfoGain} \times \text{Relevance} \times \text{UncertaintyPenalty}$.
+   - Bayesian Hypothesis Update: Recalculates posterior probabilities $P(H \mid E)$ using dynamic likelihood ratios:
+     - **Case A ("Yes, noticed recently")**: Scales Acute Injury to $0.75$, eliminates Benign Developmental ($0.06$). Next question dynamically shifts to fall/bump inquiry $\to$ reaches **Acute Injury or Muscle Strain** ($100\%$ confidence).
+     - **Case B ("No, always walked this way")**: Scales Benign Developmental to $0.60$ and Structural Alignment to $0.40$, eliminates Acute Injury ($0.05$). Next question dynamically shifts to gross motor/stairs inquiry $\to$ reaches **Benign Developmental Variation** ($100\%$ confidence).
+   - Dynamic Stopping Criteria: Concludes immediately when top hypothesis confidence $\ge 85\%$ or max questions reached, synthesizing a grounded clinical verdict and custom action plan.
+
+3. **Domain Boundary & Zero Cross-Contamination (`backend/app/services/reasoning_service.py`)**:
+   - Implemented explicit gait intent detection (`is_gait_intent`) in `start_adaptive_session`, ensuring pediatric gait inquiries never cross-contaminate with lingering agricultural or infrastructure sessions.
+
+4. **REST API & Endpoints (`backend/app/main.py`)**:
+   - Added:
+     - `GET /api/gait/baselines`: Returns all registered profiles.
+     - `GET /api/gait/baselines/{subject_id}`: Returns complete longitudinal metrics.
+     - `POST /api/gait/baselines/{subject_id}/update`: Updates baseline via Welford algorithm.
+     - `POST /api/gait/baselines/{subject_id}/compare`: Compares arbitrary metrics against baseline.
+   - Integrated baseline comparison directly into `POST /api/gait/analyze-sample` and `POST /api/gait/analyze-video`.
+
+5. **Frontend Presentation & Judge Demo Controls (`AdaptiveInquiryCard.jsx` & `GaitDashboard.jsx`)**:
+   - **Child Profile Selector**: Toggle between `Leo (24 mo) · Baseline Active (3 sessions)` and `Maya (18 mo) · New Child Profile`.
+   - **Personalized Baseline Comparison Card**: Side-by-side display comparing Leo's baseline ($3.4\% \pm 1.1\%$) with today's reading ($15.2\%$), highlighting $+11.8\%$ departure ($z = +10.7$).
+   - **Hero Adaptive Inquiry Card**: Prominently displayed directly beneath baseline comparison with:
+     - Conversational preamble linking observations directly to Leo's baseline history.
+     - Real-time competing hypothesis bars ($P(\text{Acute}), P(\text{Developmental}), P(\text{Structural})$).
+     - Current Case State chips (`Observations`, `Uncertainties`, `Confidence`).
+     - **Judge Demo Controls**: `⚡ Case A: Acute Fall Path`, `⚡ Case B: Chronic Habit Path`, and `Reset` buttons for 1-click hackathon evaluation.
+
+### Verification & Empirical Confirmation
+- **Dedicated Pytest Suite (`backend/tests/test_gait_baseline_adaptive.py`)**:
+  - 6 out of 6 tests passing (100%): initialization, meaningful deviation detection ($z > 2.0$), Welford running variance updates, session initialization, Case A acute injury branch, Case B developmental variation branch.
+- **Full Backend Pytest Suite (`pytest tests`)**:
+  - All 47 tests passed (41 badminton/sports tests + 6 baseline/adaptive tests) in clean 100% pass rate.
+- **Frontend Production Build (`npm run build`)**:
+  - Built cleanly in 14.47s with 0 errors.
+- **End-to-End API Integration**:
+  - Live verified `POST /api/adaptive/start` and `POST /api/adaptive/{id}/answer` with realistic payloads.
+
+---
+
+## 27. [2026-09-15] Main Chat In-Stream Adaptive Questioning Integration
+
+### Primary Files Modified
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Need
+When users uploaded a toddler walking video and asked a diagnostic question in the main chat (e.g. *"is my boy walking optimal"*), SAAR previously responded with a static lecture text report ("Stepping Cadence: 81.5 steps/min, Symmetry: 7.5%...") and failed to ask discriminating questions first. The interactive `AdaptiveInquiryCard` only lived inside the side drawer tool, leaving the main chat flow passive and non-adaptive.
+
+### Root Causes
+1. `App.jsx:handleSendMessage` video handler constructed a static markdown report string and added the assistant message with `{ role, text, thoughtProcess, report }`, omitting `adaptiveConcern`, `investigationId`, and `subjectId`.
+2. As a result, `ChatGPTView.jsx` line 1231 (`msg.adaptiveConcern && <AdaptiveInquiryCard />`) never evaluated to true for chat messages.
+3. In `ChatGPTView.jsx`, `subjectId` was not forwarded to `AdaptiveInquiryCard`, defaulting to fallback.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Interactive Triage Framing (`App.jsx`)**:
+   - Re-framed the video analysis response to present the computer vision observations (cadence, asymmetry, rhythm variation) as initial sensory evidence.
+   - Formulates the diagnostic triage statement: *"To evaluate whether your child's walking is optimal, kinematic video measurements alone cannot determine whether this movement is optimal, compensatory guarding, or a benign motor habit without clinical context. Please answer the adaptive question below so SAAR can evaluate his pattern against his personal baseline."*
+2. **In-Stream Adaptive Inquiry Mounting (`App.jsx` & `ChatGPTView.jsx`)**:
+   - Attached `adaptiveConcern: userConcernText`, `investigationId: gaitResult.assessment_id`, and `subjectId: 'child_leo_24m'` directly to the assistant chat message.
+   - Forwarded `subjectId={msg.subjectId || 'child_leo_24m'}` in `ChatGPTView.jsx`.
+   - Also attached `adaptiveConcern` to text-only inquiries matching pediatric gait terms (`walk`, `limp`, `gait`, `toddler`, `asymmetry`, `optimal`, `step`).
+3. **Seamless In-Chat Interactive Questioning**:
+   - The user immediately sees the initial observations, competing hypothesis confidence bars, and the first discriminating question (*"Is this a recent change in your child's walking?"*) with clickable option chips directly inside the chat stream.
+
+### Verification & Empirical Confirmation
+- **Frontend Production Build**: `npm run build` completed cleanly in 14.09s with 0 errors.
+- **Backend Tests**: All 47 tests passed in pytest suite.
+
+---
+
+## 28. [2026-09-15] Deep Clinical Pediatric Question Bank Expansion (16 Dynamic Discriminators)
+
+### Primary Files Modified
+- [`backend/app/services/adaptive_inquiry.py`](file:///d:/bytebuild/backend/app/services/adaptive_inquiry.py)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Need
+The user highlighted the architectural power of SAAR: domain question banks can scale to dozens or hundreds of clinical questions, while the Information Gain engine guarantees that parents only ever answer 2 to 4 high-yield questions, completely avoiding questionnaire fatigue. To make the clinical triage engine robust against real-world pediatric conditions, the question bank needed to expand beyond basic injury/fall checks to cover shoe wear patterns, toe-walking frequency, family history, post-viral synovitis, diurnal stiffness, nocturnal pain, terrain adaptation, unilateral preference, and milestone onset windows.
+
+### Implemented Solution & Non-Regression Invariants
+Expanded `GAIT_QUESTION_BANK` in `backend/app/services/adaptive_inquiry.py` with **10 new specialized discriminators** (totaling 16 questions in the bank):
+
+1. **Shoe Sole Wear Patterns (`gait_shoe_wear_pattern`)**:
+   - Evaluates uneven medial vs. lateral tread wear as an objective physical marker of overpronation, supination, or limb length inequality.
+   - Dynamic Relevance: $0.85$ when chronic delay/habit is observed; $0.02$ when acute onset is identified.
+2. **Toe-Walking & Ground Contact (`gait_toe_walking_pattern`)**:
+   - Differentiates habitual idiopathic toe-walking (child stands flat on command) from gastrocnemius contracture or hypertonia (cannot achieve heel strike).
+3. **Family History of Gait & Laxity (`gait_family_history`)**:
+   - Evaluates hereditary patterns of intoeing, hypermobility, flexible flat feet, and developmental dysplasia.
+4. **Post-Viral Toxic Synovitis (`gait_fever_recent_infection`)**:
+   - Distinguishes acute non-traumatic limping following a viral cold, stomach bug, or fever from physical trauma.
+5. **Diurnal Pattern (`gait_diurnal_pattern`)**:
+   - Differentiates morning joint stiffness (gel phenomenon/inflammatory) from afternoon muscular fatigue.
+6. **Joint Effusion, Redness, and Warmth (`gait_joint_swelling_warmth`)**:
+   - Confirms active localized inflammation or sprain vs. quiet, calm joints.
+7. **Terrain Adaptation (`gait_surface_variation`)**:
+   - Tests proprioceptive stability transitioning from hard flooring to compliant grass or carpet.
+8. **Nocturnal vs. Weight-Bearing Discomfort (`gait_night_pain`)**:
+   - Isolates benign nocturnal growing pains from true daytime mechanical weight-bearing guarding.
+9. **Infant Unilateral Body Preference (`gait_unilateral_preference`)**:
+   - Detects premature hand dominance established before 12 months as a subtle marker for asymmetric neuromuscular tone.
+10. **Independent Walking Onset Window (`gait_onset_milestone_age`)**:
+    - Grounds motor milestone consolidation within the WHO 9–18 month normative window.
+
+### Non-Regression & Zero Survey Fatigue Guarantee
+- Each question is mathematically gated by a state-dependent `relevance_fn(state)`.
+- When an acute fall path is selected, all chronic milestone, shoe wear, and family history questions immediately collapse to **Relevance $\approx 0.0$** and are pruned.
+- When posterior confidence crosses $\ge 85\%$, the engine terminates questioning immediately and issues the diagnostic report.
+
+### Verification & Empirical Confirmation
+- **Pytest Suite**: All 6 baseline/adaptive tests in `test_gait_baseline_adaptive.py` passed cleanly (100%).
+- **Frontend Production Build**: `npm run build` passed with exit code 0.
+
+---
+
+## 29. [2026-09-15] Root Cause Resolution: Multi-Session State Isolation & Scenario Example Robustness
+
+### Primary Files Modified
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/api/client.js`](file:///d:/bytebuild/frontend/src/api/client.js)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Symptoms
+The user reported two interconnected failure modes:
+1. *"WHY THE RESULTS ARE UNIQUE TO ONLY ONE CHAT"*: When switching between chat sessions in the sidebar or creating a new chat, the active analysis, visual anchors, tool drawer contents, and causal graphs disappeared or were only accessible in the initial Monstera session (`session-3`).
+2. *"I TRIED MORE EXAMPLE BUT IT DIDNT WORK"*: When clicking the example prompt cards on the welcome screen (particularly Pediatric Gait Kinematics) or running custom examples, the request either failed outright with an error or results were lost immediately.
+
+### Root Cause Analysis
+1. **Volatile React State Cleared on Session Switch (`App.jsx`)**:
+   - In `handleSelectSession(id)`, top-level states (`saarData`, `investigationData`, `baselineData`) were unconditionally wiped to `null`.
+   - The platform never retained per-session investigation data in a session map (`sessionReports`) or re-hydrated the session from the conversation history.
+   - `session-3` had a hardcoded re-hydration check (`if (session.id === 'session-3') setInvestigationData(monsteraInvestigation)`), causing `session-3` to always reload while any user-created or alternate session remained completely empty.
+2. **Flawed `useEffect` Active Session Synchronization Guard**:
+   - `useEffect([activeSessionId, sessions])` had the condition:
+     `if (prevActiveSessionIdRef.current === activeSessionId && (customImageData || customImageUrl)) return;`
+   - For ANY session without a custom photo (e.g. video analysis, CSV uploads, preset scenarios), `(customImageData || customImageUrl)` was falsy.
+   - Whenever `sessions` state updated (e.g. updating the chat query title upon sending a message), this effect fell through, resetting `setSaarData(null); setInvestigationData(null);` and destroying newly computed results in real time.
+3. **Broken Example Domain Name in Welcome Cards (`ChatGPTView.jsx:1170`)**:
+   - Prompt Card 4 called `onSelectScenario('pediatric_gait', 'sample_gait_01', ...)`.
+   - The backend domain `'pediatric_gait'` did not exist (the registered domain is `'gait'` with preset `'gait_toddler_blue_dress'`), throwing an unhandled 404/422 error on click.
+4. **Omission of `presetId` and `investigationData` in `handleSelectScenario`**:
+   - When running a welcome scenario, `presetId` was never saved onto the session object in `sessions`, leaving it as an ungrounded session that could never reload its preset upon switching.
+5. **Tool Registration Disconnect on Sample Walk Clip (`GaitDashboard.jsx` & `App.jsx`)**:
+   - `onSendToChat` expected `dataOrText.developmental_summary`, whereas `/api/gait/sample` returns `milestone_context` and `baseline_comparison`. As a result, running the sample walk clip failed to attach the report to the chat stream.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Per-Session Investigation Data Map (`sessionReports`)**:
+   - Added `sessionReports` state backed by `localStorage.getItem('saar_session_reports')`.
+   - All analytical pipelines (`handleSelectScenario`, `executeImageInvestigation`, `analyzeGaitVideo`, `analyzeBadmintonVideo`, `uploadSaarCsv`, `onSendToChat`, `handleAnswerInquiry`) now atomically persist their reports into `sessionReports[activeSessionId]` and onto the active session object in `sessions`.
+2. **Self-Healing Session Re-hydration in `handleSelectSession`**:
+   - When selecting any session, `handleSelectSession`:
+     - Checks `sessionReports[id]` or `session.investigationData` / `session.saarData`.
+     - If not yet in cache, inspects `allMessages[id]` for the latest assistant message containing `msg.report` and restores it.
+     - If a preset exists (`session.presetId`), runs `runInvestigation` and caches the result.
+     - Restores `selectedDomain`, `customImageData`, `customImageUrl`, and `customVideoFile`.
+3. **Robust Active Session Guard in `useEffect`**:
+   - The effect now strictly verifies `if (prevActiveSessionIdRef.current === activeSessionId) return;`.
+   - Wiping or re-synchronizing only happens when `activeSessionId` actually changes, preventing state destruction when updating message lists or session titles.
+4. **Corrected Scenario Dispatch in `ChatGPTView.jsx`**:
+   - Updated Prompt Card 4 to `onSelectScenario('gait', 'gait_toddler_blue_dress', ...)` to match the backend `GaitPlugin` registry.
+5. **Unified Gait Sample Bridge in `onSendToChat`**:
+   - Now checks `dataOrText.assessment_id || dataOrText.metrics || dataOrText.baseline_comparison`, correctly rendering the formatted assessment in chat and mounting `AdaptiveInquiryCard`.
+
+### Verification & Empirical Confirmation
+- **Frontend Production Build**: `npm run build` completed cleanly in 14.48s with 0 errors (`dist/index.html` built).
+- **Backend Test Suite**: All **47 tests passed** in pytest suite (`pytest` 47 passed in 72.14s).
+
+---
+
+## 30. [2026-09-15] Badminton Adaptive Biomechanical Triage & Interactive Inquiry Engine
+
+### Primary Files Modified
+- [`backend/app/services/adaptive_inquiry.py`](file:///d:/bytebuild/backend/app/services/adaptive_inquiry.py)
+- [`backend/app/services/reasoning_service.py`](file:///d:/bytebuild/backend/app/services/reasoning_service.py)
+- [`backend/tests/test_badminton_adaptive.py`](file:///d:/bytebuild/backend/tests/test_badminton_adaptive.py)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Symptoms
+1. The user reported: *"helpp and system is still failing with badminton and not asking us question first to narrow down the analysis"*.
+2. A screenshot was attached displaying:
+   `Adaptive Triage Notice: Could not start adaptive analysis. Please try again. [Retry Adaptive Triage]`.
+3. When uploading badminton rally videos or asking questions about badminton strokes (e.g. smash hitting the net, losing power, or slicing out long), the system previously delivered a static wall of text rather than mounting the interactive `AdaptiveInquiryCard` to ask high-yield biomechanical questions first.
+
+### Root Cause Analysis
+1. **Unregistered Sports Domain in Adaptive Inquiry Engine (`adaptive_inquiry.py`)**:
+   - `_get_question_bank` only had branches for `gait` and `agriculture`. For badminton/sports queries, it defaulted to `GAIT_QUESTION_BANK` (which asked questions about toddler walking and falls).
+   - `_formulate_initial_hypotheses` did not define sports/badminton hypotheses, falling back to generic `operational_fatigue` and `baseline_characteristic` that had zero correspondence to badminton question bank options.
+   - Initial uncertainties for badminton were not registered in `start_session`, resulting in an uncertainty factor $U = 0.1$ and empty candidate question scores ($< 0.08$), causing `_select_next_best_question` to return `None`.
+2. **Missing In-Stream Questioning Trigger for Badminton (`App.jsx`)**:
+   - `App.jsx:handleSendMessage` under badminton video upload dispatched video analysis and pushed an assistant message with `text: responseText` and `report: badmintonResult`, but completely omitted `adaptiveConcern`, `investigationId`, and `subjectId: 'player_badminton'`.
+   - `ChatGPTView.jsx:1231` strictly gates `<AdaptiveInquiryCard>` on `msg.adaptiveConcern`. Because `adaptiveConcern` was omitted, the card was never rendered for badminton.
+   - Text chat handler in `App.jsx` only set `adaptiveConcern` if `isPedGaitQuery` was true; any badminton-specific query resulted in `adaptiveConcern = null`.
+3. **Domain Cross-Contamination Fallback in `ReasoningService` (`reasoning_service.py`)**:
+   - `start_adaptive_session` checked `not is_gait_intent` and fell back to `list(self._investigations.values())[-1]`. If the previous cached investigation was from agriculture or gait, it contaminated the domain, passing `domain = "agriculture"` to the adaptive inquiry engine.
+4. **Subagent/Server Daemon Termination During Restart**:
+   - Background tasks (uvicorn on port 8002 and vite on port 3000) had stopped due to an IDE server restart, causing `/api/adaptive/start` to return a connection failure that rendered the red notice *"Could not start adaptive analysis"*.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Connected Domain Question Bank & Hypotheses (`adaptive_inquiry.py`)**:
+   - Wired `BADMINTON_QUESTION_BANK` into `_get_question_bank` for `badminton`, `sport`, `racket`, `smash`, `shuttle`.
+   - Added 3 core competing hypotheses in `_formulate_initial_hypotheses`:
+     1. `kinetic_chain_sequencing`: *"Kinetic Chain Sequencing / Dropped Elbow"* (prior 0.35)
+     2. `grip_orientation_twist`: *"Grip Orientation & Pronation Bevel Twist"* (prior 0.35)
+     3. `footwork_deceleration_fatigue`: *"Footwork Deceleration & Stance Fatigue"* (prior 0.30)
+   - Initialized target uncertainties in `start_session`: `smash trajectory defect`, `contact point relative to body`, `fatigue timeline`, `grip tension mechanics`, `joint strain pathology`.
+   - Added athletic conversational preamble and empathic conversational bridges acknowledging player answers (e.g. net tape $\rightarrow$ dropped elbow warning, out long $\rightarrow$ open face / lack of forearm pronation warning).
+   - Added full athletic diagnostic conclusion generator featuring Root Cause Finding, Evidence Synthesis, Biomechanical Pathologies Ruled Out, and an actionable 3-part drill plan (*High Apex Reach Drill*, *Relaxed Grip Pronation Conditioning*, *Centroid Reset & Split-Step Synchronization*).
+2. **Badminton Intent Detection & State Isolation (`reasoning_service.py`)**:
+   - Added `is_badminton_intent` check in `start_adaptive_session`.
+   - Guaranteed domain isolation (`domain = "sports"`, `subject_id = "player_badminton"`) preventing cross-contamination from prior gait or agricultural investigations.
+   - Extracted measured context from `_badminton_results` (total shots, court distance, duration, coverage).
+3. **In-Stream Adaptive Inquiry Mounting for Badminton (`App.jsx`)**:
+   - Attached `adaptiveConcern: userConcernText`, `investigationId: badmintonResult.analysis_id`, and `subjectId: 'player_badminton'` to assistant messages upon video upload.
+   - Updated text inquiry handler to recognize `isBadmintonQuery` (`badminton`, `smash`, `racket`, `shuttle`, `court`, `stroke`, `rally`) and mount `AdaptiveInquiryCard` with `player_badminton`.
+   - Attached `adaptiveConcern` to badminton scenario preset clicks.
+4. **Interactive Badminton UI & Proof-of-Adaptation Judge Controls (`AdaptiveInquiryCard.jsx`)**:
+   - Added `isBadminton` domain detection.
+   - Dynamic Title: `🏸 Badminton Biomechanical & Tactical Triage`.
+   - Subtitle: `Kinetic chain sequencing, grip twist, and footwork fatigue inquiry`.
+   - Quick Judge Demo Buttons:
+     - `⚡ Case A: Late Reach (Hits Net)` $\rightarrow$ selects net tape $\rightarrow$ dynamically triggers Contact Point Apex question $\rightarrow$ concludes with *Kinetic Chain Sequencing / Dropped Elbow*.
+     - `⚡ Case B: Sliced Face (Out Long)` $\rightarrow$ selects out long $\rightarrow$ dynamically triggers Grip Feel & Tension question $\rightarrow$ concludes with *Grip Orientation & Pronation Bevel Twist*.
+
+### Verification & Empirical Confirmation
+- **Dedicated Automated Pytest Suite (`backend/tests/test_badminton_adaptive.py`)**:
+  - `test_badminton_adaptive_start_session`: PASSED.
+  - `test_badminton_adaptive_case_a_late_reach_hits_net`: PASSED (reaches 100% confidence conclusion).
+  - `test_badminton_adaptive_case_b_grip_twist_out_long`: PASSED (reaches 100% confidence conclusion).
+  - `test_reasoning_service_badminton_intent_detection`: PASSED.
+- **Unified Non-Regression Test (`pytest test_gait_baseline_adaptive.py test_badminton_adaptive.py`)**:
+  - **10/10 tests passed (100%)** in 1.87s.
+- **Live HTTP API Verification**:
+  - `POST /api/adaptive/start` with badminton concern: HTTP 200, returned `badminton_trajectory_miss` question and preamble.
+  - `POST /api/adaptive/{id}/answer`: HTTP 200, demonstrated Bayesian hypothesis updates, conversational bridge, and subsequent discriminator question.
+- **Frontend Production Build (`npm run build`)**:
+  - Built cleanly in 17.98s with 0 errors.
+- **Live Daemons Active**:
+  - Backend running on `http://127.0.0.1:8002` (HTTP 200).
+  - Frontend Vite server running on `http://localhost:3000` (HTTP 200).
+
+
+
+
 
 

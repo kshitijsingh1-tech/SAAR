@@ -60,6 +60,31 @@ export default function App() {
   const [saarData, setSaarData] = useState(null);
   const [baselineData, setBaselineData] = useState(null);
 
+  // Per-Session Investigation Data Map (Ensures every chat preserves its own active report)
+  const [sessionReports, setSessionReports] = useState(() => {
+    try {
+      const saved = localStorage.getItem('saar_session_reports');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return {
+            'session-3': monsteraInvestigation,
+            ...parsed
+          };
+        }
+      }
+    } catch (e) {}
+    return {
+      'session-3': monsteraInvestigation
+    };
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('saar_session_reports', JSON.stringify(sessionReports));
+    } catch (e) {}
+  }, [sessionReports]);
+
   // Visual Media & Camera
   const [customImageData, setCustomImageData] = useState(null);
   const [customImageUrl, setCustomImageUrl] = useState(null);
@@ -551,42 +576,94 @@ export default function App() {
     }
   }, [selectedDomain, unlockTools, setSessionTools, customImageData, customImageUrl, customVideoFile]);
 
-  // Synchronize active session context dynamically ONLY when activeSessionId actually changes
-  useEffect(() => {
-    if (prevActiveSessionIdRef.current === activeSessionId && (customImageData || customImageUrl)) {
-      return;
+  // Select Session from Sidebar or programmatic switch (Restores each session's own report)
+  const handleSelectSession = useCallback((id) => {
+    setActiveSessionId(id);
+    setSelectedNodeId(null);
+
+    const targetSession =
+      sessions.find((s) => s.id === id) ||
+      DEFAULT_SESSIONS.find((s) => s.id === id);
+
+    if (targetSession?.domain) {
+      setSelectedDomain(targetSession.domain);
     }
-    prevActiveSessionIdRef.current = activeSessionId;
 
-    const session =
-      sessions.find((s) => s.id === activeSessionId) ||
-      DEFAULT_SESSIONS.find((s) => s.id === activeSessionId);
-    if (!session) return;
-
-    setSelectedDomain(session.domain || 'agriculture');
-    if (session.imageData) {
-      setCustomImageData(session.imageData);
+    if (targetSession?.imageData) {
+      setCustomImageData(targetSession.imageData);
       setCustomImageUrl(null);
     } else {
       setCustomImageData(null);
-      setCustomImageUrl(session.imageUrl || null);
+      setCustomImageUrl(targetSession?.imageUrl || null);
     }
-    setCustomVideoFile(session.videoFile || null);
+    setCustomVideoFile(targetSession?.videoFile || null);
     setCameraConnected(true);
-    setSaarData(null);
-    setInvestigationData(null);
 
-    if (session.id === 'session-3') {
+    // 1. Check if an active report is already cached in sessionReports or session object
+    const existingReport =
+      sessionReports[id] ||
+      targetSession?.investigationData ||
+      targetSession?.saarData;
+
+    if (existingReport) {
+      if (existingReport.assessment_id || existingReport.analysis_id || existingReport.metrics) {
+        setSaarData(existingReport);
+        setInvestigationData(null);
+      } else {
+        setInvestigationData(existingReport);
+        setSaarData(null);
+      }
+      return;
+    }
+
+    // 2. Inspect message thread for this session to recover the latest assistant report
+    const sessionMsgs = allMessages[id] || [];
+    const lastReportMsg = [...sessionMsgs].reverse().find((m) => m && m.report);
+    if (lastReportMsg?.report) {
+      const rep = lastReportMsg.report;
+      if (rep.assessment_id || rep.analysis_id || rep.metrics) {
+        setSaarData(rep);
+        setInvestigationData(null);
+      } else {
+        setInvestigationData(rep);
+        setSaarData(null);
+      }
+      setSessionReports((prev) => ({ ...prev, [id]: rep }));
+      return;
+    }
+
+    // 3. Built-in defaults or preset investigation
+    if (id === 'session-3') {
       setInvestigationData(monsteraInvestigation);
-      if (!session.imageData && !session.imageUrl) {
+      setSaarData(null);
+      setSessionReports((prev) => ({ ...prev, [id]: monsteraInvestigation }));
+      if (!targetSession?.imageData && !targetSession?.imageUrl) {
         setCustomImageUrl('/monstera_sample.png');
       }
-    } else if (session.presetId) {
-      runInvestigation(session.domain, session.presetId, { vlmProvider: 'auto' })
-        .then((res) => setInvestigationData(res))
-        .catch((err) => console.warn(`Session ${session.id} investigation fetch:`, err));
+    } else if (targetSession?.presetId) {
+      setInvestigationData(null);
+      setSaarData(null);
+      runInvestigation(targetSession.domain, targetSession.presetId, { vlmProvider: 'auto' })
+        .then((res) => {
+          setInvestigationData(res);
+          setSessionReports((prev) => ({ ...prev, [id]: res }));
+        })
+        .catch((err) => console.warn(`Session ${id} investigation fetch:`, err));
+    } else {
+      // Clean honest empty state for new session with no investigation yet
+      setInvestigationData(null);
+      setSaarData(null);
     }
-  }, [activeSessionId, sessions]);
+  }, [sessions, sessionReports, allMessages]);
+
+  // Synchronize active session context dynamically ONLY when activeSessionId actually changes
+  useEffect(() => {
+    if (prevActiveSessionIdRef.current === activeSessionId) {
+      return;
+    }
+    prevActiveSessionIdRef.current = activeSessionId;
+    handleSelectSession(activeSessionId);
+  }, [activeSessionId, handleSelectSession]);
 
   // Initial Load: Warm up domains & baseline
   useEffect(() => {
@@ -629,7 +706,7 @@ export default function App() {
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId && (s.query === 'New Scientific Investigation' || !s.query)
-          ? { ...s, query: queryText, domain }
+          ? { ...s, query: queryText, domain, presetId }
           : s
       )
     );
@@ -651,6 +728,14 @@ export default function App() {
       const res = await runInvestigation(domain, presetId, { vlmProvider: 'auto', signal: abortController.signal });
       if (checkIsAborted()) return;
       setInvestigationData(res);
+      setSessionReports((prev) => ({ ...prev, [activeSessionId]: res }));
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? { ...s, domain, presetId, investigationData: res }
+            : s
+        )
+      );
 
       try {
         const baseRes = await fetchBaseline(domain, presetId);
@@ -692,7 +777,13 @@ export default function App() {
         }
       ]);
 
-      setActiveTool('graph');
+      if (domain === 'gait' || domain === 'pediatrics') {
+        setActiveTool('gait');
+      } else if (domain === 'sports') {
+        setActiveTool('badminton');
+      } else {
+        setActiveTool('graph');
+      }
       setIsToolDrawerOpen(true);
     } catch (err) {
       if (checkIsAborted(err)) {
@@ -894,6 +985,19 @@ export default function App() {
       });
       if (checkIsAborted()) return;
       setInvestigationData(res);
+      setSessionReports((prev) => ({ ...prev, [activeSessionId]: res }));
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? {
+                ...s,
+                investigationData: res,
+                domain: targetDomain,
+                imageData: primaryBase64
+              }
+            : s
+        )
+      );
       if (res?.domain && res.domain !== targetDomain) {
         targetDomain = res.domain;
         setSelectedDomain(res.domain);
@@ -1050,10 +1154,21 @@ export default function App() {
           text: responseText,
           thoughtProcess,
           report: gaitResult,
+          adaptiveConcern: gaitResult.baseline_comparison?.primary_alert || `Child walking evaluation: cadence ${gaitResult.metrics?.cadence} steps/min, asymmetry ${gaitResult.metrics?.step_time_asymmetry_pct}%`,
+          investigationId: gaitResult.assessment_id,
+          subjectId: 'child_leo_24m',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
       setSaarData(gaitResult);
+      setSessionReports((prev) => ({ ...prev, [activeSessionId]: gaitResult }));
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? { ...s, saarData: gaitResult, domain: 'pediatrics' }
+            : s
+        )
+      );
       return;
     }
 
@@ -1147,6 +1262,14 @@ export default function App() {
               const badmintonResult = await analyzeBadmintonVideo(file, {}, { signal: abortController.signal });
               if (checkIsAborted()) return;
               setSaarData(badmintonResult);
+              setSessionReports((prev) => ({ ...prev, [activeSessionId]: badmintonResult }));
+              setSessions((prev) =>
+                prev.map((s) =>
+                  s.id === activeSessionId
+                    ? { ...s, saarData: badmintonResult, domain: 'sports' }
+                    : s
+                )
+              );
 
               // Extract verified metrics from Pydantic schema
               const racketSpeed = badmintonResult.speed_metrics?.racket_speed_peak?.available ? badmintonResult.speed_metrics.racket_speed_peak.speed_kmh : null;
@@ -1258,6 +1381,12 @@ export default function App() {
                 }
               }
 
+              const userConcernText = userText && userText.trim() ? userText.trim() : (
+                "Badminton stroke power, smash penetration, and trajectory inquiry"
+              );
+
+              responseText += `\n---\n\n#### 🏸 Adaptive Biomechanical Triage Initiated\nTo evaluate your question: *"${userConcernText}"*, video kinematics alone cannot differentiate whether missed smashes or attenuated power stem from **kinetic chain sequencing**, **grip bevel misalignment**, or **footwork deceleration fatigue**. **Please answer the adaptive questions below** to isolate your technical execution.\n`;
+
               const thoughtProcess = {
                 title: `Thought for ${(Math.random() * 0.4 + 2.1).toFixed(1)}s`,
                 summary: `Autonomous Video Dispatch: Classified as Badminton Athletic Rally (${Math.round((classification.confidence || 0.8) * 100)}% confidence)`,
@@ -1266,6 +1395,7 @@ export default function App() {
                   `Court Geometry Calibration: ${badmintonResult.court_calibration?.is_calibrated ? 'BWF Doubles Court calibrated with homography' : 'Extrapolated uncalibrated boundary'}`,
                   `Athletic Pose Estimation: Grounded 33 BlazePose keypoints across ${badmintonResult.video?.frame_count || 0} frames`,
                   `Movement Kinematics: Computed court displacement (${distanceM != null ? distanceM.toFixed(1) + 'm' : 'tracked'}) and ${strokeCount} stroke(s)`,
+                  `Adaptive Diagnostic Loop: Initiated Information-Gain Biomechanical Inquiry in Chat`,
                   `Tool Synchronization: Mounted Badminton Athletic Biomechanics Studio`
                 ]
               };
@@ -1281,6 +1411,9 @@ export default function App() {
                   text: responseText,
                   thoughtProcess,
                   report: badmintonResult,
+                  adaptiveConcern: userConcernText,
+                  investigationId: badmintonResult.analysis_id,
+                  subjectId: 'player_badminton',
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
               ]);
@@ -1295,28 +1428,28 @@ export default function App() {
               const gaitResult = await analyzeGaitVideo(file, 24, { signal: abortController.signal });
               if (checkIsAborted()) return;
               setSaarData(gaitResult);
+              setSessionReports((prev) => ({ ...prev, [activeSessionId]: gaitResult }));
+              setSessions((prev) =>
+                prev.map((s) =>
+                  s.id === activeSessionId
+                    ? { ...s, saarData: gaitResult, domain: 'pediatrics' }
+                    : s
+                )
+              );
               detectAndUnlockTools(userText, currentFiles, gaitResult, 'pediatrics', true);
+              const userConcernText = userText && userText.trim() ? userText.trim() : (
+                gaitResult.baseline_comparison?.primary_alert ||
+                `Child walking evaluation: cadence ${gaitResult.metrics?.cadence || 0} steps/min, asymmetry ${gaitResult.metrics?.step_time_asymmetry_pct || 0}%`
+              );
+
               let responseText = `### Toddler Walking Assessment\n\n`;
               responseText += `Kinematic gait screening completed for \`${fileName}\` (${gaitResult.video?.fps || 24} FPS, ${gaitResult.video?.duration_seconds || 0}s):\n\n`;
-              responseText += `#### Movement & Spatial Metrics\n`;
+              responseText += `#### Initial Computer Vision Observations\n`;
               responseText += `- **Stepping Cadence**: **${gaitResult.metrics?.cadence || 0} steps/min** (Normative reference: ${gaitResult.cadence_range?.low || 110}–${gaitResult.cadence_range?.high || 180} steps/min).\n`;
               responseText += `- **Bilateral Step Symmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct || 0}% step asymmetry** (Normative threshold: ≤ 10%).\n`;
               responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov || 0}% CoV** (${gaitResult.metrics?.usable_step_count || 0} valid cycles evaluated).\n\n`;
-              responseText += `#### Developmental Milestone Context\n${gaitResult.milestone_context || 'Normative developmental coordination observed during upright balance consolidation.'}\n\n`;
-              responseText += `*Clinical Note: Automated observational screening report to support routine pediatric evaluation.*`;
-
-              if (userText && userText.trim()) {
-                try {
-                  const questionReply = await askSaarQuestion(gaitResult.assessment_id || 'latest', userText.trim(), { signal: abortController.signal });
-                  if (checkIsAborted()) return;
-                  if (questionReply?.answer_summary) {
-                    responseText += `\n\n---\n\n### Question Response: *"${userText.trim()}"*\n${questionReply.answer_summary}`;
-                  }
-                } catch (qErr) {
-                  if (checkIsAborted(qErr)) return;
-                  console.warn("Failed to answer question alongside video upload:", qErr);
-                }
-              }
+              responseText += `#### Adaptive Diagnostic Triage Required\n`;
+              responseText += `To evaluate your question: *"${userConcernText}"*, kinematic video measurements alone cannot determine whether this movement is optimal, compensatory guarding, or a benign motor habit without clinical context. **Please answer the adaptive question below** so SAAR can evaluate his pattern against his personal baseline.\n`;
 
               if (checkIsAborted()) return;
 
@@ -1328,7 +1461,7 @@ export default function App() {
                   `Temporal Video Ingestion: Decoded ${gaitResult.video?.fps || 24} FPS stream (${gaitResult.video?.duration_seconds || 0}s duration)`,
                   `Pediatric Pose Estimation: Grounded 33 skeletal landmarks with ${gaitResult.quality?.confidence || 'High'} confidence`,
                   `Kinematic Analysis: Calculated bilateral cadence (${gaitResult.metrics?.cadence || 0} steps/min) and asymmetry (${gaitResult.metrics?.step_time_asymmetry_pct || 0}%)`,
-                  `Tool Synchronization: Mounted ToddleAI Pediatric Gait Dashboard`
+                  `Adaptive Diagnostic Loop: Initiated Information-Gain Inquiry in Chat`
                 ]
               };
 
@@ -1339,6 +1472,9 @@ export default function App() {
                   text: responseText,
                   thoughtProcess,
                   report: gaitResult,
+                  adaptiveConcern: userConcernText,
+                  investigationId: gaitResult.assessment_id,
+                  subjectId: 'child_leo_24m',
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
               ]);
@@ -1382,6 +1518,7 @@ export default function App() {
             companionCsvReport = await uploadSaarCsv(csvFiles[0], { signal: abortController.signal });
             if (!checkIsAborted()) {
               setSaarData(companionCsvReport);
+              setSessionReports((prev) => ({ ...prev, [activeSessionId]: companionCsvReport }));
               setSessionSensorData((prev) => ({
                 ...prev,
                 [activeSessionId]: true
@@ -1391,6 +1528,7 @@ export default function App() {
                   s.id === activeSessionId
                     ? {
                         ...s,
+                        saarData: companionCsvReport,
                         telemetryData: companionCsvReport?.telemetry || s.telemetryData
                       }
                     : s
@@ -1412,6 +1550,7 @@ export default function App() {
           const report = companionCsvReport || await uploadSaarCsv(file, { signal: abortController.signal });
           if (checkIsAborted()) return;
           setSaarData(report);
+          setSessionReports((prev) => ({ ...prev, [activeSessionId]: report }));
           setSessionSensorData((prev) => ({
             ...prev,
             [activeSessionId]: true
@@ -1421,6 +1560,7 @@ export default function App() {
               s.id === activeSessionId
                 ? {
                     ...s,
+                    saarData: report,
                     telemetryData: report?.telemetry || s.telemetryData
                   }
                 : s
@@ -1487,8 +1627,8 @@ export default function App() {
 
       // 2. Active or General Investigation Inquiry (Dynamic AI synthesis + RAG retrieval)
       const active = saarData || investigationData;
-      const targetInvId = active?.investigation_id || 'latest';
-      const askRes = await askSaarQuestion(targetInvId, msgText, { signal: abortController.signal });
+      const targetInvId = active?.investigation_id || active?.assessment_id || active?.analysis_id || 'latest';
+      const askRes = await askSaarQuestion(targetInvId, msgText, { signal: abortController.signal, domain: selectedDomain });
       if (checkIsAborted()) return;
       let reply = askRes.answer_summary || `Evaluated causal evidence graph against inquiry: "${msgText}".`;
 
@@ -1517,6 +1657,12 @@ export default function App() {
 
       detectAndUnlockTools(msgText, currentFiles, askRes);
 
+      const msgLower = (msgText || '').toLowerCase();
+      const isBadmintonQuery = ['badminton', 'smash', 'racket', 'shuttle', 'court', 'stroke', 'rally'].some(k => msgLower.includes(k));
+      const isPedGaitQuery = !isBadmintonQuery && ['walk', 'limp', 'gait', 'toddler', 'asymmetry', 'optimal', 'step'].some(k => msgLower.includes(k));
+      const adaptiveConcern = (isPedGaitQuery || isBadmintonQuery) ? msgText.trim() : null;
+      const targetSubjectId = isBadmintonQuery ? 'player_badminton' : 'child_leo_24m';
+
       setMessages((prev) => [
         ...prev,
         {
@@ -1525,6 +1671,9 @@ export default function App() {
           thoughtProcess,
           report: saarData || investigationData,
           terminology: askRes.terminology || [],
+          adaptiveConcern: adaptiveConcern,
+          investigationId: targetInvId,
+          subjectId: targetSubjectId,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -1555,6 +1704,7 @@ export default function App() {
     try {
       const updatedReport = await answerSaarQuestion(active.investigation_id, answerText);
       setSaarData(updatedReport);
+      setSessionReports((prev) => ({ ...prev, [activeSessionId]: updatedReport }));
 
       setMessages((prev) => [
         ...prev,
@@ -1711,21 +1861,7 @@ export default function App() {
     }
   };
 
-  // Select Session from Sidebar
-  const handleSelectSession = (id) => {
-    setActiveSessionId(id);
-    // Strict session state isolation: clear lingering investigation data from prior session
-    setInvestigationData(null);
-    setSaarData(null);
-    setBaselineData(null);
-    setSelectedNodeId(null);
-    setCustomImageData(null);
-    setCustomImageUrl(null);
-    const targetSession = sessions.find((s) => s.id === id);
-    if (targetSession?.domain) {
-      setSelectedDomain(targetSession.domain);
-    }
-  };
+
 
   // New Investigation Session
   const handleNewSession = () => {
@@ -2157,13 +2293,25 @@ export default function App() {
         onSendToChat={(dataOrText) => {
           if (dataOrText && typeof dataOrText === 'object') {
             setSaarData(dataOrText);
-            if (dataOrText.developmental_summary || dataOrText.gait_profile) {
+            setSessionReports((prev) => ({ ...prev, [activeSessionId]: dataOrText }));
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === activeSessionId
+                  ? { ...s, saarData: dataOrText }
+                  : s
+              )
+            );
+            if (dataOrText.assessment_id || dataOrText.metrics || dataOrText.developmental_summary || dataOrText.gait_profile) {
+              const headline = dataOrText.milestone_context || dataOrText.developmental_summary?.headline || `Automated gait screening completed (cadence: ${dataOrText.metrics?.cadence || 0} spm, asymmetry: ${dataOrText.metrics?.step_time_asymmetry_pct || 0}%).`;
               setMessages((prev) => [
                 ...prev,
                 {
                   role: 'assistant',
-                  text: `### ToddleAI Pediatric Gait Analysis (${dataOrText.child_age_months || 24} Months)\n\n${dataOrText.developmental_summary?.headline || 'Gait assessment completed.'}`,
+                  text: `### Toddler Walking Assessment\n\n${headline}`,
                   report: dataOrText,
+                  adaptiveConcern: dataOrText.baseline_comparison?.primary_alert || `Child walking evaluation: cadence ${dataOrText.metrics?.cadence || 0} steps/min, asymmetry ${dataOrText.metrics?.step_time_asymmetry_pct || 0}%`,
+                  investigationId: dataOrText.assessment_id,
+                  subjectId: 'child_leo_24m',
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
               ]);
@@ -2172,8 +2320,11 @@ export default function App() {
                 ...prev,
                 {
                   role: 'assistant',
-                  text: `### Badminton Biomechanics Analysis\n\n${dataOrText.summary || 'Rally video analysis completed.'}`,
+                  text: `### Badminton Biomechanics Analysis\n\n${dataOrText.summary || 'Rally video analysis completed.'}\n\n#### 🏸 Adaptive Biomechanical Triage Initiated\nPlease answer the questions below to isolate root causes for stroke variance or power drop.`,
                   report: dataOrText,
+                  adaptiveConcern: "Badminton stroke power, smash penetration, and trajectory inquiry",
+                  investigationId: dataOrText.analysis_id,
+                  subjectId: 'player_badminton',
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
               ]);
@@ -2208,6 +2359,7 @@ export default function App() {
               vlmProvider: 'auto'
             });
             setInvestigationData(res);
+            setSessionReports((prev) => ({ ...prev, [activeSessionId]: res }));
             setMessages((prev) => [
               ...prev,
               {

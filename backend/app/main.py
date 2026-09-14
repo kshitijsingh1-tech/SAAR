@@ -411,9 +411,13 @@ def saar_knowledge_query(payload: Dict[str, Any]):
 # ADAPTIVE DIAGNOSTIC QUESTIONING API
 # ===================================================================
 
+from .gait.baseline_service import personalized_baseline_service
+
+
 class AdaptiveStartRequest(BaseModel):
     investigation_id: Optional[str] = "latest"
     user_concern: str
+    subject_id: Optional[str] = "child_leo_24m"
 
 
 class AdaptiveAnswerRequest(BaseModel):
@@ -426,7 +430,8 @@ async def adaptive_start(req: AdaptiveStartRequest):
     try:
         session = saar_engine.start_adaptive_session(
             investigation_id=req.investigation_id or "latest",
-            user_concern=req.user_concern
+            user_concern=req.user_concern,
+            subject_id=req.subject_id or "child_leo_24m"
         )
         return session.model_dump()
     except ValueError as e:
@@ -458,6 +463,43 @@ async def adaptive_answer(session_id: str, req: AdaptiveAnswerRequest):
 
 
 # ===================================================================
+# PERSONALIZED GAIT BASELINE API
+# ===================================================================
+
+@app.get("/api/gait/baselines")
+def gait_list_baselines():
+    """List registered child profiles with empirical baseline status."""
+    return personalized_baseline_service.list_profiles()
+
+
+@app.get("/api/gait/baselines/{subject_id}")
+def gait_get_baseline(subject_id: str):
+    """Retrieve child's longitudinal personalized baseline."""
+    profile = personalized_baseline_service.get_profile(subject_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Child baseline '{subject_id}' not found.")
+    return profile.model_dump()
+
+
+@app.post("/api/gait/baselines/{subject_id}/update")
+def gait_update_baseline(subject_id: str, payload: Dict[str, Any]):
+    """Update child's personalized baseline using newly verified assessment metrics."""
+    try:
+        profile = personalized_baseline_service.update_from_assessment(subject_id, payload)
+        return profile.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update baseline: {str(e)}")
+
+
+@app.post("/api/gait/baselines/{subject_id}/compare")
+def gait_compare_baseline(subject_id: str, payload: Dict[str, Any]):
+    """Compare an assessment against child's personalized baseline to detect deviations."""
+    try:
+        result = personalized_baseline_service.compare_assessment(subject_id, payload)
+        return result.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to compare baseline: {str(e)}")
+
 # TODDLEAI GAIT ANALYSIS API (DEDICATED ENDPOINTS)
 # ===================================================================
 
@@ -501,7 +543,15 @@ async def gait_analyze_video(
             saar_engine.register_gait_investigation(result)
         except Exception as reg_err:
             print(f"[Main] Warning: Failed to register gait investigation: {reg_err}")
-        return result.model_dump()
+        
+        output = result.model_dump()
+        try:
+            active_subject = subject_id or "child_leo_24m"
+            comp = personalized_baseline_service.compare_assessment(active_subject, output)
+            output["baseline_comparison"] = comp.model_dump()
+        except Exception as comp_err:
+            print(f"[Main] Baseline comparison error in video analyze: {comp_err}")
+        return output
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gait analysis failed: {str(e)}")
 
@@ -547,7 +597,7 @@ def gait_sample_video():
 
 
 @app.get("/api/gait/sample")
-def gait_analyze_sample(child_age_months: int = Query(24, ge=6, le=120)):
+def gait_analyze_sample(child_age_months: int = Query(24, ge=6, le=120), subject_id: Optional[str] = Query("child_leo_24m")):
     """Run analysis on pre-bundled sample toddler walking video."""
     import os
     candidates = [
@@ -570,7 +620,16 @@ def gait_analyze_sample(child_age_months: int = Query(24, ge=6, le=120)):
         saar_engine.register_gait_investigation(result)
     except Exception as reg_err:
         print(f"[Main] Warning: Failed to register gait sample investigation: {reg_err}")
-    return result.model_dump()
+
+    output = result.model_dump()
+    try:
+        active_subject = subject_id or "child_leo_24m"
+        comp = personalized_baseline_service.compare_assessment(active_subject, output)
+        output["baseline_comparison"] = comp.model_dump()
+    except Exception as comp_err:
+        print(f"[Main] Baseline comparison error in sample analyze: {comp_err}")
+    return output
+
 
 
 @app.get("/api/gait/assessment/{assessment_id}")

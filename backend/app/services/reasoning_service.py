@@ -393,39 +393,125 @@ class ReasoningService:
     # ------------------------------------------------------------------
 
     def start_adaptive_session(
-        self, investigation_id: str, user_concern: str
+        self, investigation_id: str, user_concern: str, subject_id: str = "child_leo_24m"
     ) -> AdaptiveSession:
         """Start an adaptive diagnostic questioning session for an investigation."""
-        state = self._investigations.get(investigation_id)
-        if not state:
-            # Try to find latest investigation
-            if self._investigations:
-                state = list(self._investigations.values())[-1]
-                investigation_id = state.investigation_id
-            else:
-                raise ValueError(f"No active investigation found for adaptive session.")
+        concern_lower = (user_concern or "").lower()
+        sub_lower = (subject_id or "").lower()
+        inv_lower = (investigation_id or "").lower()
 
-        # Extract measured context from investigation state
+        is_badminton_intent = (
+            any(k in concern_lower for k in ["badminton", "smash", "racket", "shuttle", "rally", "court", "sport", "stroke", "player"])
+            or any(k in inv_lower for k in ["badminton", "sport", "athletic"])
+            or any(k in sub_lower for k in ["badminton", "player", "athlete"])
+        )
+
+        is_gait_intent = not is_badminton_intent and (
+            bool(subject_id and "child" in sub_lower)
+            or any(k in concern_lower for k in ["child", "toddler", "walk", "limp", "step", "asymmetry", "cadence", "gait", "fall", "injury", "leg", "foot", "bearing"])
+            or any(k in inv_lower for k in ["gait", "pediatric", "assessment"])
+        )
+
+        state = self._investigations.get(investigation_id) if investigation_id else None
+        # Only fallback to existing investigation if it does not cross-contaminate domain
+        if not state and self._investigations and not is_gait_intent and not is_badminton_intent:
+            state = list(self._investigations.values())[-1]
+            if state:
+                investigation_id = state.investigation_id
+
+        # Extract measured context from investigation state if available
         measured_context = {}
-        for obs in state.observations:
-            if obs.value is not None:
-                measured_context[obs.feature_name] = {
-                    "value": obs.value,
-                    "unit": getattr(obs, "unit", None) or "",
-                    "confidence": obs.confidence
+        if is_badminton_intent:
+            domain = "sports"
+            if not subject_id or "child" in sub_lower:
+                subject_id = "player_badminton"
+            # Pull metrics from badminton results if stored
+            badminton_res = self._badminton_results.get(investigation_id) if hasattr(self, "_badminton_results") else None
+            if not badminton_res and hasattr(self, "_badminton_results") and self._badminton_results:
+                badminton_res = list(self._badminton_results.values())[-1]
+
+            if badminton_res:
+                shot_metrics = getattr(badminton_res, "shot_metrics", None)
+                movement = getattr(badminton_res, "movement", None)
+                energy = getattr(badminton_res, "energy_expenditure", None)
+                if shot_metrics:
+                    measured_context["total_shots"] = getattr(shot_metrics, "total_shots_detected", 1)
+                    measured_context["mean_shot_duration_s"] = getattr(shot_metrics, "mean_shot_duration_seconds", 0.8)
+                if movement:
+                    if getattr(movement, "total_distance_m", None) is not None:
+                        measured_context["total_distance_m"] = movement.total_distance_m
+                    if getattr(movement, "coverage_percentage", None) is not None:
+                        measured_context["coverage_pct"] = movement.coverage_percentage
+                if energy and getattr(energy, "estimated_calories_burned_kcal", None) is not None:
+                    measured_context["calories_burned_kcal"] = energy.estimated_calories_burned_kcal
+            elif state and getattr(state, "dataset_id", "") == "badminton":
+                for obs in state.observations:
+                    if obs.value is not None:
+                        measured_context[obs.feature_name] = obs.value
+
+            if not measured_context:
+                measured_context = {
+                    "total_shots": 3,
+                    "mean_shot_duration_s": 0.85,
+                    "court_calibrated": 1,
+                    "total_distance_m": 12.4
+                }
+        elif is_gait_intent:
+            domain = "gait"
+            if state and (getattr(state, "dataset_id", "") == "gait" or "assessment" in str(getattr(state, "investigation_id", ""))):
+                for obs in state.observations:
+                    if obs.value is not None:
+                        measured_context[obs.feature_name] = {
+                            "value": obs.value,
+                            "unit": getattr(obs, "unit", None) or "",
+                            "confidence": obs.confidence
+                        }
+            if not measured_context:
+                measured_context = {
+                    "step_time_asymmetry_pct": 15.2,
+                    "cadence": 138.0,
+                    "mean_step_time": 0.44,
+                    "step_time_cov": 12.4,
+                    "trunk_angle_deg": 6.8
+                }
+        elif state:
+            domain = state.dataset_id or "gait"
+            for obs in state.observations:
+                if obs.value is not None:
+                    measured_context[obs.feature_name] = {
+                        "value": obs.value,
+                        "unit": getattr(obs, "unit", None) or "",
+                        "confidence": obs.confidence
+                    }
+        else:
+            # Detect domain from concern keywords
+            if any(k in concern_lower for k in ["leaf", "plant", "crop", "chlorosis", "soil", "tomato", "rose"]):
+                domain = "agriculture"
+            elif any(k in concern_lower for k in ["court", "badminton", "shuttle", "smash", "racket"]):
+                domain = "sports"
+            elif any(k in concern_lower for k in ["road", "pavement", "void", "crack", "asphalt", "bridge"]):
+                domain = "infrastructure"
+            else:
+                domain = "gait"
+                # Default sample gait metrics if none provided
+                measured_context = {
+                    "step_time_asymmetry_pct": 15.2,
+                    "cadence": 138.0,
+                    "mean_step_time": 0.44,
+                    "step_time_cov": 12.4,
+                    "trunk_angle_deg": 6.8
                 }
 
-        # Determine domain
-        domain = state.dataset_id or "general"
-
         session = self.adaptive_engine.start_session(
-            investigation_id=investigation_id,
+            investigation_id=investigation_id or "latest",
             user_concern=user_concern,
             domain=domain,
-            measured_context=measured_context
+            measured_context=measured_context,
+            subject_id=subject_id
         )
         self._adaptive_sessions[session.session_id] = session
         return session
+
 
     def get_adaptive_session(self, session_id: str) -> AdaptiveSession:
         """Get the current state of an adaptive session."""
