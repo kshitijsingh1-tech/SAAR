@@ -1,10 +1,10 @@
-# SAAR — Visual Scientific Reasoning Engine
+# SAAR — Visual Scientific Reasoning & Multi-Modal Kinematics Engine
 
 <div align="center">
 
 ![SAAR Logo](frontend/public/saar-logo-white.png)
 
-## Autonomous Multi-Agent Causal Reasoning, Bayesian Belief Updating & Dynamic Scientific Discovery
+## Autonomous Multi-Agent Causal Reasoning, Bayesian Belief Updating, Pediatric Gait Biometrics & Badminton Kinematics
 
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-000000.svg?style=flat-square)](https://github.com/kshitijsingh1-tech/SAAR)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://python.org)
@@ -12,6 +12,7 @@
 [![React](https://img.shields.io/badge/React-18.2.0-61DAFB.svg?style=flat-square&logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF.svg?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![NetworkX](https://img.shields.io/badge/NetworkX-Graph_Engine-blue.svg?style=flat-square)](https://networkx.org/)
+[![SciPy](https://img.shields.io/badge/SciPy-DSP_Kinematics-8CAAE6.svg?style=flat-square&logo=scipy)](https://scipy.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 
 > *“Deconstruct observations into essence. Traverse causal graphs. Quantify uncertainty. Prove truth.”*
@@ -25,15 +26,15 @@
 In conventional artificial intelligence, multi-modal systems operate as **opaque, single-pass black boxes**:
 
 ```text
-Visual Input / Tabular Data ───▶ [ Monolithic VLM / LLM ] ───▶ Superficial Text Verdict
-                                                                ↳ High Hallucination Rate
-                                                                ↳ Zero Verifiable Evidence Chain
-                                                                ↳ Static Uncertainty
+Visual Input / Video / Tabular Data ───▶ [ Monolithic VLM / LLM ] ───▶ Superficial Text Verdict
+                                                                       ↳ High Hallucination Rate
+                                                                       ↳ Zero Verifiable Evidence Chain
+                                                                       ↳ Unfalsifiable Guesses
 ```
 
-**SAAR** (*Synthetic Auditable Autonomous Reasoner* — *“the distilled essence, fundamental truth, or core finding”*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop**.
+**SAAR** (*Synthetic Auditable Autonomous Reasoner* — *“the distilled essence, fundamental truth, or core finding”*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop** combined with **deterministic physics and signal processing engines**.
 
-Instead of jumping directly to an unverified conclusion, SAAR constructs a **dynamic causal knowledge graph**, identifies epistemic uncertainty, runs specialized domain simulators, queries the human investigator for high-information-gain observations, and conducts Bayesian belief updates until confidence satisfies a rigorous scientific threshold.
+Instead of jumping directly to an unverified conclusion, SAAR constructs a **dynamic causal knowledge graph**, identifies epistemic uncertainty, runs specialized domain simulators, queries the human investigator for high-information-gain observations, and executes deterministic DSP pipelines to extract verified metrics across agriculture, pediatric gait, sports biomechanics, and civil infrastructure.
 
 ```text
                                ┌────────────────────────────────────────────────────────┐
@@ -50,66 +51,79 @@ Instead of jumping directly to an unverified conclusion, SAAR constructs a **dyn
                                ▼                           ▼                           ▼
                  ┌───────────────────────────┐ ┌───────────────────────┐ ┌───────────────────────────┐
                  │     Perception Sensors    │ │  Domain Simulators    │ │  Human-in-the-Loop Cards  │
-                 │ Multi-Modal Vision / Tab  │ │ GPR, Darcy, Keplerian │ │ Epistemic Uncertainty Qs  │
+                 │ Multi-Modal Vision / Tab  │ │ GPR, Darcy, Homography│ │ Epistemic Uncertainty Qs  │
                  └───────────────────────────┘ └───────────────────────┘ └───────────────────────────┘
 ```
 
 ---
 
-## ⚡ Key Capabilities & Architectural Pillars
+## ⚡ Flagship Capabilities & Domain Pillars
 
-### 1. Dynamic Directed Acyclic Graph (DAG) Engine
+### 1. 🌿 Precision Agriculture & Agronomic Pathology
+- **Dynamic Causal Graph Construction**: Falsifiable hypothesis testing for crop ailments (*Pythium ultimum*, *Fusarium oxysporum*, Nitrogen/Iron chlorosis).
+- **Zero-Hardcoding Telemetry Guard**: Optical canopy inspections strictly emit foliar vegetative vigor hypotheses; subterranean soil aeration, root anoxia, and pH speciation tools are dynamically gated until sensor telemetry (CSV/Excel) confirms soil probes exist.
+- **Dynamic Species Taxonomy**: Resolves botanical taxonomy dynamically (*Rosa hybrid*, *Solanum lycopersicum*, etc.) with zero cross-scenario template leakage.
+- **Multivariate Sensor Workbench**: Time-series progression curves, bivariate scatter plots with dynamic Pearson $r$ correlation coefficients, and an interactive $N \times N$ correlation heatmap matrix.
+- **Darcy’s Law Percolation**: Physical hydrological flow and soil saturation kinetics.
 
-- Built on top of **NetworkX** and strict **Pydantic** validation models.
-- Differentiates between:
-  - **Physical Entities**: `road`, `culvert`, `tomato_foliage`, `exoplanet_host`
-  - **Measured Properties**: `soil_moisture: 42%`, `ndvi_index: 0.28`, `transit_depth: 1.4%`
-  - **Active Hypotheses**: `Pythium Root Rot`, `Subterranean Void Cavity`, `Binary Eclipse`
-  - **Evidence Links**: `supports`, `contradicts`, `causes`, `mitigates`, `measures`
+---
 
-### 2. Bayesian Belief Updating & Uncertainty Minimization
+### 2. 👶 Pediatric Toddler AI / Gait Analysis Engine (`backend/app/gait/`)
+A deterministic, 11-stage clinical biomechanical pipeline evaluating motor milestone acquisition from everyday 30 FPS mobile smartphone video:
+- **Zero Phase-Lag DSP Smoothing** ([`smoothing.py`](backend/app/gait/events/smoothing.py)):
+  - 2nd-order Savitzky-Golay polynomial filter (`scipy.signal.savgol_filter`) preserves true peak amplitude without temporal delay.
+  - Adaptive filter window length: $\text{window} = \text{clamp}(FPS \times 0.23\text{s}, [5, 15])$ scales filtering to real physical time.
+  - Direction-invariant median pelvis displacement estimation (+1.0 for rightwards, -1.0 for leftwards).
+  - Bounded NaN occlusion interpolation bridges crossover leg losses up to 14 frames ($\sim 0.46\text{s}$) without hallucinating steps during stops.
+- **Sub-Frame Parabolic Heel-Strike Peak Interpolation** ([`heel_strike.py`](backend/app/gait/events/heel_strike.py)):
+  - Dual-landmark confidence fusion: $\text{foot}_x = \frac{v_{\text{heel}} \cdot x_{\text{heel}} + v_{\text{ankle}} \cdot x_{\text{ankle}}}{v_{\text{heel}} + v_{\text{ankle}}}$.
+  - Subtracts sacrum midpoint $\frac{x_{\text{left\_hip}} + x_{\text{right\_hip}}}{2}$ to eliminate camera drift and walking room progression.
+  - Continuous timestamp refinement down to millisecond precision via quadratic vertex interpolation:
+    $$p = \frac{1}{2}\frac{y_{\text{prev}} - y_{\text{next}}}{y_{\text{prev}} - 2y_{\text{curr}} + y_{\text{next}}},\quad t_{\text{strike}} = t_{\text{frame}} + \frac{p}{\text{FPS}}$$
+  - Physiologic outlier filtering: Discards impossible step times ($< 0.18\text{s}$) and resolves collision double-counts ($< 0.15\text{s}$).
+- **Deterministic Clinical Biometrics** ([`metric_computer.py`](backend/app/gait/metrics/metric_computer.py)):
+  - **Cadence**: $\text{Cadence} = \frac{60}{\bar{t}_{\text{step}}}$ (steps/min).
+  - **Robinson Step Time Asymmetry Index**: $100 \times \frac{|\bar{t}_L - \bar{t}_R|}{0.5(\bar{t}_L + \bar{t}_R)}$.
+  - **Rhythm Variability**: $\text{CoV } \% = 100 \times \frac{\sigma}{\bar{t}_{\text{step}}}$.
+  - **Stance & Swing Phase Decomposition**: Stance phase ($\sim 60\%$), Swing phase ($\sim 40\%$), and Double Support duration.
+  - **2D Joint Kinematics**: Hip, knee, and ankle range of motion (ROM) across complete gait cycles.
+- **Clinical Normative Comparison** ([`toddler_norms.py`](backend/app/gait/norms/toddler_norms.py)):
+  - Benchmarked against **Dr. David Sutherland (1988) *"The Development of Mature Walking"*** and WHO pediatric motor milestone developmental curves across ages 6–120 months.
+  - Automated quality gate rejects recordings with $<2$ usable steps or severe occlusion with actionable guidance.
 
-- Tracks global and node-level uncertainty metrics:
-  $$\text{Uncertainty}_{\text{global}} = 1.0 - \frac{1}{|V \cup E|} \sum_{x \in V \cup E} \text{Confidence}(x)$$
-- Hypotheses compete dynamically. Confirmatory data shifts probability mass; disconfirmatory anomalies eliminate candidate nodes in real-time.
+---
 
-### 3. Multi-Domain Scientific Plugin Architecture
+### 3. 🏸 Badminton Biomechanics & Kinematics Studio (`backend/app/plugins/sports/badminton/`)
+Computer-vision kinematics engine for performance evaluation and stroke classification:
+- **Planar $3 \times 3$ Homography Court Calibration** ([`court_detector.py`](backend/app/plugins/sports/badminton/court_detector.py)):
+  - Computes perspective transform matrix $H$ mapping camera coordinates $[u, v, 1]^T$ to real-world international BWF court dimensions ($13.40\text{m} \times 6.10\text{m}$):
+    $$\begin{bmatrix} X_w \\ Y_w \\ 1 \end{bmatrix} \sim H \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}$$
+- **Multi-Signal Smash Peak Velocity Fusion** ([`shot_detector.py`](backend/app/plugins/sports/badminton/shot_detector.py)):
+  - Detects smashes by fusing three synchronized kinematic triggers:
+    1. Wrist linear velocity peak: $v_{\text{wrist}} \ge 45\text{ km/h}$.
+    2. Kinetic chain elbow extension: $\theta_{\text{elbow}} \ge 140^\circ$.
+    3. Trajectory reversal of the shuttlecock along the forward vector.
+- **Court Distance & Fatigue Analytics** ([`movement_analyzer.py`](backend/app/plugins/sports/badminton/movement_analyzer.py)):
+  - Calculates total distance covered via temporal integration of the player's center of mass (sacrum midpoint landmarks 23 & 24) across the calibrated court plane.
+  - Generates court positioning heatmaps and caloric expenditure modeling based on metabolic equivalents of task (MET).
+- **Academic Benchmark Compatibility**: Structured to validate against the **TrackNet** shuttlecock trajectory dataset and **CoachAI / ShuttleSet** stroke annotation benchmarks.
 
-SAAR ships with specialized analytical plugins engineered with domain equations:
+---
 
-- 🌿 **Agriculture & Agronomy**:
-  - Darcy’s Law soil water saturation & drainage percolation
-  - Chlorophyll degradation & vegetative index tracking (NDVI/SPAD)
-  - Pathogen incubation models (*Pythium*, *Fusarium*, Nitrogen deficiency)
-- 🛣️ **Civil Infrastructure & Geotechnical**:
-  - Ground Penetrating Radar (GPR) hyperbolic reflection void cavity detection
-  - Hydraulic culvert intake flow simulations
-  - AASHTO structural pavement load-bearing capacity
-- 🪐 **Astrophysics & Exoplanetary Science**:
-  - Keplerian orbital lightcurve transit fitting
-  - Radial velocity Doppler centroid shift calculations ($K = 85.2 \text{ m/s}$)
-  - Planetary mass vs. brown dwarf/stellar companion evaluation
+### 4. 🛣️ Civil Infrastructure & Geotechnical Void Detection
+- **Ground Penetrating Radar (GPR)**: Hyperbolic reflection fitting to detect subterranean void cavities and assess sinkhole collapse risk.
+- **Hydraulic Culvert Modeling**: Culvert intake flow and hydrostatic head-loss simulations.
+- **Structural Pavement Integrity**: AASHTO load-bearing capacity and deflection modeling.
 
-### 4. Human-in-the-Loop Inquiry Cards (Active Learning)
+---
 
-- When topological graph entropy is high, SAAR formulates **Targeted Epistemic Inquiries**.
-- Presents interactive, one-click confirmation chips or verified field observation inputs in the chat dialogue to maximize information gain with minimal human effort.
+## 🏛️ Zero-Hardcoding Architecture Directive
 
-### 5. Multi-Format Scientific Export & Dossier Generation
-
-- **Universal Export Engine**:
-  - **Clean Markdown (`.md`)**: Complete question-and-answer pairs, causal graphs, and passport statistics.
-  - **Structured JSON (`.json`)**: Full structural taxonomy for machine-to-machine pipelines.
-  - **Interactive HTML Dossier**: Inline CSS styling for enterprise review.
-  - **Formatted Print / PDF**: Formatted output for lab and inspection field dispatches.
-- **Copy QA Stream**: Single-click combined question-and-answer clipboard synthesis with context-aware `"Ask SAAR"` drill-down.
-
-### 6. Zero-Latency Grounded Scientific Terminology (`asyncio.gather`)
-
-- Employs parallel asynchronous dispatch (`asyncio.gather`) pairing deep causal reasoning ($~1,500\text{ ms}$) with rapid grounded lexical extraction ($~200\text{ ms}$).
-- Effective perceived added latency is **0 ms**.
-- Replaces disconnected public web scrapers with contextual domain extraction powered by the same single `GROQ_API_KEY` (or offline RAG/morphological fallbacks).
-- Renders interactive badges directly beneath dialogue turns (`[ 📖 Pythium ultimum ]`) with one-click **"Ask SAAR to Deep-Dive"** exploratory analysis.
+SAAR strictly enforces a **Zero-Hardcoding Architecture** governed by [`AGENTS.md`](AGENTS.md) and [`.agents/rules/no_hardcoding.md`](.agents/rules/no_hardcoding.md):
+1. **Pure Presentation Layer**: UI components (`ImageInspector.jsx`, `PlotlyGraphViewer.jsx`, `ChatGPTView.jsx`) are strictly display layers. No hardcoded mock bounding boxes, phantom labels, or preset-matching conditionals (`if (isTomato)...`).
+2. **Epistemic Honesty**: If visual evidence cannot confirm subsurface features (e.g., roots, soil pH, moisture), SAAR presents an empty state or requests telemetry rather than synthesizing phantom nodes.
+3. **Dynamic Semantic Routing**: Analytical tools are dispatched dynamically based on semantic properties (`node.category === 'pathology'`), not static ID dictionaries.
+4. **Strict Session Isolation**: Every uploaded image, video, and dataset forms an independent atomic session. State from prior investigations never bleeds into new runs.
 
 ---
 
@@ -117,172 +131,147 @@ SAAR ships with specialized analytical plugins engineered with domain equations:
 
 ```text
 SAAR/
-├── start.sh                            # 1-Click automated startup script for macOS
+├── start.sh                                 # Automated 1-click startup script for macOS/Linux
+├── AGENTS.md                                # Zero-hardcoding engineering directives & rules
+├── work_done.md                             # Ledger of resolved features & non-regression invariants
+│
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                     # FastAPI REST server & WebSocket gateway
-│   │   ├── schemas.py                  # Pydantic schema contracts & type validators
-│   │   ├── graph_engine.py             # NetworkX causal knowledge graph manager
-│   │   ├── dynamic_loop.py             # ReAct investigation loop driver
-│   │   ├── vlm_service.py              # Multi-provider vision perception service
-│   │   ├── rag_service.py              # Domain scientific literature retrieval (BM25)
-│   │   ├── models/
-│   │   │   └── saar_models.py          # Node, Edge, Evidence, Terminology & State models
-│   │   ├── services/
-│   │   │   ├── ingestion_service.py    # CSV/Excel parser & column profiler
-│   │   │   ├── analytics_service.py    # Correlation, trend, & anomaly calculators
-│   │   │   ├── reasoning_service.py    # Iterative scientific belief orchestrator
-│   │   │   └── dictionary_service.py   # Grounded scientific terminology engine
-│   │   └── plugins/
-│   │       ├── base_plugin.py          # Scientific domain plugin contract
-│   │       ├── agriculture_plugin.py   # Crop diagnostics & pathogen kinetics
-│   │       ├── infrastructure_plugin.py# GPR & hydraulic flow simulation
-│   │       └── astronomy_plugin.py     # Orbital mechanics & transit spectroscopy
-│   └── requirements.txt                # Python backend dependencies
+│   │   ├── main.py                          # FastAPI REST server & WebSocket gateway
+│   │   ├── schemas.py                       # Pydantic schema contracts & data models
+│   │   ├── graph_engine.py                  # NetworkX causal knowledge graph manager
+│   │   ├── dynamic_loop.py                  # ReAct scientific reasoning loop
+│   │   ├── vlm_service.py                   # Multimodal vision perception (Gemini, Groq Vision)
+│   │   ├── rag_service.py                   # Domain literature retrieval (BM25)
+│   │   │
+│   │   ├── gait/                            # Toddler Gait Analysis Engine
+│   │   │   ├── pipeline.py                  # 11-stage deterministic pipeline orchestrator
+│   │   │   ├── video_processor.py           # Frame extraction & MediaPipe pose tracking
+│   │   │   ├── events/
+│   │   │   │   ├── heel_strike.py           # Sub-frame parabolic peak heel-strike detector
+│   │   │   │   └── smoothing.py             # Savitzky-Golay zero phase-lag DSP filter
+│   │   │   ├── metrics/
+│   │   │   │   └── metric_computer.py       # Cadence, Robinson Asymmetry, CoV %, Stance/Swing
+│   │   │   ├── angles/
+│   │   │   │   └── joint_angles.py          # 2D Joint ROM (hip, knee, ankle flexion/extension)
+│   │   │   ├── posture/
+│   │   │   │   └── trunk_posture.py         # Trunk tilt angle & lateral sway kinematics
+│   │   │   └── norms/
+│   │   │       ├── toddler_norms.py         # Sutherland (1988) developmental walking curves
+│   │   │       └── advanced_norms.py        # Multi-metric normative comparison engine
+│   │   │
+│   │   ├── plugins/                         # Domain-Specific Analytical Plugins
+│   │   │   ├── base_plugin.py               # Plugin interface contract
+│   │   │   ├── agriculture_plugin.py        # Plant pathology, Darcy percolation & telemetry
+│   │   │   ├── infrastructure_plugin.py     # GPR hyperbolic void detection & hydraulics
+│   │   │   └── sports/
+│   │   │       └── badminton/
+│   │   │           ├── court_detector.py    # 3x3 planar homography court calibration
+│   │   │           ├── shot_detector.py     # Smash peak velocity multi-signal fusion
+│   │   │           ├── shot_classifier.py   # Stroke classification (Smash, Clear, Drop, Net)
+│   │   │           ├── speed_analyzer.py    # Continuous shuttle velocity estimation
+│   │   │           └── movement_analyzer.py # Court coverage & player center of mass
+│   │   │
+│   │   └── services/
+│   │       ├── reasoning_service.py         # Dynamic belief updating & hypothesis refinement
+│   │       ├── analytics_service.py         # Multi-metric timeseries & correlation matrix
+│   │       └── dictionary_service.py        # Grounded scientific terminology lookup
+│   └── requirements.txt                     # Python dependencies
 │
 └── frontend/
     ├── src/
-    │   ├── App.jsx                     # Core application orchestrator & layout
-    │   ├── main.jsx                    # Root entry point with global ErrorBoundary
-    │   ├── index.css                   # Refined scientific typography & light theme design system
-    │   ├── api/
-    │   │   └── client.js               # Axios REST client with error interceptors
-    │   └── components/
-    │       ├── ChatGPTView.jsx         # Conversational scientific interface
-    │       ├── ChatAssistant.jsx       # Integrated sidebar chat with inquiry cards
-    │       ├── KnowledgeGraphCanvas.jsx# Interactive SVG causal graph visualization
-    │       ├── ToolRolloutBar.jsx      # Flowing scientific tool palette
-    │       ├── ToolCanvasDrawer.jsx    # Side-drawer for interactive domain simulations
-    │       ├── MarkdownResponse.jsx    # MathJax LaTeX, Markdown tables, & code formatting
-    │       ├── ErrorBoundary.jsx       # Robust crash prevention & graceful degradation
-    │       └── BenchmarkComparison.jsx # SAAR vs. Single-Pass VLM accuracy matrix
-    └── package.json                    # Frontend dependencies & scripts
+    │   ├── App.jsx                          # Main workbench orchestrator
+    │   ├── index.css                        # Glassmorphism scientific design system
+    │   ├── components/
+    │   │   ├── ChatGPTView.jsx              # Conversational reasoning interface & inquiry chips
+    │   │   ├── KnowledgeGraphCanvas.jsx     # Interactive NetworkX causal graph viewer
+    │   │   ├── ImageInspector.jsx           # Optical canvas with grounded bounding box anchors
+    │   │   ├── SensorAnalyticsWorkbench.jsx # Timelines, bivariate scatter & correlation matrix
+    │   │   ├── BadmintonDashboard.jsx       # Court tracking, smash detector & speed gauge
+    │   │   └── ToolCanvasDrawer.jsx         # Interactive domain simulation drawer
+    └── package.json                         # React 18, Vite 5 & frontend dependencies
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start Guide
 
-Clone the repository to your local machine:
+### Prerequisites
+- **Python 3.10+**
+- **Node.js 18+** & **npm**
+
+---
+
+### 🍏 macOS / Linux Startup
 
 ```bash
+# Clone repository
 git clone https://github.com/kshitijsingh1-tech/SAAR.git
 cd SAAR
-```
 
-Choose your operating system below for tailored startup commands:
-
-- [🍏 macOS Startup Guide](#-macos-startup-guide)
-- [🪟 Windows Startup Guide](#-windows-startup-guide)
-
----
-
-## 🍏 macOS Startup Guide
-
-Follow either the 1-click script or manual terminal commands to start SAAR on macOS:
-
-### Prerequisites (macOS)
-
-- **Python 3.10+** (`brew install python@3.11`)
-- **Node.js 18+** & **npm** (`brew install node`)
-
-### Option 1: 1-Click Automated Startup (Easiest)
-
-Run the included startup script from the root directory:
-
-```bash
+# 1-Click Startup
+chmod +x start.sh
 ./start.sh
 ```
 
-> [!NOTE]
-> `start.sh` automatically creates `backend/venv`, installs Python dependencies, sets up `.env`, installs npm packages, starts both servers, and opens `http://localhost:3000` in your browser. Press **`Ctrl + C`** anytime to cleanly stop both servers.
-
-### Option 2: Manual Terminal Commands (Step-by-Step)
-
-Open two terminal tabs/windows in your terminal application (Terminal, iTerm2, or Warp):
-
-#### Terminal 1 — macOS Backend (FastAPI on Port 8001)
+Or run manually in two terminal tabs:
 
 ```bash
+# Terminal 1 — Backend
 cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
-python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
-```
+python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload
 
-#### Terminal 2 — macOS Frontend (React on Port 3000)
-
-```bash
+# Terminal 2 — Frontend
 cd frontend
 npm install
 npm run dev
 ```
 
-#### Open in Browser (macOS)
-
-```bash
-open http://localhost:3000
-```
-
 ---
 
-## 🪟 Windows Startup Guide
-
-Follow these commands in **PowerShell** or **Command Prompt** to run SAAR on Windows:
-
-### Prerequisites (Windows)
-
-- **Python 3.10+** (download from [python.org](https://www.python.org/downloads/) — *ensure "Add Python to PATH" is checked*)
-- **Node.js 18+** & **npm** (download from [nodejs.org](https://nodejs.org/))
-
-### Manual Terminal Commands (PowerShell)
+### 🪟 Windows Startup (PowerShell)
 
 Open two PowerShell windows:
 
-#### Terminal 1 — Windows Backend (FastAPI on Port 8001)
-
+#### Terminal 1 — Backend (FastAPI on Port 8002)
 ```powershell
 cd backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-Copy-Item .env.example .env
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload
 ```
 
 > [!TIP]
-> If PowerShell displays an execution policy error when activating the virtual environment, run:  
-> `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and then re-run `.\venv\Scripts\Activate.ps1`.
+> If PowerShell shows an execution policy error, run:  
+> `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and re-run `.\venv\Scripts\Activate.ps1`.
 
-#### Terminal 2 — Windows Frontend (React on Port 3000)
-
+#### Terminal 2 — Frontend (React on Port 3000)
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-#### Open in Browser (Windows)
-
-```powershell
-start http://localhost:3000
-```
+Open **`http://localhost:3000`** in your browser.
 
 ---
 
-## 🔑 Configuring API Keys
+## 🔑 Environment Variables Configuration
 
-SAAR runs with offline fallbacks out-of-the-box, but to enable real-time multimodal vision perception and deep ReAct causal loops, add your API keys to `backend/.env`:
+SAAR functions out-of-the-box with offline simulation fallbacks. To activate live multi-modal vision perception and deep ReAct agentic reasoning, configure `backend/.env`:
 
 ```ini
-# Google AI Studio (Multimodal Vision Perception)
-# Get key: https://aistudio.google.com/
+# Google Gemini Vision (Multimodal Optical Inspection)
+# Obtain key: https://aistudio.google.com/
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Groq API (Ultra-Fast ReAct Scientific Reasoning)
-# Get key: https://console.groq.com/
+# Groq API (High-Throughput Vision & Fast ReAct Reasoning)
+# Models used: llama-3.2-11b-vision-preview, llama-3.3-70b-versatile
+# Obtain key: https://console.groq.com/
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
@@ -293,19 +282,20 @@ GROQ_API_KEY=your_groq_api_key_here
 | Service | Localhost URL | Purpose |
 | :--- | :--- | :--- |
 | **Frontend Web App** | [`http://localhost:3000`](http://localhost:3000) | Interactive React Scientific Investigation Console |
-| **Backend API** | [`http://127.0.0.1:8001`](http://127.0.0.1:8001) | FastAPI Causal Inference & WebSocket Gateway |
-| **API Documentation** | [`http://127.0.0.1:8001/docs`](http://127.0.0.1:8001/docs) | Interactive Swagger UI for live endpoint testing |
-| **ReDoc Specifications** | [`http://127.0.0.1:8001/redoc`](http://127.0.0.1:8001/redoc) | Alternate clean REST API reference |
+| **Backend API** | [`http://127.0.0.1:8002`](http://127.0.0.1:8002) | FastAPI Causal Inference & WebSocket Gateway |
+| **Interactive API Docs** | [`http://127.0.0.1:8002/docs`](http://127.0.0.1:8002/docs) | Swagger UI for live endpoint testing |
+| **ReDoc Specifications** | [`http://127.0.0.1:8002/redoc`](http://127.0.0.1:8002/redoc) | Alternate REST API reference |
 
 ---
 
-## 🧪 Scientific Verification & Workflows
+## 🧪 Scientific & Mathematical Grounding Summary
 
-| Mode | Input Type | Reasoning Strategy | Output Artifact |
-| :--- | :--- | :--- | :--- |
-| **Agricultural Failure Analysis** | Multi-day soil & plant sensor timeseries (CSV/Excel) | Darcy saturation curve + SPAD chlorophyll decay modeling | Pathogen diagnosis (*Pythium ultimum* vs. N-deficiency) with confidence rating |
-| **Geotechnical Void Detection** | High-frequency ground inspection radar scan | Hyperbolic diffraction fitting + structural load estimation | Cavity depth profile & sinkhole collapse risk passport |
-| **Exoplanetary Transit Validation** | Kepler photometer lightcurve & radial velocity timeseries | Limb-darkened transit fitting + Doppler shift centroid computation | Confirmed planetary candidate mass, radius, and orbital period |
+| Domain | Mathematical / Physical Foundation | Authoritative Academic Reference |
+| :--- | :--- | :--- |
+| **Pediatric Gait** | 2nd-order Savitzky-Golay filter, quadratic sub-frame peak interpolation, Robinson Asymmetry index | Sutherland (1988) *"The Development of Mature Walking"*; WHO Motor Milestones |
+| **Badminton Biomechanics** | Planar $3 \times 3$ Homography ($H$), kinetic chain angular velocity fusion | BWF Official Court Standards; TrackNet; CoachAI / ShuttleSet Dataset |
+| **Precision Agriculture** | Darcy's Law for saturated porous flow, SPAD/NDVI chlorophyll decay modeling | Darcy (1856); Gitelson et al. (2003) |
+| **Civil Geotechnics** | Hyperbolic radar diffraction wave equation, Manning's culvert formula | Daniels (2004) *Ground Penetrating Radar*; AASHTO Pavement Design |
 
 ---
 

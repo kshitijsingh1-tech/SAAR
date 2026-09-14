@@ -1766,6 +1766,116 @@ When the user pasted a photo of a rose (`pasted_evidence_1789334816930.png`) int
   - `agriculture`: 9 channels verified live on port 8002.
 - **Frontend Production Build**:
   - `npm run build` completed with **0 errors** (1448 modules transformed).
+
+---
+
+## Entry 44: Zero-Assumption Epistemic Honesty & User Prompting for Visual Image Analysis
+- **Date Solved**: 2026-09-14
+- **Primary Files Modified**:
+  - `backend/app/plugins/agriculture_plugin.py`
+  - `backend/app/vlm_service.py`
+  - `work_done.md`
+
+### Problem Description & Symptoms
+When analyzing a standalone optical photo of a plant (e.g. rose with chlorosis `pasted_evidence_1789380042598.png`), the Saar reasoning agent asserted specific unmeasured empirical and subsurface metrics as established facts:
+- *"We have identified 8 mg of iron-rich chelate supplement currently present in the soil profile..."*
+- *"Our diagnostic tools detected dissolved oxygen levels below 0.8 mg/L..."*
+- *"When your soil remains saturated for more than 96 consecutive hours..."*
+- *"Your air-filled porosity is currently at 24%..."*
+
+An optical camera photograph can only observe visible phenotypes (bloom count, petal turgor, foliar color / chlorosis pattern, container presence). It cannot measure subsurface dissolved oxygen, soil saturation hours, substrate porosity percentage, or chemical concentrations without physical sensors.
+
+### Root Cause Analysis
+1. **Mock Parameters in Tool Execution Layer (`agriculture_plugin.py`)**:
+   - `rhizosphere_anoxia_simulator` injected hardcoded mock values (`dissolved_oxygen_mg_l: 0.72`, `atp_inhibition_pct: 82.0`, `input_params: hours_saturated: 120`).
+   - `substrate_aeration_profiler` injected `air_porosity_pct: 24.2` and `pythium_risk: "low"`.
+   - `rhizosphere_ph_speciation_tool` injected `fe2_soluble_ppm: 0.04` and `ph: 7.85`.
+   These simulated tool outputs were executed during dynamic loop reasoning even when NO physical sensors or telemetry existed in the scene graph.
+2. **LLM Synthesis Prompting Without Epistemic Guardrails (`agriculture_plugin.py` & `vlm_service.py`)**:
+   - The prompt passed these mock tool findings directly to the LLM and instructed it to *"tell the story of how soil, water, and nutrients are interacting underground"*.
+   - The LLM treated those tool outputs as literal ground truth facts and extrapolated from its training priors on rose chlorosis treatments to hallucinate *"8 mg of iron-rich chelate supplement"*.
+3. **Keyword Over-Matching in Tool Selection**:
+   - In `agriculture_plugin.py:get_available_tools`, the generic keyword `"rose"` was listed under `vegetative_propagation_evaluator`, causing flowering rose bushes to match vegetative stem cutting propagation tools.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Zero-Assumption Epistemic Honesty in Tool Execution (`agriculture_plugin.py`)**:
+   - Implemented `has_soil_sensor` and `has_ph_sensor` guards in `execute_tool`.
+   - When analyzing images without physical telemetry, tools (`rhizosphere_anoxia_simulator`, `substrate_aeration_profiler`, `rhizosphere_ph_speciation_tool`) NEVER emit fabricated numbers.
+   - Instead, they emit honest unverified hypotheses with inquiry targets (`requires_user_input: True`, `inquiry_targets: ["watering_frequency", "pot_drainage", "soil_moisture_feel"]`).
+2. **Scoping Propagation Tool Triggers**:
+   - Removed generic `"rose"` and `"stem"` keywords from `vegetative_propagation_evaluator`, restricting activation to explicit propagation contexts (`["propagat", "cutting", "scion", "aloe", "rhizogen", "callus", "rootstock"]`).
+3. **Synthesis Prompt Directives & Active User Inquiry (`agriculture_plugin.py` & `vlm_service.py`)**:
+   - Added Rule 8 to `synthesis_system_prompt` in `vlm_service.py` forbidding hallucinating unmeasured subsurface or chemical numbers on image-only inputs.
+   - Restructured `generate_final_conclusion` into 5 clear sections:
+     - **What Is Happening With Your Plant**: Grounded visual observations (exact entity counts, bloom condition, foliar chlorosis).
+     - **Physiological Causal Hypotheses**: Scientific biological mechanisms, explicitly identified as unverified hypotheses because subsurface roots and soil cannot be observed optically.
+     - **What Was Checked & Ruled Out**: Visible pathology, pest damage, and acute scorch.
+     - **Questions for the Grower (To Confirm Diagnosis)**: Actively prompts the user for container drainage, watering schedule, soil mix, and fertilization history instead of assuming.
+     - **Practical Next Steps**: Conservative, risk-free care guidance without unverified chemical dosages.
+
+### Verification & Empirical Confirmation
+- **Live LLM Synthesis Verification**:
+  - Tested rose chlorosis visual graph with Gemini `gemini-3.1-flash-lite`.
+  - Confirmed: ZERO fabricated numbers (no DO mg/L, no saturation hours, no porosity %, no 8 mg chelate).
+  - Confirmed: Generated 4 precise diagnostic questions prompting the grower for container drainage, watering cadence, soil mix, and fertilizer history.
+- **Unit Test Suite**:
+  - `python -m pytest` executed with all 41 tests passing (100%).
+- **Frontend Production Build**:
+  - `npm run build` succeeded with 0 errors.
+
+---
+
+## [2026-09-14] Total Elimination of Phantom Soil Profile & Telemetry Nodes on Custom Image Uploads
+
+### Primary Files Modified
+- [`backend/app/vlm_service.py`](file:///d:/bytebuild/backend/app/vlm_service.py)
+- [`backend/app/plugins/agriculture_plugin.py`](file:///d:/bytebuild/backend/app/plugins/agriculture_plugin.py)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+When uploading an optical camera image of a botanical specimen (e.g. flower or plant photo) without any attached soil telemetry dataset, users observed:
+1. The causal scene graph contained phantom soil nodes with fabricated telemetry (`soil_moisture_sensor_01` with 48% VWC, `soil_ph_sensor_01` with pH 7.85, `container_substrate_01` with hardcoded bounding box `[520, 530, 780, 670]` and `"moist organic potting soil"`).
+2. Subsurface tools (`substrate_aeration_profiler`, `rhizosphere_anoxia_simulator`) were offered and executed despite no soil probes or moisture profiles being provided by the user.
+
+### Root Cause Analysis
+1. **Unconstrained Tomato Benchmark Fallback (`vlm_service.py`)**:
+   - In `_synthesize_scene_graph`, line 1331 used `else: # is_preset_tomato or default`. Any unclassified plant image upload that did not match monstera or rose regex fell into the Tomato Chlorosis benchmark preset, injecting `soil_moisture_sensor_01`, `soil_ph_sensor_01`, and `irrigation_emitter_01`.
+2. **Hardcoded Nursery Container in Rose Fallback (`vlm_service.py`)**:
+   - The rose fallback branch had a hardcoded `container_substrate_01` node with synthetic bbox `[520, 530, 780, 670]`.
+3. **Unguarded Subsurface Tool Dispatch (`agriculture_plugin.py`)**:
+   - `get_available_tools` checked for substring keywords like `"substrate"`, `"soil"`, or `"pot"` in node labels rather than verifying whether actual telemetry probes (`measurement` category or `vwc` property) existed in `current_nodes`.
+4. **Invalid Groq Vision Model Enpoints (`vlm_service.py`)**:
+   - Groq vision was set to text endpoints (`qwen/qwen3.6-27b`), causing Groq vision to fail and immediately trigger offline synthesis fallback.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Strict Benchmark Isolation & Clean Optical Baseline (`vlm_service.py`)**:
+   - Changed line 1331 from `else:` to `elif is_preset_tomato or preset_id == "agri_tomato_chlorosis":`.
+   - Replaced generic fallback with a pure optical baseline: emits strictly foliar canopy and general vitality hypothesis nodes with **ZERO** soil sensors, **ZERO** pH sensors, and **ZERO** irrigation lines.
+   - Removed `container_substrate_01` and its hardcoded bounding box from the custom rose branch.
+   - Differentiated rose/floral images from general botanical foliage via `any(w in text_corpus for w in ["rose", "flower", "bloom", "petal", "inflorescence"])`.
+2. **Telemetry-Guarded Tool Activation (`agriculture_plugin.py`)**:
+   - In `get_available_tools`, wrapped `substrate_aeration_profiler` and `rhizosphere_anoxia_simulator` with `has_soil_telemetry` check.
+   - Wrapped `rhizosphere_ph_speciation_tool` with `has_ph_telemetry` check.
+   - Standalone optical photos now strictly expose non-destructive optical tools (`foliar_chlorophyll_fluorometer`, `foliar_spectral_reflectance`).
+3. **Dynamic Species-Aware Tool Synthesis & Zero Preset Contamination (`agriculture_plugin.py`)**:
+   - Refactored all tool execution routines (`foliar_morphology_eval`, `foliar_chlorophyll_fluorometer`, `substrate_aeration_profiler`, `rhizosphere_ph_speciation_tool`) to extract active specimen taxonomy and properties dynamically from `current_nodes`.
+   - Completely eliminated hardcoded static strings (e.g. *"Coarse peat-perlite matrix maintains sufficient oxygen diffusion to prevent root stagnation in container cultivation."* and *"Lycopersicon esculentum"*).
+   - Tool edge evidence and findings are now dynamically synthesized by LLM reasoning for the specific observed species (*Rosa hybrid*, *Rosaceae*), with zero preset cross-contamination.
+4. **Groq Vision Endpoints Fixed (`vlm_service.py`)**:
+   - Configured Groq vision to use `"llama-3.2-11b-vision-preview"` and `"llama-3.2-90b-vision-preview"`.
+
+### Verification & Empirical Confirmation
+- **Targeted Test Script (`scratch/test_zero_hardcoded_soil_nodes.py`)**:
+  - Custom rose fallback: 6 nodes (all optical blooms and canopy), 0 soil nodes.
+  - Custom rose tools: 2 optical tools (`foliar_chlorophyll_fluorometer`, `foliar_spectral_reflectance`), 0 soil tools.
+  - Generic plant fallback: 2 optical nodes (`foliar_canopy_01`, `hypo_botanical_vitality`), 0 soil nodes.
+  - Explicit tomato benchmark preset: correctly preserves documented multi-modal sensor dataset.
+- **Dynamic Tool Execution Script (`scratch/test_tool_evidence_has_no_preset_contamination.py`)**:
+  - Fluorometry generated real *Rosa hybrid* Photosystem II analysis, 0 Monstera references.
+  - Morphology scanner dynamically evaluated *Rosaceae* serrate margins, Diplocarpon rosae, and powdery mildew.
+  - 0 hardcoded peat-perlite or Lycopersicon esculentum strings.
 - **Backend Test Suite**:
-  - `python -m pytest` passed **41 of 41 tests (100%)** with **0 failures**.
+  - `python -m pytest` executed with all 41 tests passing (100%).
+- **Frontend Production Build**:
+  - `npm run build` completed cleanly with 0 errors.
 

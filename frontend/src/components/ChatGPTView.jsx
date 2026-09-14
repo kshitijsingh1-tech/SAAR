@@ -6,7 +6,7 @@ import {
   CornerDownRight, CheckCircle2, ArrowRight, ExternalLink,
   HelpCircle, Download, Copy, Check, Globe, FileCode,
   PieChart, ChevronRight, MessageSquare, Sprout, Construction, Orbit, Activity,
-  Image as ImageIcon, Film, Sun, Moon, Eye, Trash2, ZoomIn, Crosshair
+  Image as ImageIcon, Film, Sun, Moon, Eye, Trash2, ZoomIn, Crosshair, Award
 } from 'lucide-react';
 import { MarkdownResponse } from './MarkdownResponse';
 import { ToolRolloutBar } from './ToolRolloutBar';
@@ -1255,6 +1255,24 @@ export function ChatGPTView({
 
                       return (
                         <div className="chat-tool-badges-row compact-row">
+                          {/* 1. Global Highlighted One-Stop Verdict & Solution Button */}
+                          <button
+                            type="button"
+                            className="tool-invoke-badge compact highlight-verdict"
+                            onClick={() => onOpenTool('verdict')}
+                            title="Open Dynamic One-Stop Executive Verdict & Action Plan"
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.22))',
+                              borderColor: 'rgba(245, 158, 11, 0.45)',
+                              color: '#b45309',
+                              fontWeight: '700'
+                            }}
+                          >
+                            <Award size={13} className="text-amber" />
+                            <span>🎯 One-Stop Verdict & Solution</span>
+                            <ArrowRight size={10} />
+                          </button>
+
                           {isPedGait ? (
                             <>
                               <button

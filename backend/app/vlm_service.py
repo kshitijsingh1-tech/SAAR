@@ -730,10 +730,9 @@ Structure:
         b64_img = base64.b64encode(img_bytes).decode("utf-8") if img_bytes else None
 
         # Groq vision-capable models, in preference order
-        # qwen/qwen3.6-27b confirmed working and responsive (0.6-2.5s) on this account
         vision_models = [
-            "qwen/qwen3.6-27b",
-            "qwen/qwen3.8-27b",
+            "llama-3.2-11b-vision-preview",
+            "llama-3.2-90b-vision-preview",
         ]
 
         system_prompt = (
@@ -1077,7 +1076,7 @@ Structure:
                         EdgeModel(id="e_prop_4", source="adventitious_roots_01", target="floral_bloom_01", relation_type="supports", confidence=0.89, evidence="Root water uptake restores hydraulic continuity through xylem vessels.")
                     ]
                     summary = "Horticultural propagation setup identified: Vegetative stem cutting (Rosa hybrid) rooted in excised Aloe vera cladode with active adventitious root organogenesis."
-                else:
+                elif any(w in text_corpus for w in ["rose", "flower", "bloom", "petal", "inflorescence"]):
                     # Multi-Entity Rose / Botanical Specimen Assessment
                     nodes = [
                         NodeModel(
@@ -1159,19 +1158,6 @@ Structure:
                             }
                         ),
                         NodeModel(
-                            id="container_substrate_01",
-                            label="Substrate & Nursery Container",
-                            node_type="object",
-                            category="substrate",
-                            confidence=0.90,
-                            bbox=[520, 530, 780, 670],
-                            visual_anchor=True,
-                            properties={
-                                "organ": "substrate",
-                                "condition": "moist organic potting soil"
-                            }
-                        ),
-                        NodeModel(
                             id="hypo_bloom_health",
                             label=f"Hypothesis: All {count} Roses Exhibit Optimal Hydric Vigor and Zero Pathogen Stress",
                             node_type="hypothesis",
@@ -1209,6 +1195,41 @@ Structure:
                         )
                     ]
                     summary = f"Visual perception confirms {count} healthy roses in full anthesis displaying optimal cellular turgor, vibrant corolla pigmentation, and zero foliar or petal pathology."
+                else:
+                    # General Botanical / Foliage Specimen Assessment
+                    nodes = [
+                        NodeModel(
+                            id="foliar_canopy_01",
+                            label="Foliar Canopy & Leaf Blade Morphology",
+                            node_type="observation",
+                            category="morphology",
+                            confidence=0.92,
+                            bbox=None,
+                            visual_anchor=True,
+                            properties={"organ": "leaves", "chlorophyll_density": "high", "chlorosis": "none", "pathology": "none"}
+                        ),
+                        NodeModel(
+                            id="hypo_botanical_vitality",
+                            label="Hypothesis: High Photosynthetic Competence & Uninhibited Vegetative Vigor",
+                            node_type="hypothesis",
+                            category="physiological",
+                            confidence=0.88,
+                            bbox=None,
+                            visual_anchor=False,
+                            status="hypothesis"
+                        )
+                    ]
+                    edges = [
+                        EdgeModel(
+                            id="e_foliar_1",
+                            source="foliar_canopy_01",
+                            target="hypo_botanical_vitality",
+                            relation_type="indicates",
+                            confidence=0.90,
+                            evidence="Foliar lamina structure and coloration indicate healthy vegetative status. Subsurface soil parameters cannot be determined without physical sensor telemetry."
+                        )
+                    ]
+                    summary = "Visual perception grounded foliar canopy tissue from optical image. Note: Subsurface root and soil profile data are absent because no physical telemetry probes were provided."
             elif is_preset_monstera:
                 nodes = [
                     NodeModel(
@@ -1328,7 +1349,7 @@ Structure:
                     )
                 ]
                 summary = "Multimodal scene analysis identifies potted Monstera adansonii (Swiss cheese plant) exhibiting characteristic elliptical leaf fenestrations, active apical shoot unfurling, and dark green healthy foliage."
-            else:  # is_preset_tomato or default
+            elif is_preset_tomato or preset_id == "agri_tomato_chlorosis":
                 nodes = [
                     NodeModel(id="leaf_chlorosis_01", label="Interveinal Foliar Chlorosis", node_type="object", category="pathology", confidence=0.96, bbox=[150, 60, 850, 560], visual_anchor=True, properties={"pattern": "bright yellowing between dark green primary veins", "canopy_layer": "apical and middle foliage"}),
                     NodeModel(id="soil_moisture_sensor_01", label="Root Zone Moisture Sensor (48% VWC)", node_type="property", category="measurement", confidence=0.94, bbox=[390, 640, 950, 990], visual_anchor=True, properties={"vwc_percent": 48.2, "saturation_status": "continuous waterlogging"}),
@@ -1343,6 +1364,41 @@ Structure:
                     EdgeModel(id="e_agri_4", source="hypo_iron_deficiency", target="leaf_chlorosis_01", relation_type="causes", confidence=0.75, evidence="Iron unavailability halts chloroplast protein complex assembly, producing acute interveinal chlorosis.")
                 ]
                 summary = "Multimodal scene analysis identifies acute interveinal foliar chlorosis, saturated root zone substrate (48% VWC), and continuous drip line over-delivery."
+            else:
+                # Custom plant / botanical image upload without telemetry or presets: Zero-Assumption Optical Baseline
+                nodes = [
+                    NodeModel(
+                        id="foliar_canopy_01",
+                        label="Foliar Canopy & Leaf Blade Morphology",
+                        node_type="observation",
+                        category="morphology",
+                        confidence=0.92,
+                        bbox=None,
+                        visual_anchor=True,
+                        properties={"tissue": "canopy_foliage", "optical_appearance": "evaluated from optical camera frame"}
+                    ),
+                    NodeModel(
+                        id="hypo_botanical_vitality",
+                        label="Hypothesis: Canopy Physiological Condition & Photosynthetic Vigor (Optical Assessment)",
+                        node_type="hypothesis",
+                        category="physiological",
+                        confidence=0.85,
+                        bbox=None,
+                        visual_anchor=False,
+                        status="hypothesis"
+                    )
+                ]
+                edges = [
+                    EdgeModel(
+                        id="e_custom_plant_1",
+                        source="foliar_canopy_01",
+                        target="hypo_botanical_vitality",
+                        relation_type="indicates",
+                        confidence=0.90,
+                        evidence="Optical canopy architecture and pigmentation reflect above-ground vegetative status. Subsurface soil parameters cannot be determined without physical sensor telemetry."
+                    )
+                ]
+                summary = "Visual perception grounded foliar canopy tissue from optical image. Subsurface root and soil profile data are absent because no physical telemetry probes were provided."
 
         elif domain == "pediatrics":
             nodes = [
@@ -1399,7 +1455,8 @@ Structure:
             "4) Adapt your voice by domain: objective and reassuring for pediatric movement screening, practical for agricultural agronomy, analytical for sports biomechanics. "
             "5) End with clear, actionable clinical or operational guidance. "
             "6) Format using clean, well-structured Markdown with descriptive section headers. "
-            "7) Keep all scientific accuracy intact."
+            "7) Keep all scientific accuracy intact. "
+            "8) ZERO-ASSUMPTION RULE FOR IMAGE-ONLY EVIDENCE: When evaluating photographs without attached physical sensor telemetry or user-provided values, NEVER fabricate, invent, or output unmeasured subsurface or chemical numbers (e.g., do NOT invent dissolved oxygen mg/L, saturation hours, soil porosity %, or milligram supplement amounts). Differentiate optically observed facts from unverified subsurface hypotheses, and actively prompt the user with clear questions for missing physical details (drainage, watering cadence, soil mix, fertilizer history) instead of guessing."
         )
 
         # 1. Primary: Google Gemini Pool

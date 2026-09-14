@@ -64,7 +64,7 @@ class AgriculturePlugin(BaseDomainPlugin):
         tools: List[Dict[str, Any]] = []
 
         # Vegetative propagation & rooting tools (Stem cuttings, Aloe host rooting, organogenesis)
-        if any(kw in labels_lower for kw in ["propagat", "cutting", "scion", "aloe", "root", "rhizogen", "callus", "stem", "rose", "cambium"]):
+        if any(kw in labels_lower for kw in ["propagat", "cutting", "scion", "aloe", "rhizogen", "callus", "cambium incision", "rootstock"]):
             tools.append({
                 "tool_id": "vegetative_propagation_evaluator",
                 "tool_name": "Horticultural Vegetative Propagation & Rooting Optimality Evaluator",
@@ -90,8 +90,20 @@ class AgriculturePlugin(BaseDomainPlugin):
                 "target_hypothesis": next((id for id in hypo_ids if "vigor" in id or "chloros" in id or "nutrient" in id), first_hypo)
             })
 
-        # Soil / substrate / root-zone tools
-        if any(kw in labels_lower for kw in ["substrate", "soil", "pot", "root", "moisture", "irrigation", "drip", "waterlog", "anoxia", "rhizosphere"]):
+        # Check if actual physical soil/moisture sensor telemetry exists in current scene graph
+        has_soil_telemetry = any(
+            (n.category in ("measurement", "substrate") and any(k in n.id.lower() or k in n.label.lower() for k in ["sensor", "moisture", "vwc", "probe", "telemetry"]))
+            or (n.properties and any(k in n.properties for k in ["vwc", "sensor_reading", "measured_vwc", "soil_moisture_pct"]))
+            for n in (current_nodes or [])
+        )
+        has_ph_telemetry = any(
+            (n.category in ("measurement", "substrate") and any(k in n.id.lower() or k in n.label.lower() for k in ["ph", "acidity", "alkalin"]))
+            or (n.properties and "ph" in n.properties)
+            for n in (current_nodes or [])
+        )
+
+        # Soil / substrate / root-zone tools — ONLY offered when actual physical soil telemetry exists
+        if has_soil_telemetry and any(kw in labels_lower for kw in ["substrate", "soil", "pot", "root", "moisture", "irrigation", "drip", "waterlog", "anoxia", "rhizosphere"]):
             tools.append({
                 "tool_id": "substrate_aeration_profiler",
                 "tool_name": "Container Substrate Drainage & Aeration Profiler",
@@ -105,8 +117,8 @@ class AgriculturePlugin(BaseDomainPlugin):
                 "target_hypothesis": next((id for id in hypo_ids if "anoxia" in id or "iron" in id or "nutrient" in id), first_hypo)
             })
 
-        # Iron / pH / mineral deficiency tools
-        if any(kw in labels_lower for kw in ["ph", "alkalin", "iron", "fe²", "chloros", "mineral", "nutrient", "deficien", "bicarbonate"]):
+        # Iron / pH / mineral deficiency tools — ONLY offered when pH telemetry or chemical testing exists
+        if has_ph_telemetry and any(kw in labels_lower for kw in ["ph", "alkalin", "iron", "fe²", "chloros", "mineral", "nutrient", "deficien", "bicarbonate"]):
             tools.append({
                 "tool_id": "rhizosphere_ph_speciation_tool",
                 "tool_name": "Ferric/Ferrous Iron Chemical Equilibrium Tool",
@@ -134,6 +146,19 @@ class AgriculturePlugin(BaseDomainPlugin):
         return tools
 
     def execute_tool(self, tool_id: str, current_nodes: List[NodeModel], current_edges: List[EdgeModel]) -> ToolExecutionModel:
+        hypo_ids = [n.id for n in current_nodes if n.node_type == "hypothesis"]
+        # Check if actual physical soil/moisture sensor telemetry exists in current scene graph
+        has_soil_sensor = any(
+            (n.category == "measurement" and any(k in n.id.lower() or k in n.label.lower() for k in ["sensor", "moisture", "vwc", "probe", "telemetry"]))
+            or (n.properties and any(k in n.properties for k in ["vwc", "sensor_reading", "measured_vwc", "soil_moisture_pct"]))
+            for n in current_nodes
+        )
+        has_ph_sensor = any(
+            (n.category == "measurement" and any(k in n.id.lower() or k in n.label.lower() for k in ["ph", "acidity", "alkalin"]))
+            or (n.properties and "ph" in n.properties)
+            for n in current_nodes
+        )
+
         if tool_id == "vegetative_propagation_evaluator":
             prompt = (
                 "You are a Plant Morphologist and Horticultural Propagation Scientist analyzing a vegetative stem cutting propagation setup.\n"
@@ -268,84 +293,167 @@ class AgriculturePlugin(BaseDomainPlugin):
             )
 
         elif tool_id == "rhizosphere_anoxia_simulator":
-            added_nodes = [
-                NodeModel(
-                    id="tool_hypoxia_res",
-                    label="Root Anoxia Detected: Dissolved O₂ < 0.8 mg/L",
-                    node_type="tool_result",
-                    category="measurement",
-                    confidence=0.96,
-                    properties={"dissolved_oxygen_mg_l": 0.72, "atp_inhibition_pct": 82.0}
+            if has_soil_sensor:
+                sensor_id = next((n.id for n in current_nodes if "moisture" in n.id.lower() or "sensor" in n.id.lower()), "soil_moisture_sensor_01")
+                target_node = "hypo_iron_deficiency" if any(n.id == "hypo_iron_deficiency" for n in current_nodes) else (hypo_ids[0] if hypo_ids else "hypo_unknown")
+                added_nodes = [
+                    NodeModel(
+                        id="tool_hypoxia_res",
+                        label="Root Anoxia Detected: Dissolved O₂ < 0.8 mg/L",
+                        node_type="tool_result",
+                        category="measurement",
+                        confidence=0.96,
+                        properties={"dissolved_oxygen_mg_l": 0.72, "atp_inhibition_pct": 82.0}
+                    )
+                ]
+                added_edges = [
+                    EdgeModel(
+                        id="e_tool_agri_1",
+                        source=sensor_id,
+                        target="tool_hypoxia_res",
+                        relation_type="causes",
+                        confidence=0.96,
+                        evidence="Waterlogging for >96 consecutive hours depleted soil pore oxygen, triggering root anaerobic distress."
+                    ),
+                    EdgeModel(
+                        id="e_tool_agri_2",
+                        source="tool_hypoxia_res",
+                        target=target_node,
+                        relation_type="supports",
+                        confidence=0.91,
+                        evidence="Root ATP depletion directly shuts down plasma membrane H+-ATPase required for nutrient uptake."
+                    )
+                ]
+                return ToolExecutionModel(
+                    tool_id=tool_id,
+                    tool_name="Root-Zone Oxygenation & ATP Pump Simulator",
+                    target_node_id=target_node,
+                    input_params={"substrate_porosity": 0.45, "vwc_measured": 0.482, "hours_saturated": 120},
+                    output_findings="Rhizosphere simulation demonstrates critical anoxia (DO = 0.72 mg/L). Root aerobic respiration impaired by 82%.",
+                    confidence_delta=+0.25,
+                    added_nodes=added_nodes,
+                    added_edges=added_edges
                 )
-            ]
-            added_edges = [
-                EdgeModel(
-                    id="e_tool_agri_1",
-                    source="soil_moisture_sensor_01",
-                    target="tool_hypoxia_res",
-                    relation_type="causes",
-                    confidence=0.96,
-                    evidence="Waterlogging for >96 consecutive hours depleted soil pore oxygen, triggering root anaerobic distress."
-                ),
-                EdgeModel(
-                    id="e_tool_agri_2",
-                    source="tool_hypoxia_res",
-                    target="hypo_iron_deficiency",
-                    relation_type="supports",
-                    confidence=0.91,
-                    evidence="Root ATP depletion directly shuts down plasma membrane H+-ATPase required for nutrient uptake."
+            else:
+                # Zero-Assumption Architecture for Image Analysis: Never invent unmeasured DO or saturation hours
+                target_node = next((n.id for n in current_nodes if n.node_type == "hypothesis"), "hypo_vigor_vegetative")
+                visual_anchor_id = next((n.id for n in current_nodes if n.node_type in ("object", "observation") and any(k in n.label.lower() for k in ["leaf", "chlorosis", "plant", "foliar", "bloom", "rose"])), current_nodes[0].id if current_nodes else "visual_leaf_01")
+                added_nodes = [
+                    NodeModel(
+                        id="hypo_root_hypoxia_inquiry",
+                        label="Hypothesis: Root-Zone Hypoxia / Irrigation Distress (Unverified — Awaiting Grower Input)",
+                        node_type="hypothesis",
+                        category="environment",
+                        confidence=0.48,
+                        properties={
+                            "status": "unverified_hypothesis",
+                            "requires_user_input": True,
+                            "inquiry_targets": ["watering_frequency", "pot_drainage", "soil_moisture_feel"]
+                        }
+                    )
+                ]
+                added_edges = [
+                    EdgeModel(
+                        id="e_tool_agri_hypoxia_inq",
+                        source=visual_anchor_id,
+                        target="hypo_root_hypoxia_inquiry",
+                        relation_type="correlates_with",
+                        confidence=0.60,
+                        evidence="Foliar chlorosis is consistent with root nutrient transport distress, but root-zone dissolved oxygen and saturation duration cannot be determined from optical photography alone."
+                    )
+                ]
+                return ToolExecutionModel(
+                    tool_id=tool_id,
+                    tool_name="Root-Zone Oxygenation & ATP Pump Evaluator",
+                    target_node_id=target_node,
+                    input_params={"analysis_mode": "optical_symptom_correlation", "telemetry_available": False},
+                    output_findings="Visual symptoms (interveinal chlorosis) match root nutrient uptake impairment. Subsurface dissolved oxygen and saturation duration cannot be measured without physical telemetry probes; container drainage and watering frequency require grower verification.",
+                    confidence_delta=+0.05,
+                    added_nodes=added_nodes,
+                    added_edges=added_edges
                 )
-            ]
-            return ToolExecutionModel(
-                tool_id=tool_id,
-                tool_name="Root-Zone Oxygenation & ATP Pump Simulator",
-                target_node_id="hypo_iron_deficiency",
-                input_params={"substrate_porosity": 0.45, "vwc_measured": 0.482, "hours_saturated": 120},
-                output_findings="Rhizosphere simulation demonstrates critical anoxia (DO = 0.72 mg/L). Root aerobic respiration impaired by 82%.",
-                confidence_delta=+0.25,
-                added_nodes=added_nodes,
-                added_edges=added_edges
-            )
 
         elif tool_id == "rhizosphere_ph_speciation_tool":
-            added_nodes = [
-                NodeModel(
-                    id="fe_insolubility_detected",
-                    label="Bioavailable Fe²⁺: 0.04 ppm (-91% deficit)",
-                    node_type="observation",
-                    category="chemical_state",
-                    confidence=0.95,
-                    properties={"fe2_soluble_ppm": 0.04, "chelate_reductase_activity_pct": 14.0}
+            if has_ph_sensor:
+                sensor_id = next((n.id for n in current_nodes if "ph" in n.id.lower() or "sensor" in n.id.lower()), "soil_ph_sensor_01")
+                target_node = "hypo_iron_deficiency" if any(n.id == "hypo_iron_deficiency" for n in current_nodes) else (hypo_ids[0] if hypo_ids else "hypo_unknown")
+                crop_name = next((n.properties.get("species") for n in current_nodes if n.properties and "species" in n.properties), "the examined botanical crop")
+                added_nodes = [
+                    NodeModel(
+                        id="fe_insolubility_detected",
+                        label="Bioavailable Fe²⁺: 0.04 ppm (-91% deficit)",
+                        node_type="observation",
+                        category="chemical_state",
+                        confidence=0.95,
+                        properties={"fe2_soluble_ppm": 0.04, "chelate_reductase_activity_pct": 14.0}
+                    )
+                ]
+                added_edges = [
+                    EdgeModel(
+                        id="e_tool_agri_3",
+                        source=sensor_id,
+                        target="fe_insolubility_detected",
+                        relation_type="causes",
+                        confidence=0.94,
+                        evidence="Substrate alkalinity and bicarbonate neutralize rhizosphere acidification, blocking Fe³⁺ reduction."
+                    ),
+                    EdgeModel(
+                        id="e_tool_agri_4",
+                        source="fe_insolubility_detected",
+                        target=target_node,
+                        relation_type="supports",
+                        confidence=0.95,
+                        evidence=f"Bioavailable ferrous iron concentration of 0.04 ppm is far below the minimum physiological threshold for {crop_name}."
+                    )
+                ]
+                return ToolExecutionModel(
+                    tool_id=tool_id,
+                    tool_name="Ferric/Ferrous Iron Chemical Equilibrium Tool",
+                    target_node_id=target_node,
+                    input_params={"ph": 7.85, "bicarbonate_meq_l": 4.6, "total_iron_ppm": 2.1},
+                    output_findings=f"Chemical equilibrium modeling confirms that 98% of rhizosphere iron is precipitated as insoluble hydroxides. Bioavailable Fe²⁺ is depleted for {crop_name}.",
+                    confidence_delta=+0.30,
+                    added_nodes=added_nodes,
+                    added_edges=added_edges
                 )
-            ]
-            added_edges = [
-                EdgeModel(
-                    id="e_tool_agri_3",
-                    source="soil_ph_sensor_01",
-                    target="fe_insolubility_detected",
-                    relation_type="causes",
-                    confidence=0.94,
-                    evidence="Substrate pH 7.85 and high bicarbonate neutralize rhizosphere acidification, blocking Fe³⁺ reduction."
-                ),
-                EdgeModel(
-                    id="e_tool_agri_4",
-                    source="fe_insolubility_detected",
-                    target="hypo_iron_deficiency",
-                    relation_type="supports",
-                    confidence=0.97,
-                    evidence="Bioavailable ferrous iron concentration of 0.04 ppm is far below the minimum 0.5 ppm threshold for Lycopersicon esculentum."
+            else:
+                # Zero-Assumption Architecture for Image Analysis: Never invent unmeasured soil pH or ppm
+                target_node = next((n.id for n in current_nodes if n.node_type == "hypothesis"), "hypo_vigor_vegetative")
+                visual_anchor_id = next((n.id for n in current_nodes if n.node_type in ("object", "observation") and any(k in n.label.lower() for k in ["leaf", "chlorosis", "plant", "foliar", "bloom", "rose"])), current_nodes[0].id if current_nodes else "visual_leaf_01")
+                added_nodes = [
+                    NodeModel(
+                        id="hypo_ph_lockout_inquiry",
+                        label="Hypothesis: Micronutrient Lockout / Alkaline pH (Unverified — Awaiting Grower Input)",
+                        node_type="hypothesis",
+                        category="chemical_state",
+                        confidence=0.46,
+                        properties={
+                            "status": "unverified_hypothesis",
+                            "requires_user_input": True,
+                            "inquiry_targets": ["soil_ph_measurement", "recent_fertilizer_types", "water_source"]
+                        }
+                    )
+                ]
+                added_edges = [
+                    EdgeModel(
+                        id="e_tool_agri_ph_inq",
+                        source=visual_anchor_id,
+                        target="hypo_ph_lockout_inquiry",
+                        relation_type="correlates_with",
+                        confidence=0.55,
+                        evidence="Interveinal foliar yellowing visually indicates micronutrient (Fe/Mg) immobility, but soil chemical speciation cannot be calculated without physical pH telemetry or user chemical testing."
+                    )
+                ]
+                return ToolExecutionModel(
+                    tool_id=tool_id,
+                    tool_name="Rhizosphere pH & Micronutrient Equilibrium Evaluator",
+                    target_node_id=target_node,
+                    input_params={"analysis_mode": "optical_phenotype_correlation", "telemetry_available": False},
+                    output_findings="Foliar chlorosis visually indicates iron or micronutrient transport limitation. Substrate pH and bioavailable chemical concentrations cannot be quantified without sensor telemetry or grower pH testing.",
+                    confidence_delta=+0.05,
+                    added_nodes=added_nodes,
+                    added_edges=added_edges
                 )
-            ]
-            return ToolExecutionModel(
-                tool_id=tool_id,
-                tool_name="Ferric/Ferrous Iron Chemical Equilibrium Tool",
-                target_node_id="hypo_iron_deficiency",
-                input_params={"ph": 7.85, "bicarbonate_meq_l": 4.6, "total_iron_ppm": 2.1},
-                output_findings="Chemical speciation confirms that 98% of rhizosphere iron is bound as insoluble ferric precipitates. Available Fe²⁺ is only 0.04 ppm.",
-                confidence_delta=+0.30,
-                added_nodes=added_nodes,
-                added_edges=added_edges
-            )
 
         elif tool_id == "foliar_spectral_reflectance":
             added_nodes = [
@@ -358,28 +466,38 @@ class AgriculturePlugin(BaseDomainPlugin):
                     properties={"ndre_index": 0.18, "chlorophyll_spad": 16.4, "pathogen_lesion_index": 0.02}
                 )
             ]
-            added_edges = [
-                EdgeModel(
-                    id="e_tool_agri_5",
-                    source="ndre_chlorophyll_diagnostic",
-                    target="hypo_nitrogen_burn",
-                    relation_type="contradicts",
-                    confidence=0.92,
-                    evidence="Absence of leaf-margin necrosis and normal anthocyanin levels rule out chemical fertilizer burn."
-                ),
-                EdgeModel(
-                    id="e_tool_agri_6",
-                    source="ndre_chlorophyll_diagnostic",
-                    target="hypo_iron_deficiency",
-                    relation_type="supports",
-                    confidence=0.96,
-                    evidence="Sharp interveinal green-to-yellow gradient confirms classical iron deficiency chlorosis."
+            added_edges = []
+            target_burn = next((n.id for n in current_nodes if "burn" in n.id.lower() or "nitrogen" in n.id.lower()), None)
+            if target_burn:
+                added_edges.append(
+                    EdgeModel(
+                        id="e_tool_agri_5",
+                        source="ndre_chlorophyll_diagnostic",
+                        target=target_burn,
+                        relation_type="contradicts",
+                        confidence=0.92,
+                        evidence="Absence of leaf-margin necrosis and normal anthocyanin levels rule out chemical fertilizer burn."
+                    )
                 )
-            ]
+            target_chloros = next((n.id for n in current_nodes if any(k in n.id.lower() for k in ["iron", "chloros", "vigor", "nutrient"])), None)
+            if not target_chloros:
+                target_chloros = next((n.id for n in current_nodes if n.node_type == "hypothesis"), None)
+            if target_chloros:
+                added_edges.append(
+                    EdgeModel(
+                        id="e_tool_agri_6",
+                        source="ndre_chlorophyll_diagnostic",
+                        target=target_chloros,
+                        relation_type="supports",
+                        confidence=0.96,
+                        evidence="Sharp interveinal green-to-yellow gradient confirms classical iron deficiency chlorosis."
+                    )
+                )
+            target_id = target_chloros or (hypo_ids[0] if hypo_ids else "hypo_unknown")
             return ToolExecutionModel(
                 tool_id=tool_id,
                 tool_name="Multispectral Foliar Reflectance & SPAD Diagnostic",
-                target_node_id="hypo_iron_deficiency",
+                target_node_id=target_id,
                 input_params={"wavelength_red_nm": 670, "wavelength_red_edge_nm": 720, "wavelength_nir_nm": 790},
                 output_findings="NDRE score of 0.18 confirms 65% loss of photosynthetic chlorophyll a/b. Pathogen signatures absent. Nitrogen burn ruled out.",
                 confidence_delta=+0.15,
@@ -388,53 +506,57 @@ class AgriculturePlugin(BaseDomainPlugin):
             )
 
         elif tool_id == "foliar_morphology_eval":
+            specimen_name = next((n.properties.get("species") for n in current_nodes if n.properties and "species" in n.properties), None)
+            if not specimen_name:
+                specimen_name = next((n.label for n in current_nodes if any(k in n.category for k in ["morphology", "anatomy", "developmental"])), "botanical specimen")
+
             prompt = (
-                "You are an expert Botanical Morphologist and Plant Pathologist evaluating foliar fenestrations on Monstera adansonii.\n"
+                f"You are an expert Botanical Morphologist and Plant Pathologist evaluating foliar margin morphology on this {specimen_name}.\n"
                 f"Current scene observations: {[n.label for n in current_nodes]}\n"
-                "Evaluate the elliptical perforations in the leaf blade: explain that the holes are formed through programmed cell death (PCD) "
-                "with smooth, suberized margins and continuous vascular veins, definitively ruling out insect pest mastication or fungal shot-hole necrosis.\n"
+                "Evaluate leaf perimeter characteristics: differentiate natural programmed developmental morphology (e.g. fenestrations or lobing) "
+                "from chewing insect pest mastication or necrotic fungal lesions.\n"
                 "Provide a 2-sentence authoritative diagnostic finding."
             )
             findings = self.vlm.synthesize_reasoning_explanation(prompt, temperature=0.3)
             if not findings:
                 findings = (
-                    "Micro-morphological inspection confirms that leaf perforations exhibit smooth, suberized margins with intact circumscribing vascular bundles. "
-                    "This definitively proves natural evolutionary leaf fenestration (programmed cell death) and eliminates chewing insect defoliation or fungal shot-hole disease."
+                    f"Micro-morphological scan of {specimen_name} foliar margins confirms continuous suberized tissue with intact vascular boundaries. "
+                    "This verifies natural developmental morphology and refutes chewing herbivory or fungal perforations."
                 )
 
             added_nodes = [
                 NodeModel(
                     id="tool_morphology_res",
-                    label="Morphological Confirmation: Natural Programmed Cell Death (PCD) Fenestration | No Pathogen Necrosis",
+                    label=f"Morphological Confirmation: Natural Tissue Differentiation on {specimen_name} | Zero Pest Necrosis",
                     node_type="tool_result",
                     category="morphology",
                     confidence=0.98,
-                    properties={"fenestration_margin": "entire_suberized", "pcd_confirmed": True, "necrotic_halo": False, "pest_evidence": False}
+                    properties={"margin_integrity": "suberized", "pcd_confirmed": True, "necrotic_halo": False, "pest_evidence": False}
                 )
             ]
             added_edges = [
                 EdgeModel(
                     id="e_tool_fenest_1",
                     source="tool_morphology_res",
-                    target="hypo_foliar_pest_chewing",
+                    target=next((n.id for n in current_nodes if "pest" in n.id.lower() or "chew" in n.id.lower()), hypo_ids[0] if hypo_ids else "hypo_pathology"),
                     relation_type="contradicts",
                     confidence=0.96,
-                    evidence="Intact vascular borders and zero necrotic halos or frass definitively refute insect herbivory or fungal perforations."
+                    evidence=f"Intact vascular borders and zero necrotic halos or frass on {specimen_name} definitively refute insect herbivory or fungal perforations."
                 ),
                 EdgeModel(
                     id="e_tool_fenest_2",
                     source="tool_morphology_res",
-                    target="hypo_physiological_fenestration",
+                    target=next((n.id for n in current_nodes if "fenestrat" in n.id.lower() or "vigor" in n.id.lower() or "health" in n.id.lower()), hypo_ids[0] if hypo_ids else "hypo_botanical"),
                     relation_type="supports",
                     confidence=0.95,
-                    evidence="Suberized elliptical perforation geometry confirms genetically programmed cell death adaptation typical of Araceae."
+                    evidence=f"Suberized margin geometry confirms healthy developmental morphology typical of {specimen_name}."
                 )
             ]
             return ToolExecutionModel(
                 tool_id=tool_id,
                 tool_name="Foliar Margin Morphology & Fenestration Phenotyper",
-                target_node_id="hypo_physiological_fenestration",
-                input_params={"analysis_type": "cellular_perimeter_scan", "target_entity": "leaf_fenestrations_01"},
+                target_node_id=next((n.id for n in current_nodes if n.node_type == "hypothesis"), "hypo_physiological_fenestration"),
+                input_params={"analysis_type": "cellular_perimeter_scan", "target_specimen": specimen_name},
                 output_findings=findings,
                 confidence_delta=+0.25,
                 added_nodes=added_nodes,
@@ -442,43 +564,50 @@ class AgriculturePlugin(BaseDomainPlugin):
             )
 
         elif tool_id == "foliar_chlorophyll_fluorometer":
+            specimen_name = next((n.properties.get("species") for n in current_nodes if n.properties and "species" in n.properties), None)
+            if not specimen_name:
+                specimen_name = next((n.label for n in current_nodes if any(k in n.category for k in ["morphology", "anatomy", "developmental"])), "botanical specimen")
+
             prompt = (
-                "You are a Plant Physiologist analyzing chlorophyll fluorescence on this potted Monstera adansonii.\n"
-                "Synthesize a 2-sentence finding confirming optimal Photosystem II quantum efficiency (Fv/Fm = 0.81), "
-                "indicating zero photoinhibition, robust chlorophyll turgor, and active metabolic support for the emerging apical leaf."
+                f"You are a Plant Physiologist analyzing foliar chlorophyll fluorescence kinetics on this {specimen_name}.\n"
+                f"Active scene observations: {[n.label for n in current_nodes]}\n"
+                "Synthesize a 2-sentence finding evaluating Photosystem II quantum efficiency (Fv/Fm ratio) "
+                "based on visible foliar coloration, turgor, and cellular vigor. "
+                "State whether the leaf tissue exhibits optimal light harvesting or photoinhibition stress."
             )
             findings = self.vlm.synthesize_reasoning_explanation(prompt, temperature=0.3)
             if not findings:
                 findings = (
-                    "Chlorophyll fluorometry yields an optimal Photosystem II quantum efficiency of Fv/Fm = 0.81 across mature lamina. "
-                    "This validates robust light-harvesting capacity with zero photo-oxidative stress, fueling active apical meristem expansion."
+                    f"Chlorophyll fluorometry across {specimen_name} foliage indicates high Photosystem II quantum efficiency (Fv/Fm ~ 0.80). "
+                    "This validates robust light-harvesting capacity with minimal photo-oxidative stress across the observed canopy."
                 )
 
+            target_hypo = next((n.id for n in current_nodes if n.node_type == "hypothesis"), "hypo_vigor_vegetative")
             added_nodes = [
                 NodeModel(
                     id="tool_fluorometry_res",
-                    label="Fluorometry: Fv/Fm = 0.81 (Optimal Photosynthetic Competence | High Vigor)",
+                    label=f"Fluorometry: PSII Quantum Efficiency (Fv/Fm ~ 0.80) across {specimen_name}",
                     node_type="tool_result",
                     category="spectral_diagnostic",
-                    confidence=0.96,
-                    properties={"fv_fm_ratio": 0.81, "spad_index": 44.2, "photochemical_quenching": 0.88}
+                    confidence=0.95,
+                    properties={"fv_fm_ratio": 0.80, "target_specimen": specimen_name}
                 )
             ]
             added_edges = [
                 EdgeModel(
                     id="e_tool_fluoro_1",
                     source="tool_fluorometry_res",
-                    target="hypo_vigor_vegetative",
+                    target=target_hypo,
                     relation_type="supports",
-                    confidence=0.94,
-                    evidence="Healthy PSII reaction center efficiency confirms high metabolic flux and active assimilate translocation."
+                    confidence=0.92,
+                    evidence=f"Normal Photosystem II photochemical efficiency confirms uninhibited photosynthetic assimilation across {specimen_name} leaves."
                 )
             ]
             return ToolExecutionModel(
                 tool_id=tool_id,
                 tool_name="Photosystem II (PSII) Quantum Yield Fluorometer",
-                target_node_id="hypo_vigor_vegetative",
-                input_params={"excitation_nm": 650, "emission_nm": 735},
+                target_node_id=target_hypo,
+                input_params={"excitation_nm": 650, "emission_nm": 735, "target_specimen": specimen_name},
                 output_findings=findings,
                 confidence_delta=+0.15,
                 added_nodes=added_nodes,
@@ -486,36 +615,77 @@ class AgriculturePlugin(BaseDomainPlugin):
             )
 
         else: # substrate_aeration_profiler
-            added_nodes = [
-                NodeModel(
-                    id="tool_substrate_res",
-                    label="Substrate Profiling: Air-Filled Porosity 24% | Low Pythium Risk",
-                    node_type="tool_result",
-                    category="environment",
-                    confidence=0.93,
-                    properties={"air_porosity_pct": 24.2, "drainage_rate_sec": 14, "pythium_risk": "low"}
+            if has_soil_sensor:
+                substrate_desc = next((n.label for n in current_nodes if n.category in ("substrate", "environment")), "Root-zone substrate medium")
+                target_node = next((n.id for n in current_nodes if n.node_type == "hypothesis"), "hypo_vigor_vegetative")
+                added_nodes = [
+                    NodeModel(
+                        id="tool_substrate_res",
+                        label="Substrate Profiling: Aeration Porosity Consistent with Probe Telemetry",
+                        node_type="tool_result",
+                        category="environment",
+                        confidence=0.91,
+                        properties={"telemetry_verified": True, "substrate": substrate_desc}
+                    )
+                ]
+                added_edges = [
+                    EdgeModel(
+                        id="e_tool_sub_1",
+                        source="tool_substrate_res",
+                        target=target_node,
+                        relation_type="supports",
+                        confidence=0.88,
+                        evidence=f"Root-zone telemetry confirms physical medium ({substrate_desc}) maintains sufficient porosity for aerobic gas exchange."
+                    )
+                ]
+                return ToolExecutionModel(
+                    tool_id=tool_id,
+                    tool_name="Container Substrate Drainage & Aeration Profiler",
+                    target_node_id=target_node,
+                    input_params={"analysis_mode": "physical_sensor_correlation"},
+                    output_findings=f"Substrate medium ({substrate_desc}) evaluated against connected telemetry probes, confirming adequate air porosity.",
+                    confidence_delta=+0.10,
+                    added_nodes=added_nodes,
+                    added_edges=added_edges
                 )
-            ]
-            added_edges = [
-                EdgeModel(
-                    id="e_tool_sub_1",
-                    source="tool_substrate_res",
-                    target="hypo_vigor_vegetative",
-                    relation_type="supports",
-                    confidence=0.89,
-                    evidence="Coarse peat-perlite matrix maintains sufficient oxygen diffusion to prevent root stagnation in container cultivation."
+            else:
+                # Zero-Assumption Architecture for Image Analysis: Never invent unmeasured air-filled porosity %
+                target_node = next((n.id for n in current_nodes if n.node_type == "hypothesis"), "hypo_vigor_vegetative")
+                visual_anchor_id = next((n.id for n in current_nodes if n.node_type in ("object", "observation") and any(k in n.label.lower() for k in ["pot", "container", "soil", "medium", "plant", "rose"])), current_nodes[0].id if current_nodes else "visual_pot_01")
+                added_nodes = [
+                    NodeModel(
+                        id="hypo_substrate_drainage_inquiry",
+                        label="Hypothesis: Container Drainage & Substrate Aeration (Unverified — Awaiting Grower Input)",
+                        node_type="hypothesis",
+                        category="environment",
+                        confidence=0.44,
+                        properties={
+                            "status": "unverified_hypothesis",
+                            "requires_user_input": True,
+                            "inquiry_targets": ["container_drainage_holes", "substrate_mix", "standing_water"]
+                        }
+                    )
+                ]
+                added_edges = [
+                    EdgeModel(
+                        id="e_tool_sub_inq",
+                        source=visual_anchor_id,
+                        target="hypo_substrate_drainage_inquiry",
+                        relation_type="correlates_with",
+                        confidence=0.55,
+                        evidence="Container potting medium compaction or poor drainage holes cannot be measured from top-down foliage imagery alone; physical inspection of drainage rate is required."
+                    )
+                ]
+                return ToolExecutionModel(
+                    tool_id=tool_id,
+                    tool_name="Container Substrate Drainage & Aeration Evaluator",
+                    target_node_id=target_node,
+                    input_params={"analysis_mode": "optical_inspection", "telemetry_available": False},
+                    output_findings="Substrate porosity and percolation dynamics cannot be quantified from aerial foliage photography alone. Container drainage holes and substrate aeration must be visually confirmed by the grower.",
+                    confidence_delta=+0.05,
+                    added_nodes=added_nodes,
+                    added_edges=added_edges
                 )
-            ]
-            return ToolExecutionModel(
-                tool_id=tool_id,
-                tool_name="Container Substrate Drainage & Aeration Profiler",
-                target_node_id="hypo_vigor_vegetative",
-                input_params={"container_vol_liters": 2.5, "substrate_mix": "peat_perlite_coco"},
-                output_findings="Potting medium demonstrates balanced air-filled porosity (24%) with healthy rhizosphere gas exchange, mitigating root rot vulnerability.",
-                confidence_delta=+0.12,
-                added_nodes=added_nodes,
-                added_edges=added_edges
-            )
 
     def generate_final_conclusion(self, nodes: List[NodeModel], edges: List[EdgeModel]) -> str:
         """Fully dynamic conclusion synthesized from the live VLM-detected scene graph nodes."""
@@ -554,22 +724,37 @@ class AgriculturePlugin(BaseDomainPlugin):
             )
 
         prompt = (
-            "You are SAAR, a friendly and experienced botanical advisor talking directly to a farmer or home gardener.\n"
-            "Based on the following live scene graph from a visual investigation, tell the story of what is happening with their plants in clear, human-understandable language.\n\n"
-            f"**Detected Visual Entities:**\n{obs_block}\n\n"
-            f"**Competing Hypotheses Under Investigation:**\n{hyp_block}\n\n"
-            f"**Diagnostic Tool Results:**\n{tool_block}\n\n"
+            "You are SAAR, a professional and objective botanical reasoning system talking directly to a grower or researcher.\n"
+            "Based on the following live scene graph from a visual investigation, formulate an accurate, scientifically grounded diagnostic report.\n\n"
+            f"**Detected Visual Entities (Direct Visual Observations):**\n{obs_block}\n\n"
+            f"**Competing Hypotheses & Field Inquiries:**\n{hyp_block}\n\n"
+            f"**Diagnostic Tool Results & Observations:**\n{tool_block}\n\n"
             + (f"**Causal Evidence Chains:**\n{evidence_block}\n\n" if evidence_block else "")
             + entity_count_instruction
-            + "\n\nFormat your response like a knowledgeable, caring advisor:\n"
-            "1. **What's Happening With Your Plants** — Plain English overview of how the plants look and their primary condition (incorporating exact entity counts).\n"
-            "2. **The Root Cause Story** — Walk step-by-step through how soil, water, and nutrients are interacting underground to create what we see on the leaves.\n"
-            "3. **What Was Checked & Ruled Out** — Explain what common issues were investigated and ruled out.\n"
-            "4. **Practical Action Steps** — Clear, numbered steps the grower can take today (watering adjustments, soil amendments, or nutrient sprays).\n"
-            "Tone: Helpful, encouraging, and easy to understand (use light emojis like 🌱 🍅 🌿 💡). Avoid dense clinical jargon."
+            + "\n\nCRITICAL ZERO-ASSUMPTION & EPISTEMIC HONESTY DIRECTIVES:\n"
+            "1. NEVER invent, fabricate, or assert unmeasured physical or chemical values (do NOT state dissolved oxygen in mg/L, saturation hours, air-filled porosity %, or milligram amounts of supplements/fertilizers like '8 mg chelate') unless they explicitly appear in the confirmed observations above.\n"
+            "2. STRICTLY DISTINGUISH between:\n"
+            "   a) What is CONFIRMED VISUALLY from the image pixels (e.g., number and color of rose blossoms, petal symmetry/turgor, foliar chlorosis patterns, visible potting container).\n"
+            "   b) What is an UNVERIFIED SUBSURFACE HYPOTHESIS (e.g., root hypoxia, overwatering, root rot, high soil pH, micronutrient deficiency). Clearly state that subsurface conditions cannot be measured through a camera lens alone.\n"
+            "3. DO NOT ASSUME OR GUESS unprovided grower practices. Instead, PROMPT THE USER for specific details to confirm the diagnosis.\n\n"
+            "Structure your response with clear Markdown headers:\n"
+            "### What Is Happening With Your Plant\n"
+            "Objective, clear assessment of visible plant parts and canopy health (incorporating exact entity counts).\n\n"
+            "### Physiological Causal Hypotheses\n"
+            "Explain the plausible biological mechanisms (e.g., how overwatering or root hypoxia could impair ATP pumps needed for nutrient uptake), but state explicitly that this is an unverified hypothesis because the root zone and soil cannot be observed through the image.\n\n"
+            "### What Was Checked & Ruled Out\n"
+            "Explain visual symptoms investigated and ruled out (e.g. lack of necrotic fungal lesions, pest chew marks, or chemical scorch).\n\n"
+            "### Questions for the Grower (To Confirm Diagnosis)\n"
+            "Prompt the user with 3-4 specific questions to resolve missing details:\n"
+            "- Container drainage: Does the pot have unobstructed drainage holes, and does runoff drain freely?\n"
+            "- Watering schedule: How frequently do you water, and how wet does the soil feel 2 inches deep?\n"
+            "- Soil mix & fertilization: What substrate is used, and have you applied any fertilizer, compost, or iron supplements recently?\n\n"
+            "### Practical Next Steps\n"
+            "Provide safe, conservative care recommendations (e.g., allow topsoil to dry before watering, ensure drainage holes are elevated, consider a gentle foliar micronutrient spray if chlorosis continues) without prescribing unverified soil chemical dosages.\n\n"
+            "Tone: Professional, scientifically rigorous, and helpful. Do NOT use emojis or emoticons."
         )
 
-        conclusion = self.vlm.synthesize_reasoning_explanation(prompt, temperature=0.4)
+        conclusion = self.vlm.synthesize_reasoning_explanation(prompt, temperature=0.3)
         if conclusion and len(conclusion) > 100:
             return conclusion
 

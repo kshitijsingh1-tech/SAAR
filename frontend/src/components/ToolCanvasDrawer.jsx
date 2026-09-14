@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Maximize2, Minimize2, BarChart2, BookOpen,
-  Camera, GitFork, BookA, Crosshair, GripVertical, Sparkles, Activity, Zap
+  Camera, GitFork, BookA, Crosshair, GripVertical, Sparkles, Activity, Zap, Award
 } from 'lucide-react';
 import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { ImageInspector } from './ImageInspector';
@@ -10,6 +10,7 @@ import { DomainRAGRadar } from './DomainRAGRadar';
 import { ScientificDictionaryDrawer } from './ScientificDictionaryDrawer';
 import { GaitDashboard } from './GaitDashboard';
 import { BadmintonDashboard } from './BadmintonDashboard';
+import { DynamicOneStopVerdict } from './DynamicOneStopVerdict';
 
 export function ToolCanvasDrawer({
   isOpen,
@@ -43,7 +44,8 @@ export function ToolCanvasDrawer({
   customVideoFile = null,
   sessions = [],
   onSwitchSession = null,
-  isProcessing = false
+  isProcessing = false,
+  onExportDossier = null
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [drawerWidth, setDrawerWidth] = useState(() => {
@@ -137,6 +139,7 @@ export function ToolCanvasDrawer({
 
   // Configure tools uniquely for each domain, always preserving accessibility:
   let toolsMeta = [
+    { id: 'verdict', label: 'One-Stop Verdict', icon: <Award size={15} className="text-amber" /> },
     { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
     { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
     { id: 'gait', label: 'Toddler Walking Screening', icon: <Activity size={15} /> },
@@ -148,6 +151,11 @@ export function ToolCanvasDrawer({
 
   // Robust tool alias normalization
   const TOOL_ALIASES = {
+    verdict: 'verdict',
+    solution: 'verdict',
+    solutions: 'verdict',
+    executive: 'verdict',
+    onestop: 'verdict',
     badminton: 'badminton',
     sports: 'badminton',
     biomechanics: 'badminton',
@@ -315,7 +323,23 @@ export function ToolCanvasDrawer({
           </div>
         )}
 
-        {/* Tool 1: Causal Knowledge Graph (KnowledgeGraphCanvas.jsx) */}
+        {/* Tool: One-Stop Verdict & Actionable Solution */}
+        {effectiveTool === 'verdict' && (
+          <div className="tool-body-pane custom-pane-scrollbar" style={{ overflowY: 'auto', height: '100%', padding: '1rem' }}>
+            <DynamicOneStopVerdict
+              investigationData={investigationData}
+              saarData={saarData}
+              activeInvestigation={activeInvestigation}
+              selectedDomain={selectedDomain}
+              onOpenTool={onSelectTool}
+              theme={theme}
+              onExportDossier={onExportDossier}
+              onSendToChat={onSendToChat}
+            />
+          </div>
+        )}
+
+        {/* Tool 2: Knowledge Graph Canvas (KnowledgeGraphCanvas.jsx / GraphEngine) */}
         {effectiveTool === 'graph' && (
           <div className="tool-body-pane">
             <KnowledgeGraphCanvas
