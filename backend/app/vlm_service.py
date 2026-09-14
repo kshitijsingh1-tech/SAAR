@@ -1399,7 +1399,8 @@ Structure:
             "4) Adapt your voice by domain: objective and reassuring for pediatric movement screening, practical for agricultural agronomy, analytical for sports biomechanics. "
             "5) End with clear, actionable clinical or operational guidance. "
             "6) Format using clean, well-structured Markdown with descriptive section headers. "
-            "7) Keep all scientific accuracy intact."
+            "7) Keep all scientific accuracy intact. "
+            "8) ZERO-ASSUMPTION RULE FOR IMAGE-ONLY EVIDENCE: When evaluating photographs without attached physical sensor telemetry or user-provided values, NEVER fabricate, invent, or output unmeasured subsurface or chemical numbers (e.g., do NOT invent dissolved oxygen mg/L, saturation hours, soil porosity %, or milligram supplement amounts). Differentiate optically observed facts from unverified subsurface hypotheses, and actively prompt the user with clear questions for missing physical details (drainage, watering cadence, soil mix, fertilizer history) instead of guessing."
         )
 
         # 1. Primary: Google Gemini Pool
