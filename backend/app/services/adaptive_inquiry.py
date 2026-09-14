@@ -19,7 +19,7 @@ from ..models.saar_models import (
 )
 from ..vlm_service import VLMService
 from ..rag_service import RAGKnowledgeService
-from ..gait.baseline_service import personalized_baseline_service
+from ..gait.baseline_service import personalized_baseline_service, _safe_float
 
 
 # ---------------------------------------------------------------------------
@@ -784,8 +784,8 @@ class AdaptiveInquiryEngine:
                 baseline_summary = f"Movement metrics align with {baseline_comp.child_name}'s typical baseline ({baseline_comp.baseline_session_count} prior sessions)."
                 observations["baseline_deviation_detected"] = False
 
-        if asym is not None:
-            asym_val = float(asym)
+        asym_val = _safe_float(asym)
+        if asym_val is not None:
             observations["step_asymmetry_pct"] = round(asym_val, 1)
             observations["step_asymmetry"] = asym_val > 8.0
 
@@ -840,19 +840,22 @@ class AdaptiveInquiryEngine:
 
         # Step 4: Formulate conversational preamble & select first discriminating question
         if any(k in domain_clean for k in ["badminton", "sport", "racket", "smash", "shuttle"]):
-            dist_m = measured_context.get("total_distance_m")
-            dist_str = f" across {dist_m:.1f}m court coverage" if dist_m else ""
+            dist_num = _safe_float(measured_context.get("total_distance_m"))
+            dist_str = f" across {dist_num:.1f}m court coverage" if dist_num else ""
             session.preamble = (
                 f"Kinematic tracking detected overhead stroke mechanics{dist_str}. "
                 f"To isolate whether power loss and shot inconsistency stem from **kinetic chain sequencing**, "
                 f"**grip bevel misalignment**, or **footwork deceleration fatigue**, please answer a few quick questions."
             )
         elif has_deviation and baseline_comp:
+            norm_mean = 3.4
+            if baseline_comp.comparison_items and len(baseline_comp.comparison_items) > 0:
+                norm_mean = baseline_comp.comparison_items[0].baseline_mean
             session.preamble = (
                 f"We compared today's video with **{baseline_comp.child_name}'s personalized baseline** "
                 f"({baseline_comp.baseline_session_count} previous recordings). "
                 f"Today shows an elevated asymmetry of **{observations.get('step_asymmetry_pct', 15.2)}%** "
-                f"(normally {baseline_comp.comparison_items[0].baseline_mean:.1f}%). "
+                f"(normally {norm_mean:.1f}%). "
                 f"To understand the context of this change, please answer a few quick questions."
             )
         else:

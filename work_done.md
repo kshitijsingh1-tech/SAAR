@@ -2191,9 +2191,66 @@ The user reported two interconnected failure modes:
   - `POST /api/adaptive/{id}/answer`: HTTP 200, demonstrated Bayesian hypothesis updates, conversational bridge, and subsequent discriminator question.
 - **Frontend Production Build (`npm run build`)**:
   - Built cleanly in 17.98s with 0 errors.
-- **Live Daemons Active**:
-  - Backend running on `http://127.0.0.1:8002` (HTTP 200).
-  - Frontend Vite server running on `http://localhost:3000` (HTTP 200).
+
+---
+
+## 32. [2026-09-15] Resolution of "Could Not Start Adaptive Analysis" 500 TypeError & Robust Observation Value Unwrapping
+
+**Primary Files Modified**:
+- `backend/app/gait/baseline_service.py`
+- `backend/app/services/adaptive_inquiry.py`
+- `backend/app/services/reasoning_service.py`
+- `backend/app/main.py`
+- `work_done.md`
+
+### Problem Description & Symptoms
+When a user asked a gait question in the chat (e.g., *"is my child limping"*), the assistant responded:
+> *"Adaptive Diagnostic Triage Required: To evaluate your question: 'is my child limping', kinematic video measurements alone cannot determine whether this movement is optimal, compensatory guarding, or a benign motor habit without clinical context. Please answer the adaptive question below..."*
+
+However, the embedded `AdaptiveInquiryCard` failed to load the adaptive question, displaying a red banner:
+> **⚠️ Adaptive Triage Notice**: `Could not start adaptive analysis. Please try again. [Retry Adaptive Triage]`
+
+Clicking **Retry Adaptive Triage** immediately re-triggered the failure.
+
+### Root Cause Analysis
+1. **Dictionary-Wrapped Observation Values in `reasoning_service.py`**:
+   - Following gait analysis (`POST /api/gait/analyze`), `saar_engine.register_gait_investigation(result)` recorded structured observations (`Observation(feature_name="step_time_asymmetry_pct", value=15.2, ...)`).
+   - When `saar_engine.start_adaptive_session` ran, it populated `measured_context` from `state.observations` by wrapping each feature into a dictionary:
+     `measured_context[obs.feature_name] = {"value": obs.value, "unit": ..., "confidence": ...}`.
+2. **Crash in `baseline_service.py` during `compare_assessment`**:
+   - `adaptive_inquiry.py:759` passed `measured_context` to `personalized_baseline_service.compare_assessment(subject_id, measured_context)`.
+   - In `baseline_service.py:_extract_raw_metrics`, the method extracted `asym = data.get("step_time_asymmetry_pct")` (which was the dictionary `{"value": 15.2, ...}`) and naively called `float(asym)`.
+   - This raised an uncaught **`TypeError: float() argument must be a string or a real number, not 'dict'`**, triggering an HTTP 500 Internal Server Error back to the frontend.
+3. **Crash in `adaptive_inquiry.py:788`**:
+   - Similarly, `adaptive_inquiry.py` directly called `float(asym)` without verifying if `asym` was a scalar or dictionary.
+4. **Missing `"latest"` Key in `_investigations` Store**:
+   - `register_gait_investigation` and `register_badminton_investigation` saved states under their specific UUIDs but failed to set `self._investigations["latest"] = state`, causing default investigation fallbacks to miss newly analyzed video states.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Defensive `_safe_float` Helper in `baseline_service.py`**:
+   - Implemented `_safe_float(val: Any) -> Optional[float]` that recursively unwraps dictionaries (`val.get("value")`, `val.get("mean")`, `val.get("val")`), parses strings, and returns `None` safely upon non-numeric input without raising `TypeError`.
+   - Updated `_extract_raw_metrics` to wrap all metric conversions (`step_time_asymmetry_pct`, `cadence`, `mean_step_time`, `step_time_cov`, `trunk_angle_deg`, `knee_rom_deg`) with `_safe_float`.
+2. **Defensive Value Extraction in `adaptive_inquiry.py`**:
+   - Imported and utilized `_safe_float` for `asym_val` and `dist_num`.
+   - Guarded against empty `baseline_comp.comparison_items` list index errors in the clinical preamble.
+3. **Scalar Metric Unwrapping in `reasoning_service.py`**:
+   - Updated `start_adaptive_session` to unwrap observation values into clean scalars (`_safe_float(obs.value)`) so downstream services receive pure numbers.
+   - Updated `register_gait_investigation` and `register_badminton_investigation` to assign `self._investigations["latest"] = state` and `self._badminton_results["latest"] = badminton_result`.
+4. **Traceback Logging in `main.py`**:
+   - Added `traceback.print_exc()` to `/api/adaptive/start` error handler to ensure any unexpected runtime issues are immediately visible in server logs.
+
+### Verification & Empirical Confirmation
+- **End-to-End Unit & Integration Tests**:
+  - Ran `pytest tests/test_gait_baseline_adaptive.py tests/test_badminton_adaptive.py` — **10/10 tests passed (100%)** in 1.88s.
+- **Live HTTP Request Verification**:
+  - `POST http://127.0.0.1:8002/api/adaptive/start` with payload `{"investigation_id": "latest", "user_concern": "is my child limping", "subject_id": "child_leo_24m"}` returned **HTTP 200 OK**:
+    - `session_id`: `ADS-4894d791`
+    - `question_text`: *"Is this a recent change in your child's walking?"*
+    - `options`: `['Yes, noticed it recently (last few days to 2 weeks)', 'No, they have always walked this way since early walking', 'Unsure / Just noticed it for the first time today']`
+- **Daemon Tasks Active**:
+  - Backend Uvicorn daemon running on port 8002 (Task ID: `task-6782`).
+  - Frontend Vite dev server running on port 3000 (Task ID: `task-6784`).
+
 
 
 

@@ -400,13 +400,34 @@ class PersonalizedGaitBaselineService:
             knee_rom = right_knee
 
         return {
-            "step_time_asymmetry_pct": (float(asym) if asym is not None else None, "Step Time Asymmetry", "%"),
-            "cadence": (float(cadence) if cadence is not None else None, "Cadence", "steps/min"),
-            "mean_step_time": (float(step_time) if step_time is not None else None, "Step Duration", "s"),
-            "step_time_cov": (float(cov) if cov is not None else None, "Rhythm Variability (CoV)", "%"),
-            "trunk_angle_deg": (float(tilt) if tilt is not None else None, "Lateral Trunk Tilt", "°"),
-            "knee_rom_deg": (float(knee_rom) if knee_rom is not None else None, "Bilateral Knee ROM", "°")
+            "step_time_asymmetry_pct": (_safe_float(asym), "Step Time Asymmetry", "%"),
+            "cadence": (_safe_float(cadence), "Cadence", "steps/min"),
+            "mean_step_time": (_safe_float(step_time), "Step Duration", "s"),
+            "step_time_cov": (_safe_float(cov), "Rhythm Variability (CoV)", "%"),
+            "trunk_angle_deg": (_safe_float(tilt), "Lateral Trunk Tilt", "°"),
+            "knee_rom_deg": (_safe_float(knee_rom), "Bilateral Knee ROM", "°")
         }
+
+
+def _safe_float(val: Any) -> Optional[float]:
+    """Safely convert a scalar, string, or observation dictionary into a float without raising TypeError."""
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, dict):
+        v = val.get("value")
+        if v is not None:
+            return _safe_float(v)
+        for k in ["mean", "val", "score", "reading"]:
+            if k in val and val[k] is not None:
+                return _safe_float(val[k])
+        return None
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
+
 
 
 # Global singleton service

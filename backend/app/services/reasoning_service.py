@@ -18,6 +18,7 @@ from ..models.saar_models import (
 from .ingestion_service import IngestionService
 from .analytics_service import AnalyticsService
 from .adaptive_inquiry import AdaptiveInquiryEngine
+from ..gait.baseline_service import _safe_float
 from ..rag_service import RAGKnowledgeService
 from ..vlm_service import VLMService
 
@@ -286,6 +287,7 @@ class ReasoningService:
             status="active"
         )
         self._investigations[inv_id] = state
+        self._investigations["latest"] = state
         return state
 
     def register_badminton_investigation(self, badminton_result: Any) -> InvestigationState:
@@ -386,6 +388,8 @@ class ReasoningService:
             status="active"
         )
         self._investigations[inv_id] = state
+        self._investigations["latest"] = state
+        self._badminton_results["latest"] = badminton_result
         return state
 
     # ------------------------------------------------------------------
@@ -461,11 +465,9 @@ class ReasoningService:
             if state and (getattr(state, "dataset_id", "") == "gait" or "assessment" in str(getattr(state, "investigation_id", ""))):
                 for obs in state.observations:
                     if obs.value is not None:
-                        measured_context[obs.feature_name] = {
-                            "value": obs.value,
-                            "unit": getattr(obs, "unit", None) or "",
-                            "confidence": obs.confidence
-                        }
+                        val = obs.value
+                        f_val = _safe_float(val)
+                        measured_context[obs.feature_name] = f_val if f_val is not None else val
             if not measured_context:
                 measured_context = {
                     "step_time_asymmetry_pct": 15.2,
@@ -478,11 +480,9 @@ class ReasoningService:
             domain = state.dataset_id or "gait"
             for obs in state.observations:
                 if obs.value is not None:
-                    measured_context[obs.feature_name] = {
-                        "value": obs.value,
-                        "unit": getattr(obs, "unit", None) or "",
-                        "confidence": obs.confidence
-                    }
+                    val = obs.value
+                    f_val = _safe_float(val)
+                    measured_context[obs.feature_name] = f_val if f_val is not None else val
         else:
             # Detect domain from concern keywords
             if any(k in concern_lower for k in ["leaf", "plant", "crop", "chlorosis", "soil", "tomato", "rose"]):
