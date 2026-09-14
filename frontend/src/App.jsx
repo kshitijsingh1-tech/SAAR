@@ -429,10 +429,10 @@ export default function App() {
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return {
-      'session-1': ['dictionary', 'grounded', 'graph', 'analytics', 'rag'],
-      'session-2': ['dictionary', 'grounded', 'graph', 'analytics', 'rag'],
-      'session-3': ['dictionary', 'grounded', 'graph', 'rag'],
-      'session-4': ['dictionary', 'badminton', 'analytics', 'rag', 'graph']
+      'session-1': ['dictionary', 'verdict', 'grounded', 'graph', 'analytics', 'rag'],
+      'session-2': ['dictionary', 'verdict', 'grounded', 'graph', 'analytics', 'rag'],
+      'session-3': ['dictionary', 'verdict', 'grounded', 'graph', 'rag'],
+      'session-4': ['dictionary', 'verdict', 'badminton', 'analytics', 'rag', 'graph']
     };
   });
 
@@ -500,6 +500,7 @@ export default function App() {
     if (hasImage || report?.final_graph || report?.preset_id || /image|photo|picture|leaf|foliage|fenestration|specimen|shoot|crack|asphalt|surface|spot|yellowing|chlorosis|camera|crop|flower|plant|tissue|defect|grounding/.test(fullContext)) {
       detected.add('grounded');
       detected.add('graph');
+      detected.add('verdict');
     }
 
     // Badminton Biomechanics: ONLY when authentic sports video or badminton telemetry exists
@@ -508,6 +509,7 @@ export default function App() {
       Boolean(report?.court_calibration || report?.speed_metrics || report?.shots || (report?.analysis_id && (report?.domain === 'sports' || domain === 'sports')));
     if (!hasImage && isAuthenticBadminton) {
       detected.add('badminton');
+      detected.add('verdict');
       detected.add('rag');
       detected.add('analytics');
       detected.add('graph');
@@ -519,12 +521,14 @@ export default function App() {
       Boolean(report?.assessment_id || report?.cadence_range || (report?.metrics?.usable_step_count != null));
     if (!hasImage && isAuthenticGait) {
       detected.add('gait');
+      detected.add('verdict');
       detected.add('rag');
     }
 
     if (hasCsv || report?.telemetry || report?.perception?.features_detected) {
       detected.add('analytics');
       detected.add('graph');
+      detected.add('verdict');
     }
 
     if (report?.domain_knowledge?.length > 0) {
@@ -533,6 +537,11 @@ export default function App() {
 
     if (report?.final_graph || report?.relationships?.length > 0) {
       detected.add('graph');
+      detected.add('verdict');
+    }
+
+    if (report?.developmental_summary || report?.conclusion || report?.summary) {
+      detected.add('verdict');
     }
 
     if (resetSession) {
@@ -2145,8 +2154,34 @@ export default function App() {
         saarData={saarData}
         baselineData={baselineData}
         theme={theme}
-        onSendToChat={(text) => handleSendMessage(text)}
-        selectedRelationship={selectedRelationship}
+        onSendToChat={(dataOrText) => {
+          if (dataOrText && typeof dataOrText === 'object') {
+            setSaarData(dataOrText);
+            if (dataOrText.developmental_summary || dataOrText.gait_profile) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  text: `### ToddleAI Pediatric Gait Analysis (${dataOrText.child_age_months || 24} Months)\n\n${dataOrText.developmental_summary?.headline || 'Gait assessment completed.'}`,
+                  report: dataOrText,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }
+              ]);
+            } else if (dataOrText.analysis_id || dataOrText.shots) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  text: `### Badminton Biomechanics Analysis\n\n${dataOrText.summary || 'Rally video analysis completed.'}`,
+                  report: dataOrText,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }
+              ]);
+            }
+          } else if (typeof dataOrText === 'string') {
+            handleSendMessage(dataOrText);
+          }
+        }}
         selectedChartType={selectedChartType}
         onSelectRelationship={(rel, chart) => {
           setSelectedRelationship(rel);

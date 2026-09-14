@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   MessageSquare, Plus, Trash2, Sprout,
-  Construction, Orbit, PanelLeftClose, Search, Activity
+  Construction, Orbit, PanelLeftClose, Search, Activity, Award
 } from 'lucide-react';
 
 export function ChatSidebar({
@@ -16,7 +16,8 @@ export function ChatSidebar({
   onNewSession = onNewChat,
   onDeleteSession,
   theme = 'light',
-  onReturnToLanding
+  onReturnToLanding,
+  onOpenSolutions
 }) {
   const [searchFilter, setSearchFilter] = useState('');
 

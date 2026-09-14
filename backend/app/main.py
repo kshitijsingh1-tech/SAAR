@@ -35,6 +35,17 @@ orchestrator = DynamicWorkflowOrchestrator()
 from .plugins.sports.badminton.router import router as badminton_v1_router
 app.include_router(badminton_v1_router)
 
+@app.get("/")
+def root_index():
+    return {
+        "status": "ok",
+        "service": "Saar API - Visual Scientific Reasoning Engine",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+        "frontend": "http://localhost:3000"
+    }
+
 @app.options("/{full_path:path}")
 def options_handler(full_path: str):
     return Response(status_code=200)

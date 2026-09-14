@@ -70,8 +70,8 @@ cleanup() {
 trap cleanup SIGINT SIGTERM EXIT
 
 # 5. Start Backend
-echo "⚡ [3/4] Launching FastAPI Backend on http://127.0.0.1:8001..."
-(cd backend && ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload) &
+echo "⚡ [3/4] Launching FastAPI Backend on http://127.0.0.1:8002..."
+(cd backend && ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload) &
 BACKEND_PID=$!
 
 # Wait 2 seconds for backend to bind to port
@@ -92,8 +92,8 @@ open "http://localhost:3000" 2>/dev/null || true
 echo "========================================================"
 echo " ✅ SAAR is live on localhost!"
 echo "   • Frontend:  http://localhost:3000"
-echo "   • Backend:   http://127.0.0.1:8001"
-echo "   • API Docs:  http://127.0.0.1:8001/docs"
+echo "   • Backend:   http://127.0.0.1:8002"
+echo "   • API Docs:  http://127.0.0.1:8002/docs"
 echo "========================================================"
 echo "Press [Ctrl+C] in this terminal to stop all servers."
 
