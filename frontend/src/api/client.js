@@ -108,6 +108,13 @@ export const fetchSaarKnowledge = async () => {
   return res.data;
 };
 
+export const fetchSampleTelemetry = async (domain = 'agriculture', topic = null) => {
+  const res = await axios.get(`${API_BASE_URL}/api/saar/sample-telemetry`, {
+    params: { domain, topic }
+  });
+  return res.data;
+};
+
 export const fetchKeyStatus = async () => {
   const res = await axios.get(`${API_BASE_URL}/api/keys/status`);
   return res.data;

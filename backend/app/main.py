@@ -188,6 +188,76 @@ async def saar_read_file(path: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/saar/sample-telemetry")
+async def saar_sample_telemetry(domain: str = Query("agriculture"), topic: Optional[str] = Query(None)):
+    """Load authentic empirical telemetry dataset for domain baseline."""
+    from pathlib import Path
+    base_dir = Path(__file__).resolve().parent.parent.parent
+    test_data_dir = base_dir / "test_data"
+
+    target_file = None
+    domain_lower = (domain or "agriculture").lower()
+    topic_lower = (topic or "").lower()
+
+    if any(k in topic_lower or k in domain_lower for k in ["rose", "scion", "graft", "callus", "budding"]):
+        target_file = test_data_dir / "rose_chip_budding_graft_journey_sensors.csv"
+        if not target_file.exists():
+            target_file = base_dir / "rose_chip_budding_graft_journey_sensors.csv"
+    elif any(k in domain_lower for k in ["infra", "road", "pave", "bridge", "civil", "radar"]):
+        target_file = test_data_dir / "infrastructure_cavity_sensors.csv"
+    elif any(k in domain_lower for k in ["sport", "badminton", "athletic", "racket"]):
+        target_file = test_data_dir / "badminton_match_kinematics.csv"
+    elif any(k in domain_lower for k in ["pediatric", "gait", "toddle", "walking"]):
+        target_file = test_data_dir / "toddler_gait_kinematics.csv"
+    else:
+        # Default agriculture / crop science
+        target_file = test_data_dir / "crop_data.csv"
+        if not target_file.exists():
+            target_file = test_data_dir / "rose_chip_budding_graft_journey_sensors.csv"
+
+    content = None
+    filename = ""
+
+    if target_file and target_file.exists():
+        with open(target_file, "rb") as f:
+            content = f.read()
+        filename = target_file.name
+    else:
+        from app.sample_telemetry_defaults import (
+            INFRASTRUCTURE_CAVITY_CSV,
+            BADMINTON_KINEMATICS_CSV,
+            TODDLER_GAIT_CSV,
+            ROSE_BUDDING_CSV
+        )
+        if any(k in topic_lower or k in domain_lower for k in ["rose", "scion", "graft", "callus", "budding"]):
+            content = ROSE_BUDDING_CSV
+            filename = "rose_chip_budding_graft_journey_sensors.csv"
+        elif any(k in domain_lower for k in ["infra", "road", "pave", "bridge", "civil", "radar"]):
+            content = INFRASTRUCTURE_CAVITY_CSV
+            filename = "infrastructure_cavity_sensors.csv"
+        elif any(k in domain_lower for k in ["sport", "badminton", "athletic", "racket"]):
+            content = BADMINTON_KINEMATICS_CSV
+            filename = "badminton_match_kinematics.csv"
+        elif any(k in domain_lower for k in ["pediatric", "gait", "toddle", "walking"]):
+            content = TODDLER_GAIT_CSV
+            filename = "toddler_gait_kinematics.csv"
+        else:
+            content = ROSE_BUDDING_CSV
+            filename = "rose_chip_budding_graft_journey_sensors.csv"
+
+    if not content:
+        raise HTTPException(status_code=404, detail=f"Sample telemetry dataset not found for domain: {domain}")
+
+    try:
+        state = saar_engine.start_investigation(content, filename)
+        report = saar_engine.get_report(state.investigation_id)
+        report["terminology"] = await terminology_service.extract_grounded_terms_async(
+            f"Baseline telemetry {filename}", domain_lower, report.get("conclusion", "")
+        )
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load sample telemetry: {str(e)}")
+
 @app.get("/api/saar/investigation/{investigation_id}")
 def saar_get_investigation(investigation_id: str):
     """Get the current state of an active SAAR investigation."""

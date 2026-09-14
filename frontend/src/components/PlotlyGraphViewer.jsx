@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js-dist-min';
 import {
@@ -31,6 +31,7 @@ export function PlotlyGraphViewer({
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isIngesting, setIsIngesting] = useState(false);
+  const [isLoadingBaseline, setIsLoadingBaseline] = useState(false);
   const [uploadFeedback, setUploadFeedback] = useState(null);
   const fileInputRef = useRef(null);
   const isDark = theme === 'dark';
@@ -169,178 +170,58 @@ export function PlotlyGraphViewer({
       };
     }
 
-    // 2. Synthetic baseline fallback if no real telemetry has been uploaded
-    const days = Array.from({ length: 30 }, (_, i) => `Day ${i + 1}`);
-
-    if (domain.includes('infra')) {
-      // Civil Infrastructure: Highway Pavement Void & Radar Echo
-      const rain = days.map((_, i) => (i >= 6 && i <= 9 ? 65 + Math.sin(i) * 15 : Math.max(0, 5 + Math.cos(i) * 6)));
-      const moisture = days.map((_, i) => (i < 7 ? 18 + Math.sin(i) * 2 : Math.min(46, 18 + (i - 6) * 2.1 + (i % 2))));
-      const gprEcho = days.map((_, i) => (i < 12 ? 8.2 - Math.sin(i) * 0.3 : Math.max(1.4, 8.2 - (i - 11) * 0.42)));
-      const crackWidth = days.map((_, i) => (i < 16 ? 0.2 : Math.min(4.8, 0.2 + (i - 15) * 0.34)));
-
-      return {
-        title: 'Highway Sub-base Sensor Analytics (30-Day Rain Inflow & Cavity Progression)',
-        channels: [
-          { id: 'moisture', name: 'Sub-base Moisture (%)', unit: '%', data: moisture, color: '#0284c7', yaxis: 'y' },
-          { id: 'gpr', name: 'GPR Radar Echo Attenuation (dB)', unit: 'dB', data: gprEcho, color: '#f59e0b', yaxis: 'y' },
-          { id: 'crack', name: 'Surface Crack Width (mm)', unit: 'mm', data: crackWidth, color: '#f43f5e', yaxis: 'y2' },
-          { id: 'rain', name: 'Precipitation Rainfall (mm/day)', unit: 'mm', data: rain, color: '#10b981', yaxis: 'y2' }
-        ],
-        milestones: dynamicMilestones.length > 0 ? dynamicMilestones : [
-          { day: 7, label: 'Heavy Infiltration Storm', color: '#10b981' },
-          { day: 15, label: 'Subsurface 1.8m Void Formed', color: '#f59e0b' },
-          { day: 22, label: 'Pavement Shear Crack Failure', color: '#f43f5e' }
-        ],
-        kpis: [
-          {
-            id: 'driver',
-            title: 'Primary Driver',
-            value: 'Rain Inflow ↔ Void Depth',
-            sub: 'r = +0.92 (Direct Hydraulic Erosion)',
-            badge: 'CRITICAL',
-            badgeColor: '#f43f5e',
-            conceptName: 'Subsurface Hydraulic Piping & Base Loss',
-            definition: 'Piping and internal erosion within flexible pavement sub-base caused by concentrated moisture infiltration washing away fine aggregate particles.',
-            mechanism: 'Uncontrolled rainwater entry elevates pore pressure, liquifying sand/silt fractions and initiating shear displacement under dynamic wheel loads.',
-            thresholdRule: 'Critical threshold: Sub-base moisture > 35% with GPR reflection loss > 60%.',
-            citation: 'FHWA Geotechnical Engineering Circular §8: Subsurface Cavity Progression and Moisture Infiltration.',
-            dictionaryTerm: 'Sub-base Void'
-          },
-          {
-            id: 'trigger',
-            title: 'Trigger Anomaly',
-            value: 'Day 7 Storm (78 mm)',
-            sub: 'Exceeded 25 mm/day drainage limit',
-            badge: 'ANOMALY',
-            badgeColor: '#f59e0b',
-            conceptName: 'Precipitation Inundation & Joint Seal Failure',
-            definition: 'Severe storm precipitation exceeding lateral highway drainage capacity, forcing hydraulic intrusion into aged transverse pavement joints.',
-            mechanism: 'Inflow rate exceeds sub-drain capacity by 310%, creating positive hydrostatic head beneath the asphalt binder course.',
-            thresholdRule: 'Rainfall 78 mm/day vs design capacity 25 mm/day.',
-            citation: 'AASHTO Pavement Drainage Guidelines: Hydraulic Surges in Granular Base Courses.',
-            dictionaryTerm: 'Precipitation Infiltration'
-          },
-          {
-            id: 'impact',
-            title: 'Structural Impact',
-            value: 'Void Depth: 1.84m',
-            sub: 'Load Bearing Capacity -64%',
-            badge: 'FAILURE',
-            badgeColor: '#e11d48',
-            conceptName: 'Sub-base Cavity & Pavement Fatigue Failure',
-            definition: 'Formation of an unsupported air/water void beneath the asphalt layer, inducing high tensile bending stresses and surface alligator cracking.',
-            mechanism: 'Absence of granular support creates cantilever flexure during heavy axle crossings, producing catastrophic shear fractures.',
-            thresholdRule: 'Cavity diameter 1.84m (Threshold for immediate structural collapse: >1.2m).',
-            citation: 'ASTM D6432: Standard Guide for Using Surface Ground Penetrating Radar for Subsurface Investigation.',
-            dictionaryTerm: 'Fatigue Cracking'
-          },
-          {
-            id: 'scope',
-            title: 'Timeline Scope',
-            value: '30 Daily Readings',
-            sub: '4 Synchronized Sensor Channels',
-            badge: 'VERIFIED',
-            badgeColor: '#0284c7',
-            conceptName: 'Multi-Sensor Infrastructure Longitudinal Array',
-            definition: 'Synchronized telemetry combining GPR radar echoes, soil moisture probes, rain gauges, and surface crack extensometers over 30 days.',
-            mechanism: 'Cross-sensor latency confirms water inflow on Day 7 preceded cavity formation on Day 15 and surface shear cracking on Day 22.',
-            thresholdRule: '4 synchronized time series channels verifying temporal Granger causality.',
-            citation: 'Federal Highway Administration Long-Term Pavement Performance (LTPP) Protocol.',
-            dictionaryTerm: 'Sensor Array'
-          }
-        ],
-        days
-      };
-    }
-
-    // Default: Crop Science & Agronomy (Tomato Chlorosis & Iron Deficit)
-    const soilMoisture = days.map((_, i) => (i < 5 ? 28 + (i % 2) * 2 : Math.min(51, 46 + Math.sin(i * 0.8) * 3)));
-    const substratePh = days.map((_, i) => (i < 5 ? 6.7 + i * 0.02 : Math.min(7.9, 6.8 + (i - 4) * 0.048)));
-    const bioavailableFe = days.map((_, i) => (i < 6 ? 0.44 - i * 0.01 : Math.max(0.038, 0.42 * Math.exp(-(i - 5) * 0.12))));
-    const chlorosisNDRE = days.map((_, i) => (i < 12 ? 0.65 - (i % 3) * 0.01 : Math.max(0.18, 0.64 - (i - 11) * 0.032)));
-
-    return {
-      title: 'Rhizosphere & Foliar Sensor Analytics (30-Day Longitudinal Tracking)',
-      channels: [
-        { id: 'moisture', name: 'Root Zone Moisture (% VWC)', unit: '% VWC', data: soilMoisture, color: '#0284c7', yaxis: 'y' },
-        { id: 'fe', name: 'Bioavailable Fe²⁺ (ppm)', unit: 'ppm', data: bioavailableFe, color: '#10b981', yaxis: 'y' },
-        { id: 'ph', name: 'Substrate pH (Alkalinity)', unit: 'pH', data: substratePh, color: '#f59e0b', yaxis: 'y2' },
-        { id: 'ndre', name: 'Foliar Chlorosis Index (NDRE)', unit: 'NDRE', data: chlorosisNDRE, color: '#f43f5e', yaxis: 'y' }
-      ],
-      milestones: dynamicMilestones.length > 0 ? dynamicMilestones : [
-        { day: 6, label: 'Continuous Drip Discharge Begins', color: '#0284c7' },
-        { day: 14, label: 'Root Zone Anoxia (DO < 0.8 mg/L)', color: '#f59e0b' },
-        { day: 22, label: 'Severe Foliar Chlorosis Observed', color: '#f43f5e' }
-      ],
-      kpis: [
-        {
-          id: 'driver',
-          title: 'Primary Causal Driver',
-          value: 'Substrate pH ↔ Fe²⁺ Uptake',
-          sub: 'r = -0.94 (Alkaline Lockup)',
-          badge: 'ROOT CAUSE',
-          badgeColor: '#f59e0b',
-          conceptName: 'Substrate Alkalinization & Iron Lockup',
-          definition: 'In calcareous or over-irrigated soils where substrate pH exceeds 7.5, root-zone bicarbonate blocks the enzymatic reduction of ferric iron (Fe³⁺) to bioavailable ferrous iron (Fe²⁺).',
-          mechanism: 'Fe³⁺ + 3OH⁻ → Fe(OH)₃ ↓ (Insoluble hydroxide precipitate). Root ferric chelate reductase enzyme shuts down under high pH, halting iron absorption into vascular xylem.',
-          thresholdRule: 'Normal root zone pH: 5.8 - 6.5. Observed anomaly: pH 7.94 with 91% reduction in bioavailable Fe²⁺.',
-          citation: 'FAO Plant Production & Protection Paper §4.2: Iron Deficiency Chlorosis in Solanaceae.',
-          dictionaryTerm: 'Iron Deficiency Chlorosis'
-        },
-        {
-          id: 'trigger',
-          title: 'Trigger Anomaly',
-          value: 'Continuous Drip Emitter',
-          sub: 'Day 6: Moisture surged to 48.2%',
-          badge: 'TRIGGER',
-          badgeColor: '#0284c7',
-          conceptName: 'Continuous Irrigation Leak & Rhizosphere Hypoxia',
-          definition: 'A malfunctioning drip emitter delivering continuous unmetered discharge supersaturates substrate pore spaces, driving soil Dissolved Oxygen (DO) below critical root survival levels (<0.8 mg/L).',
-          mechanism: 'Pore water displaces oxygen → Root respiration shifts from aerobic phosphorylation to anaerobic glycolysis → ATP deficit of 80% paralyzes plasma membrane H⁺-ATPase proton pumps.',
-          thresholdRule: 'Normal field moisture: 28% VWC. Observed anomaly: 48.2% VWC sustained for >14 days.',
-          citation: 'Journal of Plant Nutrition: Longitudinal Root Anoxia & Respiration Arrest in Solanaceae.',
-          dictionaryTerm: 'Rhizosphere Hypoxia'
-        },
-        {
-          id: 'impact',
-          title: 'Biological Impact',
-          value: 'Bioavailable Fe²⁺ -91%',
-          sub: 'NDRE dropped from 0.65 to 0.18',
-          badge: 'SYMPTOM',
-          badgeColor: '#f43f5e',
-          conceptName: 'Interveinal Foliar Chlorosis (NDRE Index)',
-          definition: 'Degradation of chlorophyll biosynthesis in newly expanding apical foliage. Because iron is immobile in plant tissue, young terminal leaves exhibit bright interveinal yellowing while primary veins stay green.',
-          mechanism: 'Absence of Fe cofactors arrests chlorophyll a/b synthesis. Red-edge reflectance shifts sharply, causing the Normalized Difference Red Edge (NDRE) spectral index to collapse.',
-          thresholdRule: 'Healthy vegetative NDRE: 0.60 - 0.75. Acute Chlorosis observed: NDRE 0.18.',
-          citation: 'Remote Sensing & Agronomic Physiology: NDRE Optical Diagnostics for Micronutrient Deficiencies.',
-          dictionaryTerm: 'Foliar Chlorosis'
-        },
-        {
-          id: 'scope',
-          title: 'Data Resolution',
-          value: '30 Daily Timesteps',
-          sub: '5 Synchronized Channels · 120 Readings',
-          badge: 'EMPIRICAL',
-          badgeColor: '#10b981',
-          conceptName: 'Synchronized Longitudinal Multivariate Telemetry',
-          definition: 'High-density longitudinal tracking that captures temporal ordering between environmental trigger (Day 6 leak), chemical shift (Day 10 pH rise), and visible plant symptom (Day 22 chlorosis).',
-          mechanism: 'Temporal precedence confirms Granger causality (Moisture surge preceded chemical lockup by 4 days; lockup preceded foliar chlorosis by 12 days), decisively ruling out sudden viral mosaic blights.',
-          thresholdRule: '30 consecutive daily timesteps validating Bayesian belief update.',
-          citation: 'Saar Longitudinal Causal Modeling Specification §3.4: Temporal Latency Calibration.',
-          dictionaryTerm: 'Longitudinal Tracking'
-        }
-      ],
-      days
-    };
-  }, [domain, activeInvestigation, saarData]);
+    // AGENTS.md Rule 1 & 2: Zero hardcoded mock bounding boxes, synthetic channels, or phantom data.
+    // If no authentic telemetry exists for this session/domain, return null to render the honest empty state.
+    return null;
+  }, [domain, activeInvestigation, saarData, propsMilestones]);
 
   // Scatter plot selection states
-  const [scatterVarX, setScatterVarX] = useState('ph');
-  const [scatterVarY, setScatterVarY] = useState('fe');
+  const [scatterVarX, setScatterVarX] = useState('');
+  const [scatterVarY, setScatterVarY] = useState('');
 
-  const channelX = sensorSuite.channels.find((c) => c.id === scatterVarX) || sensorSuite.channels[0];
-  const channelY = sensorSuite.channels.find((c) => c.id === scatterVarY) || sensorSuite.channels[1] || sensorSuite.channels[0];
+  // Dynamically synchronize scatter variables from selectedRelationship or available channels
+  useEffect(() => {
+    if (!sensorSuite?.channels || sensorSuite.channels.length === 0) return;
+
+    const availableIds = sensorSuite.channels.map((c) => c.id);
+
+    if (selectedRelationship) {
+      const srcName = String(selectedRelationship.source || selectedRelationship.source_feature || '').toLowerCase().replace(/\s+/g, '_');
+      const tgtName = String(selectedRelationship.target || selectedRelationship.target_feature || '').toLowerCase().replace(/\s+/g, '_');
+
+      const matchedX = sensorSuite.channels.find((c) => {
+        const idLower = c.id.toLowerCase();
+        return idLower === srcName || idLower.includes(srcName) || srcName.includes(idLower);
+      });
+      const matchedY = sensorSuite.channels.find((c) => {
+        const idLower = c.id.toLowerCase();
+        return idLower === tgtName || idLower.includes(tgtName) || tgtName.includes(idLower);
+      });
+
+      if (matchedX && matchedY && matchedX.id !== matchedY.id) {
+        setScatterVarX(matchedX.id);
+        setScatterVarY(matchedY.id);
+        return;
+      } else if (matchedX) {
+        setScatterVarX(matchedX.id);
+        const altY = sensorSuite.channels.find((c) => c.id !== matchedX.id);
+        if (altY) setScatterVarY(altY.id);
+        return;
+      }
+    }
+
+    // Default to first two valid channels
+    const validX = availableIds.includes(scatterVarX) ? scatterVarX : availableIds[0];
+    const validY = availableIds.includes(scatterVarY) && scatterVarY !== validX
+      ? scatterVarY
+      : (availableIds.find((id) => id !== validX) || validX);
+
+    setScatterVarX(validX);
+    setScatterVarY(validY);
+  }, [sensorSuite, selectedRelationship]);
+
+  const channelX = (sensorSuite?.channels?.find((c) => c.id === scatterVarX)) || sensorSuite?.channels?.[0] || null;
+  const channelY = (sensorSuite?.channels?.find((c) => c.id === scatterVarY)) || sensorSuite?.channels?.[1] || sensorSuite?.channels?.[0] || null;
 
   // Calculate Pearson correlation & Linear regression
   const { regressionLine, correlationR, rSquared } = useMemo(() => {
@@ -387,6 +268,9 @@ export function PlotlyGraphViewer({
 
   // 2. View 1: Plotly Multi-Sensor Timeline Data & Layout
   const timelinePlot = useMemo(() => {
+    if (!sensorSuite || !sensorSuite.channels || sensorSuite.channels.length === 0) {
+      return { traces: [], layout: {} };
+    }
     const traces = sensorSuite.channels.map((channel) => ({
       x: sensorSuite.days,
       y: channel.data,
@@ -426,7 +310,7 @@ export function PlotlyGraphViewer({
     };
 
     // Add milestone vertical dashed lines
-    const shapes = sensorSuite.milestones.map((m) => {
+    const shapes = (sensorSuite.milestones || []).map((m) => {
       const targetX = getTargetX(m);
       return {
         type: 'line',
@@ -440,7 +324,7 @@ export function PlotlyGraphViewer({
     });
 
     // Add milestone text annotations
-    const annotations = sensorSuite.milestones.map((m, idx) => {
+    const annotations = (sensorSuite.milestones || []).map((m, idx) => {
       const targetX = getTargetX(m);
       const isAlt = idx % 2 === 1;
       const stageSnippet = m.stage ? `<br><span style="font-size:8px;font-weight:400">${m.stage.slice(0, 16)}</span>` : '';
@@ -463,10 +347,12 @@ export function PlotlyGraphViewer({
       };
     });
 
+    const hasSecondaryY = sensorSuite.channels.some((c) => c.yaxis === 'y2');
+
     const layout = {
       autosize: true,
       height: 390,
-      margin: { l: 50, r: 50, t: 45, b: 75 },
+      margin: { l: 50, r: hasSecondaryY ? 50 : 25, t: 45, b: 75 },
       paper_bgcolor: paperColor,
       plot_bgcolor: paperColor,
       font: { family: 'Outfit, sans-serif', color: textColor, size: 11 },
@@ -484,43 +370,46 @@ export function PlotlyGraphViewer({
         tickangle: -30
       },
       yaxis: {
-        title: 'Sensor Metric Range (% / ppm / NDRE)',
+        title: 'Sensor Metric Range (Primary)',
         gridcolor: gridColor,
         showgrid: true
       },
-      yaxis2: {
-        title: 'Substrate pH Scale (Alkalinity)',
+      yaxis2: hasSecondaryY ? {
+        title: 'Secondary Metric Range',
         overlaying: 'y',
         side: 'right',
         gridcolor: 'transparent',
-        showgrid: false,
-        range: [6.0, 8.5]
-      },
+        showgrid: false
+      } : undefined,
       shapes,
       annotations
     };
 
     return { traces, layout };
-  }, [sensorSuite, paperColor, textColor, gridColor]);
+  }, [sensorSuite, paperColor, textColor, gridColor, isDark]);
 
   // 3. View 2: Plotly Bivariate Scatter Plot Data & Layout
   const scatterPlot = useMemo(() => {
+    if (!sensorSuite || !channelX || !channelY || !channelX.data || !channelY.data) {
+      return { traces: [], layout: {} };
+    }
+    const days = sensorSuite.days || [];
     const traces = [
       {
         x: channelX.data,
         y: channelY.data,
-        text: sensorSuite.days.map((d, i) => `${d}<br>${channelX.name}: ${channelX.data[i]}<br>${channelY.name}: ${channelY.data[i]}`),
+        text: days.map((d, i) => `${d}<br>${channelX.name}: ${channelX.data[i]}<br>${channelY.name}: ${channelY.data[i]}`),
         type: 'scatter',
         mode: 'markers',
         marker: {
           size: 10,
-          color: sensorSuite.days.map((_, i) => i),
+          color: days.map((_, i) => i),
           colorscale: 'Blues',
           showscale: false,
           line: { color: primaryColor, width: 1.5 }
         },
         hovertemplate: `%{text}<extra></extra>`,
-        name: 'Daily Observations'
+        name: 'Observations'
       },
       {
         x: regressionLine.x,
@@ -552,10 +441,13 @@ export function PlotlyGraphViewer({
     };
 
     return { traces, layout };
-  }, [channelX, channelY, sensorSuite.days, regressionLine, correlationR, rSquared, paperColor, textColor, gridColor]);
+  }, [channelX, channelY, sensorSuite?.days, regressionLine, correlationR, rSquared, paperColor, textColor, gridColor]);
 
   // 4. View 3: Pairwise Correlation Heatmap Data & Layout
   const heatmapPlot = useMemo(() => {
+    if (!sensorSuite || !sensorSuite.channels || sensorSuite.channels.length === 0) {
+      return { traces: [], layout: {} };
+    }
     const labels = sensorSuite.channels.map((c) => c.name);
     const zMatrix = [];
     const textMatrix = [];
@@ -639,7 +531,7 @@ export function PlotlyGraphViewer({
   };
 
   // Guided Empty State: When no sensor telemetry or tabular document has been entered
-  if (!hasSensorData) {
+  if (!hasSensorData || !sensorSuite || !sensorSuite.channels || sensorSuite.channels.length === 0) {
     return (
       <div className="sensor-empty-guide" style={{
         display: 'flex',
@@ -876,21 +768,39 @@ export function PlotlyGraphViewer({
                 marginBottom: '0.85rem'
               }}>
                 <span style={{ fontSize: '0.65rem', fontWeight: '700', color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  {domain.includes('infra') ? 'Civil Infrastructure Telemetry' : 'Botanical Agronomy Telemetry'}
+                  {domain.includes('infra')
+                    ? 'Civil Infrastructure Telemetry'
+                    : (domain.includes('sport')
+                      ? 'Kinematic Biomechanics Telemetry'
+                      : (domain.includes('pediatric') || domain.includes('gait')
+                        ? 'Pediatric Gait Kinematics'
+                        : 'Botanical Agronomy Telemetry'))}
                 </span>
                 <span style={{ fontSize: '0.73rem', color: '#334155', fontWeight: '500' }}>
                   {domain.includes('infra') 
-                    ? '4 Channels: Moisture (%), GPR Echo (dB), Crack Width (mm), Rain (mm/day)' 
-                    : '4 Channels: Soil pH, NDRE Foliar Chlorophyll, Electrical Conductivity, Transpiration'}
+                    ? '6 Channels: Sub-base Moisture, GPR Radar Echo, Surface Crack Width, Rainfall, Pore Pressure, Deflection' 
+                    : (domain.includes('sport')
+                      ? '7 Channels: Racket Speed, Shuttlecock Speed, Heart Rate, Court Distance, Wrist Ang Vel, Elbow Ext, Impact Angle'
+                      : (domain.includes('pediatric') || domain.includes('gait')
+                        ? '8 Channels: Cadence, Stride Length, Symmetry Ratio, Step Width, Stance Phase, Trunk Sway, Ankle Dorsiflexion, Knee Flexion'
+                        : '16 Channels: Soil pH, NDRE Foliar Chlorophyll, Electrical Conductivity, Transpiration, Sap Flow, Xylem Flux'))}
                 </span>
               </div>
             </div>
 
             <button
               type="button"
-              onClick={() => {
+              disabled={isLoadingBaseline}
+              onClick={async () => {
                 if (onLoadSampleDataset) {
-                  onLoadSampleDataset(domain);
+                  setIsLoadingBaseline(true);
+                  try {
+                    await onLoadSampleDataset(domain);
+                  } catch (err) {
+                    console.error("Error loading sample baseline:", err);
+                  } finally {
+                    setIsLoadingBaseline(false);
+                  }
                 }
               }}
               style={{
@@ -900,19 +810,28 @@ export function PlotlyGraphViewer({
                 gap: '6px',
                 padding: '0.5rem 1rem',
                 borderRadius: '6px',
-                background: '#ffffff',
+                background: isLoadingBaseline ? '#f1f5f9' : '#ffffff',
                 color: '#0284c7',
                 border: '1.5px solid #0284c7',
                 fontSize: '0.78rem',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: isLoadingBaseline ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s ease'
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f9ff'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; }}
+              onMouseEnter={(e) => { if (!isLoadingBaseline) e.currentTarget.style.background = '#f0f9ff'; }}
+              onMouseLeave={(e) => { if (!isLoadingBaseline) e.currentTarget.style.background = '#ffffff'; }}
             >
-              <Sparkles size={14} color="#0284c7" />
-              <span>Load 30-Day Sensor Baseline</span>
+              {isLoadingBaseline ? (
+                <>
+                  <RefreshCw size={14} className="spin" color="#0284c7" />
+                  <span>Loading Authentic Baseline...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} color="#0284c7" />
+                  <span>Load 30-Day Sensor Baseline</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1025,9 +944,11 @@ export function PlotlyGraphViewer({
           <CheckCircle2 size={15} color="#0284c7" />
           <span style={{ fontWeight: '600' }}>Active Sensor Telemetry:</span>
           <span style={{ color: '#475569' }}>
-            {saarData?.perception?.observations_count
-              ? `${saarData.perception.observations_count} Observations · ${saarData.perception.features_detected || 4} Features`
-              : (domain.includes('infra') ? '30-Day Civil Infrastructure Sensor Array' : '30-Day Longitudinal Agronomy Sensor Array')}
+            {sensorSuite?.title || (
+              saarData?.perception?.observations_count
+                ? `${saarData.perception.observations_count} Observations · ${saarData.perception.features_detected || 4} Features`
+                : 'Longitudinal Multi-Sensor Array'
+            )}
           </span>
         </div>
         

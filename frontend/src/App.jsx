@@ -3,7 +3,8 @@ import axios from 'axios';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
   uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline,
-  analyzeGaitVideo, analyzeBadmintonVideo, askBadmintonQuestion, classifyVideo, classifyImage, API_BASE_URL
+  analyzeGaitVideo, analyzeBadmintonVideo, askBadmintonQuestion, classifyVideo, classifyImage, API_BASE_URL,
+  fetchSampleTelemetry
 } from './api/client';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ChatGPTView } from './components/ChatGPTView';
@@ -414,6 +415,9 @@ export default function App() {
 
   const hasSensorData = Boolean(
     sessionSensorData[activeSessionId] ||
+    saarData?.telemetry?.channels ||
+    investigationData?.telemetry?.channels ||
+    sessions.find((s) => s.id === activeSessionId)?.telemetryData?.channels ||
     saarData?.perception?.features_detected ||
     saarData?.observations_count
   );
@@ -1357,19 +1361,62 @@ export default function App() {
           return fType.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fName);
         });
 
+        const csvFiles = currentFiles.filter((f) => {
+          const fName = f.name || '';
+          const fType = (f.type || '').toLowerCase();
+          return fType === 'text/csv' || /\.(csv|xlsx?|tsv)$/i.test(fName);
+        });
+
+        let companionCsvReport = null;
+        if (csvFiles.length > 0) {
+          try {
+            companionCsvReport = await uploadSaarCsv(csvFiles[0], { signal: abortController.signal });
+            if (!checkIsAborted()) {
+              setSaarData(companionCsvReport);
+              setSessionSensorData((prev) => ({
+                ...prev,
+                [activeSessionId]: true
+              }));
+              setSessions((prev) =>
+                prev.map((s) =>
+                  s.id === activeSessionId
+                    ? {
+                        ...s,
+                        telemetryData: companionCsvReport?.telemetry || s.telemetryData
+                      }
+                    : s
+                )
+              );
+              unlockTools(['analytics', 'graph']);
+            }
+          } catch (csvErr) {
+            console.warn("Companion CSV upload error:", csvErr);
+          }
+        }
+
         if (imageFiles.length > 0) {
-          await executeImageInvestigation(imageFiles, imageFiles.map((f) => f.name).join(', '), userText, true);
+          await executeImageInvestigation(imageFiles, imageFiles.map((f) => f.name).join(', '), userText, true, companionCsvReport);
           return;
         }
 
         if (isCsv) {
-          const report = await uploadSaarCsv(file, { signal: abortController.signal });
+          const report = companionCsvReport || await uploadSaarCsv(file, { signal: abortController.signal });
           if (checkIsAborted()) return;
           setSaarData(report);
           setSessionSensorData((prev) => ({
             ...prev,
             [activeSessionId]: true
           }));
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === activeSessionId
+                ? {
+                    ...s,
+                    telemetryData: report?.telemetry || s.telemetryData
+                  }
+                : s
+            )
+          );
 
           const featuresCount = report?.perception?.features_detected ?? (report?.telemetry?.columnCount || 'several');
           const obsCount = report?.perception?.observations_count ?? (report?.telemetry?.rowCount || 'multiple');
@@ -1545,6 +1592,16 @@ export default function App() {
         ...prev,
         [activeSessionId]: true
       }));
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? {
+                ...s,
+                telemetryData: report?.telemetry || s.telemetryData
+              }
+            : s
+        )
+      );
 
       const featuresCount = report?.perception?.features_detected ?? (report?.telemetry?.columnCount || 'several');
       const obsCount = report?.perception?.observations_count ?? (report?.telemetry?.rowCount || 'multiple');
@@ -1579,6 +1636,7 @@ export default function App() {
         }
       ]);
 
+      unlockTools(['analytics', 'graph']);
       setActiveTool('analytics');
       setIsToolDrawerOpen(true);
       return report;
@@ -1590,14 +1648,58 @@ export default function App() {
     }
   };
 
-  // Load sample telemetry baseline for the active domain
-  const handleLoadSampleDataset = (domainOverride) => {
-    setSessionSensorData((prev) => ({
-      ...prev,
-      [activeSessionId]: true
-    }));
-    setActiveTool('analytics');
-    setIsToolDrawerOpen(true);
+  // Load authentic sample telemetry baseline for the active domain & specimen topic
+  const handleLoadSampleDataset = async (domainOverride) => {
+    setIsProcessing(true);
+    try {
+      const activeSession = sessions.find((s) => s.id === activeSessionId);
+      const targetDomain = domainOverride || activeSession?.domain || selectedDomain || 'agriculture';
+      const topicHint = `${activeSession?.title || ''} ${investigationData?.conclusion || ''} ${saarData?.conclusion || ''}`;
+
+      const report = await fetchSampleTelemetry(targetDomain, topicHint);
+      if (report) {
+        setSaarData(report);
+        setSessionSensorData((prev) => ({
+          ...prev,
+          [activeSessionId]: true
+        }));
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === activeSessionId
+              ? {
+                  ...s,
+                  domain: targetDomain,
+                  telemetryData: report.telemetry || s.telemetryData
+                }
+              : s
+          )
+        );
+
+        const featuresCount = report?.perception?.features_detected ?? (report?.telemetry?.columnCount || 'several');
+        const obsCount = report?.perception?.observations_count ?? (report?.telemetry?.rowCount || 'multiple');
+        const relCount = report?.relationships?.length ?? 0;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: `Loaded authentic **${report.telemetry?.title || 'Sensor Telemetry'}** (${obsCount} timesteps, ${featuresCount} channels, ${relCount} causal dependency links). Telemetry is synchronized with the **Sensor Analytics** dashboard.`,
+            report,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+
+        unlockTools(['analytics', 'graph']);
+        setActiveTool('analytics');
+        setIsToolDrawerOpen(true);
+      }
+      return report;
+    } catch (err) {
+      console.error("Failed to load sample telemetry:", err);
+      throw err;
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Select Session from Sidebar
