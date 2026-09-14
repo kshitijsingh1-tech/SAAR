@@ -2343,6 +2343,40 @@ The user requested converting interactive diagnostic assessment conclusions (suc
    - Production frontend build `npm run build` executed and passed in 19.75s with 0 errors.
    - Interactive triage test on `http://localhost:3000` answering multi-turn diagnostic questions confirmed the rendered 4-section report card, purple headers, strikethroughs, and copy actions.
 
+---
+
+## 35. [2026-09-15] Resolution of `isBadminton` Scoped Variable ReferenceError in AdaptiveInquiryCard
+
+**Primary Files Modified**:
+- [`frontend/src/components/AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+When rendering `<AdaptiveInquiryCard />` in the interactive triage flow or inside chat, a runtime error was triggered:
+`ReferenceError: isBadminton is not defined`
+preventing the component from rendering.
+
+### Root Cause Analysis
+During the previous refactoring to remove hardcoded scenario cascades in the loading screen, `const isBadminton` was removed from line 129. However, downstream JSX elements (active questioning header, badge descriptions, and the Judge Demo Case A/B buttons) still evaluated `isBadminton ? ... : ...`.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Component-Level Scoped Definition**:
+   - Added a safe, top-level boolean derivation in `AdaptiveInquiryCard.jsx`:
+     ```javascript
+     const isBadminton = Boolean(
+       session?.domain === 'sports' ||
+       session?.domain === 'badminton' ||
+       subjectId?.includes('badminton') ||
+       subjectId?.includes('player') ||
+       (userConcern && (userConcern.toLowerCase().includes('badminton') || userConcern.toLowerCase().includes('smash') || userConcern.toLowerCase().includes('racket')))
+     );
+     ```
+   - Ensuring `isBadminton` is scoped and accessible throughout all component sub-renders and event handlers.
+2. **Empirical Verification**:
+   - Frontend production build (`npm run build`) succeeded in 20.55s with 0 errors.
+   - Browser subagent reloaded `http://localhost:3000` and inspected console logs: verified 0 ReferenceErrors and 0 uncaught exceptions.
+
+
 
 
 
