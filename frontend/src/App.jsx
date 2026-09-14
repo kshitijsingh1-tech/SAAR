@@ -576,6 +576,29 @@ export default function App() {
     }
   }, [selectedDomain, unlockTools, setSessionTools, customImageData, customImageUrl, customVideoFile]);
 
+  // Adaptive Inquiry Completion handler: unlocks domain tools ONLY after all diagnostic questions are answered
+  const handleAdaptiveInquiryComplete = useCallback((completedSession) => {
+    if (!completedSession) return;
+    const domain = completedSession.domain || (completedSession.subjectId?.includes('badminton') ? 'sports' : '');
+    const isBadminton = domain === 'sports' ||
+      domain === 'badminton' ||
+      completedSession.subjectId?.includes('badminton') ||
+      completedSession.subjectId?.includes('player') ||
+      /badminton|smash|racket|shuttle/.test(completedSession.conclusion || '');
+
+    if (isBadminton) {
+      // All required questions answered for analysis — now unlock badminton tool!
+      unlockTools(['badminton', 'verdict', 'rag', 'analytics']);
+    } else {
+      const isGait = domain === 'clinical' ||
+        completedSession.subjectId?.includes('child') ||
+        /gait|walk|step/.test(completedSession.conclusion || '');
+      if (isGait) {
+        unlockTools(['gait', 'verdict', 'rag']);
+      }
+    }
+  }, [unlockTools]);
+
   // Select Session from Sidebar or programmatic switch (Restores each session's own report)
   const handleSelectSession = useCallback((id) => {
     setActiveSessionId(id);

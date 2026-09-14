@@ -368,7 +368,8 @@ export function ChatGPTView({
   onReturnToLanding,
   onNewSession,
   hasSensorData = true,
-  unlockedTools = ['dictionary']
+  unlockedTools = ['dictionary'],
+  onAdaptiveInquiryComplete = null
 }) {
   const [inputText, setInputText] = useState('');
   const [textSnippet, setTextSnippet] = useState(null);
@@ -381,6 +382,7 @@ export function ChatGPTView({
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [answeringQId, setAnsweringQId] = useState(null);
   const [customAnswerText, setCustomAnswerText] = useState('');
+  const [concludedSessions, setConcludedSessions] = useState({});
 
   // Synchronization refs to prevent stale closure access in global keyboard listeners & fast events
   const attachedFilesRef = useRef(attachedFiles);
@@ -1234,6 +1236,13 @@ export function ChatGPTView({
                                     investigationId={msg.investigationId || "latest"}
                                     userConcern={msg.adaptiveConcern}
                                     subjectId={msg.subjectId || 'child_leo_24m'}
+                                    onOpenTool={onOpenTool}
+                                    onSessionComplete={(completedSession) => {
+                                      setConcludedSessions((prev) => ({ ...prev, [index]: true }));
+                                      if (onAdaptiveInquiryComplete) {
+                                        onAdaptiveInquiryComplete(completedSession, msg);
+                                      }
+                                    }}
                                   />
                                 </div>
                               )}
@@ -1260,7 +1269,11 @@ export function ChatGPTView({
                       // Determine modality strictly by active report data structure
                       const isImageInvestigation = Boolean(rep?.final_graph || rep?.vlm_raw_analysis || rep?.image_metadata || rep?.preset_metadata || rep?.nodes?.length > 0);
                       const isPedGait = !isImageInvestigation && Boolean(rep?.assessment_id || rep?.cadence_range || (rep?.metrics && rep?.metrics.usable_step_count !== undefined));
-                      const isBadmintonSports = !isImageInvestigation && Boolean(rep?.court_calibration || rep?.speed_metrics || rep?.shots || (rep?.analysis_id && rep?.domain === 'sports'));
+                      const hasActiveInquiry = Boolean(msg.adaptiveConcern && !concludedSessions[index]);
+                      const isBadmintonSports = !hasActiveInquiry && !isImageInvestigation && (
+                        Boolean(rep?.court_calibration || rep?.speed_metrics || rep?.shots || (rep?.analysis_id && rep?.domain === 'sports')) ||
+                        (msg.subjectId?.includes('badminton') && Boolean(concludedSessions[index]))
+                      );
                       const isTelemetryDataset = !isImageInvestigation && !isPedGait && !isBadmintonSports && Boolean(rep?.telemetry || rep?.perception?.features_detected);
 
                       return (

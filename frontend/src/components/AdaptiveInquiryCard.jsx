@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   HelpCircle, Brain, CheckCircle2, XCircle, ArrowRight,
   Sparkles, ShieldCheck, AlertTriangle, Lightbulb, ChevronRight,
-  Loader2, RotateCcw, Zap, Compass, Activity, Info
+  Loader2, RotateCcw, Zap, Compass, Activity, Info, Film
 } from 'lucide-react';
 import { startAdaptiveSession, submitAdaptiveAnswer } from '../api/client';
 import { MarkdownResponse } from './MarkdownResponse';
@@ -22,7 +22,8 @@ const AdaptiveInquiryCard = ({
   subjectId = 'child_leo_24m',
   baselineComparison,
   onSessionComplete,
-  onClose
+  onClose,
+  onOpenTool
 }) => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,13 @@ const AdaptiveInquiryCard = ({
   useEffect(() => {
     initSession();
   }, [initSession]);
+
+  // Notify parent whenever session concludes
+  useEffect(() => {
+    if (session?.status === 'concluded' && onSessionComplete) {
+      onSessionComplete(session);
+    }
+  }, [session?.status, onSessionComplete]);
 
   const handleAnswerClick = async (optionId) => {
     if (!session || loading) return;
@@ -182,6 +190,34 @@ const AdaptiveInquiryCard = ({
           onRestartTriage={initSession}
           onClose={onClose}
         />
+        {onOpenTool && isBadminton && (
+          <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => onOpenTool('badminton')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 18px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #4338ca, #6366f1)',
+                color: '#ffffff',
+                fontSize: '0.85rem',
+                fontWeight: '700',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
+                transition: 'all 0.2s ease'
+              }}
+              title="Open Badminton Athletic Biomechanics & Kinematics Studio"
+            >
+              <Film size={15} />
+              <span>Launch Badminton Biomechanics Studio</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        )}
       </div>
     );
   }
