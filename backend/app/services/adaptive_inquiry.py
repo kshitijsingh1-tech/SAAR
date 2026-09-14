@@ -1286,7 +1286,7 @@ Based on computer vision kinematic tracking and your interactive diagnostic resp
 ### 4. Technical Correction & Action Plan
 - **High Apex Reach Drill**: Suspend a shuttlecock at maximum vertical extension (110–115% standing reach). Practice shadow smashes initiating impact 20–30 cm in front of the dominant shoulder to eliminate dropped elbow contact.
 - **Relaxed Grip Pronation Conditioning**: Use a thumb-and-index finger pinch on bevel #2, keeping palm tension below 20% until 5 milliseconds prior to impact to maximize internal radioulnar rotational velocity (40–50% of final racket speed).
-- **Centroid Reset & Split-Step Synchronization**: Execute 10-shuttle multi-shuttle intervals focusing on recovering to the center base ($y \\approx 3.5\\text{{ m}}$ from net) within 0.8s of smash execution to prevent fatigue-induced spatial drift.
+- **Centroid Reset & Split-Step Synchronization**: Execute 10-shuttle multi-shuttle intervals focusing on recovering to the center base (y ≈ 3.5m from net) within 0.8s of smash execution to prevent fatigue-induced spatial drift.
 
 ---
 *Athletic Analytics Disclaimer: This assessment provides automated kinematic and biomechanical guidance for coaching optimization. Consult a certified sports physiotherapist or badminton coach for personalized on-court biomechanics instruction.*

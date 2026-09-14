@@ -2297,6 +2297,53 @@ The user requested implementing a specific visual aesthetic and structured repor
    - Production frontend build `npm run build` executed and passed in 19.42s with 0 errors.
    - Browser subagent visual inspection confirmed the rendered report card container, purple section headers with horizontal divider lines, purple bullets, and bottom-right `[Raw]` and `[Copy]` buttons.
 
+---
+
+## 34. [2026-09-15] Interactive Adaptive Assessment Report Card Styling & Visual Alignment
+
+**Primary Files Modified**:
+- [`frontend/src/components/MarkdownResponse.jsx`](file:///d:/bytebuild/frontend/src/components/MarkdownResponse.jsx)
+- [`frontend/src/components/AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx)
+- [`frontend/src/index.css`](file:///d:/bytebuild/frontend/src/index.css)
+- [`backend/app/services/adaptive_inquiry.py`](file:///d:/bytebuild/backend/app/services/adaptive_inquiry.py)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+The user requested converting interactive diagnostic assessment conclusions (such as the 4-section Badminton Biomechanical Assessment or Toddler Gait conclusions) into the identical elevated report card frontend layout:
+1. Prominent assessment document title with bottom divider line (e.g., `Badminton Biomechanical Assessment: Kinetic Chain Sequencing / Dropped Elbow (100% Confidence)`).
+2. Numbered section headers (`1. Primary Root Cause Finding`, `2. Evidence Synthesis from Your Responses`, `3. Biomechanical Pathologies Ruled Out`, `4. Technical Correction & Action Plan`) styled in rich deep purple/indigo (`#4338ca` / `#818cf8`) with full-width subtle bottom divider lines.
+3. Distinct purple bullet points (`•`) with auto-bolded diagnostic parameter keys (e.g., `**Q1**:`, `**High Apex Reach Drill**:`) and proper inline strikethrough support for eliminated hypotheses (e.g., `~~Grip Orientation & Pronation Bevel Twist~~ (5%)`).
+4. Sanitization of raw LaTeX math strings (e.g., `$y \approx 3.5\text{ m}$` -> `y ≈ 3.5m`).
+5. Styled disclaimer block at the bottom with top divider border.
+6. Seamless presentation inside `AdaptiveInquiryCard.jsx` without double-nested green border boxes (`border: 2px solid #10b981`) or duplicate action plan recommendation lists.
+
+### Root Cause Analysis
+1. **Unmarked Title Detection**: The top line of adaptive conclusions was formatted without `#` markdown tags (e.g. `Badminton Biomechanical Assessment: Kinetic Chain Sequencing / Dropped Elbow (100% Confidence)`), causing `MarkdownResponse` to treat it as body text rather than an elevated report card title.
+2. **Missing Strikethrough Token Parser**: `renderInlineFormatting` lacked token handling for markdown strikethroughs (`~~...~~`), causing ruled out hypotheses to render with raw tildes.
+3. **Orphaned Unicode Bullets**: Text copied or output with bullet characters on their own line (`•\nQ1:...`) broke into fragmented nodes rather than clean list entries.
+4. **Redundant Container in `AdaptiveInquiryCard`**: When `status === 'concluded'`, `AdaptiveInquiryCard` wrapped `<MarkdownResponse>` inside an outer green container with `border: 2px solid #10b981` and appended a duplicate green "Action Plan Highlights" list, clashing with the unified white report card UI.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Adaptive Document Title & Numbered Section Parser ([`MarkdownResponse.jsx`](file:///d:/bytebuild/frontend/src/components/MarkdownResponse.jsx))**:
+   - Added regex detection for unmarked document titles with confidence scores (`/^[A-Z][A-Za-z0-9\s&,/:–—()-]+?\((?:\d+%|CONFIDENCE|HIGH|MEDIUM|LOW|CRITICAL)[^)]*\)$/i`) as `heading level-3`.
+   - Relaxed numbered section header regex to `/^\d+\.\s+[A-Z][A-Za-z0-9\s&,/:–—()'-]{3,80}$/` so all numbered sections (even when followed by isolated bullets or paragraphs) parse as `heading level-4`.
+   - Added orphaned bullet normalizer: `cleanText.replace(/(^|\n)\s*([•\-*])\s*\n\s*([^\n#•\-*])/g, '$1$2 $3')`.
+   - Added auto-bolding for key-value labels in bullet items (`/^[A-Za-z0-9][A-Za-z0-9\s&/–—'-]{1,45}:\s+/`).
+   - Added strikethrough parsing (`~~[^~]+~~` -> `<del className="md-strikethrough">`).
+   - Added LaTeX math sanitization (`$([^$]+)\$` -> clean unicode string).
+2. **Card Container & Typography System ([`index.css`](file:///d:/bytebuild/frontend/src/index.css))**:
+   - Styled `.md-heading-wrapper.level-2` with clean divider borders matching level-3.
+   - Styled `.md-strikethrough` with line-through and muted contrast.
+   - Styled `.md-disclaimer-block` with subtle top divider, italic styling, and muted text.
+3. **Unified Report View in `AdaptiveInquiryCard.jsx`**:
+   - Removed outer green border and duplicate action plan container upon conclusion.
+   - Preserved sleek top control bar with "Restart Triage" and "Done" actions, allowing `<MarkdownResponse>` to render as the clean primary card.
+   - Cleaned up scenario string conditionals per `AGENTS.md`.
+4. **Verification & Empirical Validation**:
+   - Production frontend build `npm run build` executed and passed in 19.75s with 0 errors.
+   - Interactive triage test on `http://localhost:3000` answering multi-turn diagnostic questions confirmed the rendered 4-section report card, purple headers, strikethroughs, and copy actions.
+
+
 
 
 

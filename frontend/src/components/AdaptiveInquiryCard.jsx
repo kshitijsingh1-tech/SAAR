@@ -35,9 +35,9 @@ const AdaptiveInquiryCard = ({
     setError(null);
     setSelectedOption(null);
     try {
-      const defaultConcern = (subjectId?.includes('badminton') || (userConcern && (userConcern.toLowerCase().includes('badminton') || userConcern.toLowerCase().includes('smash') || userConcern.toLowerCase().includes('racket'))))
+      const defaultConcern = subjectId?.includes('badminton')
         ? "Badminton stroke power, smash penetration, and trajectory inquiry"
-        : "Child exhibits 15% step time asymmetry and uneven weight bearing";
+        : (subjectId?.includes('child') ? "Child exhibits 15% step time asymmetry and uneven weight bearing" : "Kinematic variance and diagnostic inquiry");
       const concernText = userConcern || defaultConcern;
       const result = await startAdaptiveSession(investigationId, concernText, subjectId);
       setSession(result);
@@ -126,8 +126,6 @@ const AdaptiveInquiryCard = ({
     }
   };
 
-  const isBadminton = session?.domain === 'sports' || session?.domain === 'badminton' || subjectId?.includes('badminton') || (userConcern && (userConcern.toLowerCase().includes('badminton') || userConcern.toLowerCase().includes('smash') || userConcern.toLowerCase().includes('racket')));
-
   // Loading state
   if (loading && !session) {
     return (
@@ -138,7 +136,7 @@ const AdaptiveInquiryCard = ({
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '0.88rem' }}>
           <Loader2 size={28} className="spin text-cyan" />
-          <p>{isBadminton ? 'Evaluating stroke kinematics against kinetic chain & formulating competing hypotheses...' : "Evaluating video observations against child's baseline & formulating competing hypotheses..."}</p>
+          <p>{session?.preamble || "Evaluating observational kinematics and formulating competing hypotheses..."}</p>
         </div>
       </div>
     );
@@ -166,37 +164,39 @@ const AdaptiveInquiryCard = ({
 
   const { hypotheses = [], current_question, status, conclusion, turn, max_questions, preamble, case_state, personalized_recommendations = [] } = session;
 
-  // Concluded state — show personalized verdict & action plan
+  // Concluded state — show personalized verdict & action plan directly via elevated card
   if (status === 'concluded') {
     return (
       <div className="adaptive-inquiry-card adaptive-concluded" style={{
-        background: '#ffffff',
-        border: '2px solid #10b981',
-        borderRadius: '16px',
-        padding: '24px',
-        boxShadow: '0 8px 30px -4px rgba(16, 185, 129, 0.15)'
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        width: '100%'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Subtle Top Navigation / Action Controls */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '2px 4px',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
-              background: '#ecfdf5',
-              color: '#059669',
-              borderRadius: '10px',
-              padding: '8px',
+              background: '#eef2ff',
+              color: '#4f46e5',
+              borderRadius: '8px',
+              padding: '6px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <ShieldCheck size={22} />
+              <ShieldCheck size={18} />
             </div>
-            <div>
-              <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a' }}>
-                Personalized Diagnostic Assessment
-              </span>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                Reasoning synthesized across video kinematics, child baseline, and parent responses
-              </p>
-            </div>
+            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#64748b' }}>
+              Adaptive Diagnostic Assessment
+            </span>
           </div>
 
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -206,14 +206,15 @@ const AdaptiveInquiryCard = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '5px',
-                background: '#f1f5f9',
+                background: '#ffffff',
                 border: '1px solid #cbd5e1',
                 borderRadius: '8px',
                 padding: '6px 12px',
                 fontSize: '0.78rem',
                 fontWeight: '600',
                 color: '#475569',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
               }}
               title="Test the questioning flow again"
             >
@@ -240,57 +241,10 @@ const AdaptiveInquiryCard = ({
           </div>
         </div>
 
-        {/* Hypothesis Outcome Badges */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '18px' }}>
-          {hypotheses.map((h) => {
-            const isConfirmed = h.status === 'confirmed' || h.current_probability >= 0.8;
-            const isEliminated = h.status === 'eliminated' || h.current_probability < 0.1;
-            return (
-              <div
-                key={h.hypothesis_id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  fontSize: '0.82rem',
-                  fontWeight: '700',
-                  background: isConfirmed ? '#ecfdf5' : (isEliminated ? '#fef2f2' : '#f8fafc'),
-                  border: `1px solid ${isConfirmed ? '#a7f3d0' : (isEliminated ? '#fecaca' : '#e2e8f0')}`,
-                  color: isConfirmed ? '#065f46' : (isEliminated ? '#991b1b' : '#334155'),
-                  textDecoration: isEliminated ? 'line-through' : 'none',
-                  opacity: isEliminated ? 0.75 : 1
-                }}
-              >
-                {isConfirmed && <CheckCircle2 size={14} color="#059669" />}
-                {isEliminated && <XCircle size={14} color="#dc2626" />}
-                <span>{h.name}</span>
-                <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>({Math.round(h.current_probability * 100)}%)</span>
-              </div>
-            );
-          })}
-        </div>
-
         {/* Conclusion Markdown */}
         {conclusion && (
-          <div style={{ fontSize: '0.9rem', color: '#1e293b', lineHeight: '1.6', background: '#f8fafc', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div className="adaptive-conclusion-container">
             <MarkdownResponse content={conclusion} />
-          </div>
-        )}
-
-        {/* Action Plan Highlights */}
-        {personalized_recommendations && personalized_recommendations.length > 0 && (
-          <div style={{ marginTop: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#166534', fontWeight: '800', fontSize: '0.88rem', marginBottom: '8px' }}>
-              <Lightbulb size={16} />
-              <span>Action Plan Highlights</span>
-            </div>
-            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#166534', lineHeight: '1.5' }}>
-              {personalized_recommendations.map((rec, i) => (
-                <li key={i}>{rec}</li>
-              ))}
-            </ul>
           </div>
         )}
       </div>

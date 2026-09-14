@@ -17,20 +17,49 @@ import {
 function renderInlineFormatting(text, onNavigateToAnalytics = null) {
   if (!text) return null;
 
+  // Clean up LaTeX TeX math expressions e.g. ($y \approx 3.5\text{ m}$) -> (y ≈ 3.5m)
+  let processedText = String(text).replace(/\$([^$]+)\$/g, (_, math) => {
+    return math
+      .replace(/\\approx/g, '≈')
+      .replace(/\\text\{\s*([^}]+)\s*\}/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+  });
+
+  // Auto-bold parameter key labels e.g. "Q1: Description" or "High Apex Reach Drill: Suspend..."
+  if (/^[A-Za-z0-9][A-Za-z0-9\s&/–—'-]{1,45}:\s+/.test(processedText) && !/^[#*`~[]/.test(processedText)) {
+    const colonIdx = processedText.indexOf(':');
+    const label = processedText.substring(0, colonIdx).trim();
+    const remainder = processedText.substring(colonIdx + 1);
+    return (
+      <>
+        <strong className="md-bold">{label}</strong>:
+        {renderInlineFormatting(remainder, onNavigateToAnalytics)}
+      </>
+    );
+  }
+
   const parts = [];
-  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|(?:\[(?:HIGH|MEDIUM|LOW|CRITICAL)\])|(?:r\s*=\s*[+‑-]?\s*\d+\.?\d*)|(?:\b\d+%\b)|(?:→|↔|↓|←→))/gi;
+  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|`[^`]+`|(?:\[(?:HIGH|MEDIUM|LOW|CRITICAL)\])|(?:r\s*=\s*[+‑-]?\s*\d+\.?\d*)|(?:\b\d+%\b)|(?:→|↔|↓|←→))/gi;
   let lastIndex = 0;
   let match;
 
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = regex.exec(processedText)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
+      parts.push(processedText.substring(lastIndex, match.index));
     }
     const token = match[0];
 
     if (token.startsWith('**') && token.endsWith('**')) {
       const inner = token.slice(2, -2);
       parts.push(<strong key={match.index} className="md-bold">{renderInlineFormatting(inner, onNavigateToAnalytics)}</strong>);
+    } else if (token.startsWith('~~') && token.endsWith('~~')) {
+      const inner = token.slice(2, -2);
+      parts.push(
+        <del key={match.index} className="md-strikethrough" style={{ opacity: 0.65, textDecoration: 'line-through' }}>
+          {renderInlineFormatting(inner, onNavigateToAnalytics)}
+        </del>
+      );
     } else if (token.startsWith('*') && token.endsWith('*')) {
       const inner = token.slice(1, -1);
       parts.push(<em key={match.index} className="md-italic">{renderInlineFormatting(inner, onNavigateToAnalytics)}</em>);
@@ -70,11 +99,11 @@ function renderInlineFormatting(text, onNavigateToAnalytics = null) {
     lastIndex = regex.lastIndex;
   }
 
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
+  if (lastIndex < processedText.length) {
+    parts.push(processedText.substring(lastIndex));
   }
 
-  return parts.length > 0 ? parts : text;
+  return parts.length > 0 ? parts : processedText;
 }
 
 /**
@@ -89,6 +118,10 @@ function parseMarkdownBlocks(rawText) {
 
   // Strip emojis and decorative emoticons for clean, professional clinical typography
   cleanText = cleanText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+
+  // Rejoin isolated bullet characters on their own line with the subsequent line of text:
+  // e.g. "•\nQ1: Where does..." -> "• Q1: Where does..."
+  cleanText = cleanText.replace(/(^|\n)\s*([•\-*])\s*\n\s*([^\n#•\-*])/g, '$1$2 $3');
 
   const lines = cleanText.split(/\r?\n/);
   const blocks = [];
@@ -170,6 +203,21 @@ function parseMarkdownBlocks(rawText) {
       }
     }
 
+    // Unmarked Document/Assessment Title (e.g. at the very start of message or report)
+    // e.g. "Badminton Biomechanical Assessment: Kinetic Chain Sequencing / Dropped Elbow (100% Confidence)"
+    // or "Calibrated Kinematic Diagnostic Report (96% Confidence)"
+    const isDocTitle = (blocks.length === 0 || (blocks.length === 1 && blocks[0].type === 'quote')) &&
+      /^[A-Z][A-Za-z0-9\s&,/:–—()-]+?\((?:\d+%|CONFIDENCE|HIGH|MEDIUM|LOW|CRITICAL)[^)]*\)$/i.test(trimmed);
+    if (isDocTitle) {
+      blocks.push({
+        type: 'heading',
+        level: 3,
+        text: trimmed
+      });
+      i++;
+      continue;
+    }
+
     // 4. Horizontal Rule
     if (/^(\*\*\*|---|___)$/.test(trimmed)) {
       blocks.push({ type: 'hr' });
@@ -191,20 +239,27 @@ function parseMarkdownBlocks(rawText) {
       continue;
     }
 
-    // Numbered Section Header e.g. "1. Kinematic Stroke Execution" followed by bullet items
-    const isSectionHeader = /^\d+\.\s+[A-Z][A-Za-z0-9\s&,/:–—-]+$/.test(trimmed);
+    // Numbered Section Header e.g. "1. Primary Root Cause Finding" or "2. Evidence Synthesis from Your Responses"
+    const isSectionHeader = /^\d+\.\s+[A-Z][A-Za-z0-9\s&,/:–—()'-]{3,80}$/.test(trimmed) && !trimmed.endsWith('.');
     if (isSectionHeader) {
-      let peek = i + 1;
-      while (peek < lines.length && !lines[peek].trim()) peek++;
-      if (peek < lines.length && /^[-*•]/.test(lines[peek].trim())) {
-        blocks.push({
-          type: 'heading',
-          level: 4,
-          text: trimmed
-        });
-        i++;
-        continue;
-      }
+      blocks.push({
+        type: 'heading',
+        level: 4,
+        text: trimmed
+      });
+      i++;
+      continue;
+    }
+
+    // 6. Disclaimer block
+    const isDisclaimer = /^(?:\*?[A-Za-z\s]+Disclaimer:\*?|\*Clinical Note:\*)/i.test(trimmed);
+    if (isDisclaimer) {
+      blocks.push({
+        type: 'disclaimer',
+        text: trimmed
+      });
+      i++;
+      continue;
     }
 
     // 6. Lists & Prioritized Next Steps
@@ -563,6 +618,13 @@ export function MarkdownResponse({
                   </p>
                 );
               }
+
+              case 'disclaimer':
+                return (
+                  <div key={idx} className="md-disclaimer-block">
+                    {renderInlineFormatting(block.text, onNavigateToAnalytics)}
+                  </div>
+                );
 
               default:
                 return null;
