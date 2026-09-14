@@ -2,10 +2,11 @@ import React, { useState, useRef, useMemo } from 'react';
 import {
   Activity, Video, AlertCircle, CheckCircle2, Clock, Sparkles,
   Send, RefreshCw, ShieldCheck, ChevronRight, Play, Info, AlertTriangle,
-  Layers, Compass, Scale, BarChart3, HelpCircle, FileText
+  Layers, Compass, Scale, BarChart3, HelpCircle, FileText, Brain
 } from 'lucide-react';
 import { analyzeGaitVideo, analyzeGaitSample, askGaitQuestion, getGaitSampleVideoUrl, formatApiErrorMessage } from '../api/client';
 import { MarkdownResponse } from './MarkdownResponse';
+import AdaptiveInquiryCard from './AdaptiveInquiryCard';
 
 export function GaitDashboard({ onRegisterToChat, initialResult = null, initialFile = null }) {
   const [childAgeMonths, setChildAgeMonths] = useState(24);
@@ -47,6 +48,7 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
   const [userQuestion, setUserQuestion] = useState('');
   const [isAsking, setIsAsking] = useState(false);
   const [qaHistory, setQaHistory] = useState([]);
+  const [activeAdaptiveConcern, setActiveAdaptiveConcern] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -1175,56 +1177,168 @@ export function GaitDashboard({ onRegisterToChat, initialResult = null, initialF
             </div>
           )}
 
-          {/* TAB 4: CLINICAL REASONING Q&A */}
+          {/* TAB 4: CLINICAL REASONING Q&A & ADAPTIVE INQUIRY */}
           {activeTab === 'qa' && (
             <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '22px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                <Sparkles size={20} color="#0284c7" />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
-                  Ask Questions About Your Child's Walking
-                </h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={20} color="#0284c7" />
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
+                    Clinical Questions & Adaptive Diagnostic Inquiry
+                  </h3>
+                </div>
+                <span style={{
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  background: '#f0fdf4',
+                  color: '#166534',
+                  border: '1px solid #bbf7d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  <Brain size={12} />
+                  Dynamic Diagnostic AI Active
+                </span>
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '16px' }}>
-                Have questions about your child's walking rhythm, leg bending, or step balance? Ask our assistant below for clear, easy-to-understand explanations.
+              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '16px', lineHeight: '1.5' }}>
+                Have a specific worry about your child's walking, balance, or posture? Ask a direct question below or click <strong>Adaptive Investigation</strong> to start a guided, hypothesis-driven inquiry that asks discriminating follow-up questions tailored to their measured movement data.
               </p>
 
-              {/* Q&A Input */}
-              <form onSubmit={handleAskQuestion} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              {/* Suggested Common Concerns Quick-Pills */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  Quick Inquiries:
+                </span>
+                {[
+                  "Child is walking tilted to one side",
+                  "Uneven step timing / possible limp",
+                  "Reduced knee bending or stiff gait",
+                  "Wide-base balance wobbles and unsteady steps"
+                ].map((concernText, cIdx) => (
+                  <button
+                    key={cIdx}
+                    type="button"
+                    onClick={() => {
+                      setUserQuestion(concernText);
+                      setActiveAdaptiveConcern(concernText);
+                    }}
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '16px',
+                      padding: '5px 12px',
+                      fontSize: '0.78rem',
+                      color: '#334155',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#0284c7';
+                      e.currentTarget.style.background = '#f0f9ff';
+                      e.currentTarget.style.color = '#0284c7';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.background = '#f8fafc';
+                      e.currentTarget.style.color = '#334155';
+                    }}
+                  >
+                    + {concernText}
+                  </button>
+                ))}
+              </div>
+
+              {/* Q&A / Inquiry Input Form */}
+              <form onSubmit={handleAskQuestion} style={{ display: 'flex', gap: '10px', marginBottom: '22px', flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   value={userQuestion}
                   onChange={(e) => setUserQuestion(e.target.value)}
-                  placeholder="e.g. Is my child's step pace and knee movement typical for their age?"
+                  placeholder="e.g. He seems to tilt slightly to the right when walking..."
                   style={{
-                    flex: 1,
-                    padding: '10px 14px',
-                    borderRadius: '8px',
+                    flex: '1 1 300px',
+                    padding: '11px 14px',
+                    borderRadius: '10px',
                     border: '1px solid #cbd5e1',
                     fontSize: '0.88rem',
-                    outline: 'none'
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
                   }}
+                  onFocus={(e) => e.target.style.borderColor = '#0284c7'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 />
-                <button
-                  type="submit"
-                  disabled={isAsking || !userQuestion.trim()}
-                  style={{
-                    background: '#0284c7',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '10px 18px',
-                    fontWeight: '700',
-                    fontSize: '0.88rem',
-                    cursor: isAsking || !userQuestion.trim() ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Send size={15} />
-                  {isAsking ? 'Thinking...' : 'Ask Question'}
-                </button>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    disabled={isAsking || !userQuestion.trim()}
+                    onClick={() => {
+                      if (userQuestion.trim()) {
+                        setActiveAdaptiveConcern(userQuestion.trim());
+                      }
+                    }}
+                    title="Launch guided diagnostic questioning with competing hypotheses"
+                    style={{
+                      background: 'linear-gradient(135deg, #0284c7 0%, #4f46e5 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      padding: '11px 18px',
+                      fontWeight: '700',
+                      fontSize: '0.88rem',
+                      cursor: !userQuestion.trim() ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      opacity: !userQuestion.trim() ? 0.55 : 1,
+                      boxShadow: userQuestion.trim() ? '0 4px 14px rgba(2, 132, 199, 0.25)' : 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <Brain size={16} />
+                    Adaptive Inquiry
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isAsking || !userQuestion.trim()}
+                    title="Ask single question"
+                    style={{
+                      background: '#0f172a',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      padding: '11px 16px',
+                      fontWeight: '700',
+                      fontSize: '0.88rem',
+                      cursor: isAsking || !userQuestion.trim() ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      opacity: !userQuestion.trim() ? 0.55 : 1,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <Send size={15} />
+                    {isAsking ? 'Thinking...' : 'Quick Q&A'}
+                  </button>
+                </div>
               </form>
+
+              {/* Active Adaptive Diagnostic Inquiry Card */}
+              {activeAdaptiveConcern && (
+                <div style={{ marginBottom: '24px' }}>
+                  <AdaptiveInquiryCard
+                    investigationId={assessmentResult?.assessment_id || "latest"}
+                    userConcern={activeAdaptiveConcern}
+                    onClose={() => setActiveAdaptiveConcern(null)}
+                  />
+                </div>
+              )}
 
               {/* History */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

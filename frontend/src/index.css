@@ -10498,3 +10498,429 @@ body {
 .social-footer-col {
   min-width: 220px;
 }
+
+/* ==========================================================================
+   ADAPTIVE DIAGNOSTIC INQUIRY ENGINE UI
+   Interactive hypothesis confidence bars, discriminating questions,
+   one-tap answer chips, and personalized clinical verdict styling.
+   ========================================================================== */
+
+.adaptive-inquiry-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 22px 24px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  margin-bottom: 20px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.adaptive-inquiry-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #0284c7, #38bdf8, #818cf8);
+}
+
+.adaptive-inquiry-card.adaptive-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 24px;
+  text-align: center;
+}
+
+.adaptive-loading-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.adaptive-inquiry-card.adaptive-error {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+
+.adaptive-error-text {
+  color: #b91c1c;
+  font-size: 0.88rem;
+  margin-top: 10px;
+}
+
+.adaptive-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 16px;
+}
+
+.adaptive-header .adaptive-icon {
+  color: #0284c7;
+}
+
+.adaptive-header.concluded-header .adaptive-icon-success {
+  color: #10b981;
+}
+
+.adaptive-turn-badge {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Competing Hypotheses Bars */
+.adaptive-hypotheses {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.hypo-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.hypo-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+  transition: opacity 0.3s ease;
+}
+
+.hypo-bar-row:last-child {
+  margin-bottom: 0;
+}
+
+.hypo-bar-row.eliminated {
+  opacity: 0.45;
+}
+
+.hypo-bar-label {
+  width: 170px;
+  min-width: 170px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hypo-name {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.hypo-name-eliminated {
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.hypo-eliminated-icon {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.hypo-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.hypo-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+}
+
+.hypo-bar-fill.active {
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+}
+
+.hypo-bar-fill.eliminated {
+  background: #cbd5e1;
+}
+
+.hypo-bar-fill.confirmed {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.hypo-bar-pct {
+  width: 40px;
+  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+/* Diagnostic Question Block */
+.adaptive-question-block {
+  background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 18px 20px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.adaptive-question-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0369a1;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.question-sparkle {
+  color: #0284c7;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.adaptive-question-reason {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 16px;
+  padding-left: 22px;
+}
+
+.adaptive-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.adaptive-option-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #1e293b;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.adaptive-option-chip:hover:not(:disabled) {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  color: #0369a1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
+}
+
+.adaptive-option-chip.selected {
+  border-color: #0284c7;
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.adaptive-option-chip.selected .option-arrow {
+  color: #ffffff;
+}
+
+.option-arrow {
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.adaptive-option-chip:hover .option-arrow {
+  transform: translateX(3px);
+  color: #0284c7;
+}
+
+/* Concluded State Verdict */
+.adaptive-inquiry-card.adaptive-concluded {
+  border-color: #a7f3d0;
+  background: linear-gradient(145deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.adaptive-inquiry-card.adaptive-concluded::before {
+  background: linear-gradient(90deg, #10b981, #34d399, #6ee7b7);
+}
+
+.adaptive-hypothesis-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.hypo-outcome-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.hypo-outcome-badge.confirmed {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.hypo-outcome-badge.eliminated {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+  text-decoration: line-through;
+}
+
+.hypo-outcome-badge.active {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.hypo-outcome-pct {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.adaptive-conclusion-body {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #334155;
+  margin-bottom: 18px;
+}
+
+.adaptive-recommendations {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+
+.rec-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 10px;
+}
+
+.rec-header svg {
+  color: #f59e0b;
+}
+
+.adaptive-recommendations ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.adaptive-recommendations li {
+  margin-bottom: 6px;
+}
+
+.adaptive-recommendations li:last-child {
+  margin-bottom: 0;
+}
+
+.adaptive-close-btn {
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adaptive-close-btn:hover {
+  background: #334155;
+}
+
+.adaptive-processing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #0284c7;
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+}
+
+/* Animations */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.pulse {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.fade-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-out {
+  opacity: 0;
+  transform: translateY(4px);
+}

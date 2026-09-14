@@ -397,6 +397,56 @@ def saar_knowledge_query(payload: Dict[str, Any]):
 
 
 # ===================================================================
+# ADAPTIVE DIAGNOSTIC QUESTIONING API
+# ===================================================================
+
+class AdaptiveStartRequest(BaseModel):
+    investigation_id: Optional[str] = "latest"
+    user_concern: str
+
+
+class AdaptiveAnswerRequest(BaseModel):
+    option_id: str
+
+
+@app.post("/api/adaptive/start")
+async def adaptive_start(req: AdaptiveStartRequest):
+    """Start an adaptive diagnostic questioning session for an active investigation."""
+    try:
+        session = saar_engine.start_adaptive_session(
+            investigation_id=req.investigation_id or "latest",
+            user_concern=req.user_concern
+        )
+        return session.model_dump()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start adaptive session: {str(e)}")
+
+
+@app.get("/api/adaptive/{session_id}")
+def adaptive_get_session(session_id: str):
+    """Get the current state of an adaptive diagnostic session."""
+    try:
+        session = saar_engine.get_adaptive_session(session_id)
+        return session.model_dump()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post("/api/adaptive/{session_id}/answer")
+async def adaptive_answer(session_id: str, req: AdaptiveAnswerRequest):
+    """Submit an answer to the current adaptive question and get the next question or conclusion."""
+    try:
+        session = saar_engine.submit_adaptive_answer(session_id, req.option_id)
+        return session.model_dump()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process adaptive answer: {str(e)}")
+
+
+# ===================================================================
 # TODDLEAI GAIT ANALYSIS API (DEDICATED ENDPOINTS)
 # ===================================================================
 

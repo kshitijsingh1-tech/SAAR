@@ -320,3 +320,57 @@ class InvestigationState(BaseModel):
     vlm_provider: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
+
+# ---------------------------------------------------------------------------
+# Adaptive Diagnostic Questioning Models
+# ---------------------------------------------------------------------------
+
+class Hypothesis(BaseModel):
+    """A competing root-cause hypothesis generated dynamically by the LLM."""
+    hypothesis_id: str = Field(default_factory=lambda: f"H-{str(uuid.uuid4())[:6]}")
+    name: str
+    description: str = ""
+    prior_probability: float = Field(default=0.33, ge=0.0, le=1.0)
+    current_probability: float = Field(default=0.33, ge=0.0, le=1.0)
+    status: str = "active"  # active, eliminated, confirmed
+    supporting_evidence: List[str] = Field(default_factory=list)
+    contradicting_evidence: List[str] = Field(default_factory=list)
+
+
+class AnswerOption(BaseModel):
+    """A single selectable answer option for a diagnostic question."""
+    option_id: str = Field(default_factory=lambda: f"OPT-{str(uuid.uuid4())[:6]}")
+    text: str
+    eliminates: List[str] = Field(default_factory=list, description="hypothesis_ids this answer would eliminate")
+    supports: List[str] = Field(default_factory=list, description="hypothesis_ids this answer would support")
+
+
+class DiagnosticQuestion(BaseModel):
+    """A dynamically generated discriminating question with selectable options."""
+    question_id: str = Field(default_factory=lambda: f"DQ-{str(uuid.uuid4())[:6]}")
+    question_text: str
+    reason: str = ""
+    options: List[AnswerOption] = Field(default_factory=list)
+    expected_information_gain: float = 0.5
+    turn_number: int = 1
+
+
+class AdaptiveSession(BaseModel):
+    """Full state of an adaptive diagnostic questioning session."""
+    session_id: str = Field(default_factory=lambda: f"ADS-{str(uuid.uuid4())[:8]}")
+    investigation_id: str = ""
+    user_concern: str = ""
+    domain: str = "general"
+    hypotheses: List[Hypothesis] = Field(default_factory=list)
+    questions_asked: List[DiagnosticQuestion] = Field(default_factory=list)
+    answers_given: List[Dict[str, Any]] = Field(default_factory=list)
+    measured_context: Dict[str, Any] = Field(default_factory=dict)
+    status: str = "questioning"  # questioning, concluded
+    conclusion: Optional[str] = None
+    personalized_recommendations: List[str] = Field(default_factory=list)
+    current_question: Optional[DiagnosticQuestion] = None
+    turn: int = 0
+    max_questions: int = 5
+    confidence_threshold: float = 0.85
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+

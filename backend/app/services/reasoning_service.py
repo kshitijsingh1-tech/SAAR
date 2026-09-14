@@ -12,10 +12,12 @@ from ..models.saar_models import (
     InvestigationState, DatasetProfile, Feature, Observation,
     Concept, ConceptStatus, Relationship, RelationshipType,
     Evidence, EvidenceType, TrendResult, TrendDirection,
-    GeneratedQuestion, UserAnswer, SemanticRole
+    GeneratedQuestion, UserAnswer, SemanticRole,
+    AdaptiveSession
 )
 from .ingestion_service import IngestionService
 from .analytics_service import AnalyticsService
+from .adaptive_inquiry import AdaptiveInquiryEngine
 from ..rag_service import RAGKnowledgeService
 from ..vlm_service import VLMService
 
@@ -28,8 +30,10 @@ class ReasoningService:
         self.analytics = AnalyticsService()
         self.rag = RAGKnowledgeService()
         self.vlm = VLMService()
+        self.adaptive_engine = AdaptiveInquiryEngine()
         self._investigations: Dict[str, InvestigationState] = {}
         self._badminton_results: Dict[str, Any] = {}
+        self._adaptive_sessions: Dict[str, AdaptiveSession] = {}
 
     # ------------------------------------------------------------------
     # Phase 1: Ingest & Perceive
@@ -383,6 +387,62 @@ class ReasoningService:
         )
         self._investigations[inv_id] = state
         return state
+
+    # ------------------------------------------------------------------
+    # Adaptive Diagnostic Questioning (LLM-Driven)
+    # ------------------------------------------------------------------
+
+    def start_adaptive_session(
+        self, investigation_id: str, user_concern: str
+    ) -> AdaptiveSession:
+        """Start an adaptive diagnostic questioning session for an investigation."""
+        state = self._investigations.get(investigation_id)
+        if not state:
+            # Try to find latest investigation
+            if self._investigations:
+                state = list(self._investigations.values())[-1]
+                investigation_id = state.investigation_id
+            else:
+                raise ValueError(f"No active investigation found for adaptive session.")
+
+        # Extract measured context from investigation state
+        measured_context = {}
+        for obs in state.observations:
+            if obs.value is not None:
+                measured_context[obs.feature_name] = {
+                    "value": obs.value,
+                    "unit": getattr(obs, "unit", None) or "",
+                    "confidence": obs.confidence
+                }
+
+        # Determine domain
+        domain = state.dataset_id or "general"
+
+        session = self.adaptive_engine.start_session(
+            investigation_id=investigation_id,
+            user_concern=user_concern,
+            domain=domain,
+            measured_context=measured_context
+        )
+        self._adaptive_sessions[session.session_id] = session
+        return session
+
+    def get_adaptive_session(self, session_id: str) -> AdaptiveSession:
+        """Get the current state of an adaptive session."""
+        session = self.adaptive_engine.get_session(session_id)
+        if not session:
+            session = self._adaptive_sessions.get(session_id)
+        if not session:
+            raise ValueError(f"Adaptive session {session_id} not found.")
+        return session
+
+    def submit_adaptive_answer(
+        self, session_id: str, option_id: str
+    ) -> AdaptiveSession:
+        """Submit an answer to the current adaptive question."""
+        session = self.adaptive_engine.process_answer(session_id, option_id)
+        self._adaptive_sessions[session_id] = session
+        return session
 
     # ------------------------------------------------------------------
     # Phase 2: Iterative Update (User provides answers)

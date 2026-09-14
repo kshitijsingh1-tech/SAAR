@@ -403,3 +403,27 @@ export const classifyImage = async (imageData, userText = '') => {
 };
 
 
+// ------------------------------------------------------------------
+// Adaptive Diagnostic Questioning API
+// ------------------------------------------------------------------
+
+export const startAdaptiveSession = async (investigationId, userConcern) => {
+  const res = await axios.post(`${API_BASE_URL}/api/adaptive/start`, {
+    investigation_id: investigationId || 'latest',
+    user_concern: userConcern
+  });
+  return res.data;
+};
+
+export const getAdaptiveSession = async (sessionId) => {
+  const res = await axios.get(`${API_BASE_URL}/api/adaptive/${sessionId}`);
+  return res.data;
+};
+
+export const submitAdaptiveAnswer = async (sessionId, optionId) => {
+  const res = await axios.post(`${API_BASE_URL}/api/adaptive/${sessionId}/answer`, {
+    option_id: optionId
+  });
+  return res.data;
+};
+
