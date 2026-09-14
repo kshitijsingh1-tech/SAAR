@@ -30,6 +30,14 @@ const AdaptiveInquiryCard = ({
   const [selectedOption, setSelectedOption] = useState(null);
   const [animatingOut, setAnimatingOut] = useState(false);
 
+  const isBadminton = Boolean(
+    session?.domain === 'sports' ||
+    session?.domain === 'badminton' ||
+    subjectId?.includes('badminton') ||
+    subjectId?.includes('player') ||
+    (userConcern && (userConcern.toLowerCase().includes('badminton') || userConcern.toLowerCase().includes('smash') || userConcern.toLowerCase().includes('racket')))
+  );
+
   const initSession = useCallback(async () => {
     setLoading(true);
     setError(null);
