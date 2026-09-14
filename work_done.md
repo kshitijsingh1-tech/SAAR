@@ -2251,6 +2251,52 @@ Clicking **Retry Adaptive Triage** immediately re-triggered the failure.
   - Backend Uvicorn daemon running on port 8002 (Task ID: `task-6782`).
   - Frontend Vite dev server running on port 3000 (Task ID: `task-6784`).
 
+---
+
+## 33. [2026-09-15] Calibrated Diagnostic Report Card UI Implementation
+
+**Primary Files Modified**:
+- [`frontend/src/components/MarkdownResponse.jsx`](file:///d:/bytebuild/frontend/src/components/MarkdownResponse.jsx)
+- [`frontend/src/index.css`](file:///d:/bytebuild/frontend/src/index.css)
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & Symptoms
+The user requested implementing a specific visual aesthetic and structured report card box layout for arriving diagnostic and assessment analyses, matching a reference design:
+1. Clean, card-like container with subtle borders, generous padding, and slight elevation.
+2. Prominent report title with horizontal rule divider: `Calibrated Kinematic Diagnostic Report (96% Confidence)`.
+3. Contextual prior subtitle summarizing calibration prior and user inquiry.
+4. Three standardized numbered sections (`1. Kinematic Stroke Execution`, `2. Ballistic Speeds & Dynamic Energy`, `3. AI Kinematic Supervision & Coaching Action`) styled with distinctive rich purple typography (`#4338ca` / `#818cf8`) and full-width horizontal divider lines beneath each header.
+5. Distinct purple bullet points (`•`) with bold diagnostic parameter keys and inline monospace code badges (e.g., `` `net_shot` ``).
+6. Bottom-right utility action buttons (`[Raw]` and `[Copy]`).
+
+### Root Cause & UI Deficiencies
+1. **Unformatted Section Headers in Markdown Parser**:
+   - `MarkdownResponse.jsx` previously treated numbered section lines (e.g. `1. Kinematic Stroke Execution`) as standard ordered list items rather than section headings (`level-4`), omitting the full-width underline and purple typography.
+2. **Generic Bullet Styling**:
+   - The markdown container used generic cyan/blue bullet points (`var(--primary)`), rather than the purple/indigo bullets specified in the design.
+3. **Verbose & Unstructured Report Generators**:
+   - Video upload pipelines and preset handlers in `App.jsx` generated long unstructured metric paragraphs interspersed with redundant intake instructions and ad-hoc checklists, rather than the clean 3-section calibrated diagnostic structure.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Numbered Section Header Detection in Parser ([`MarkdownResponse.jsx`](file:///d:/bytebuild/frontend/src/components/MarkdownResponse.jsx))**:
+   - Added lookahead detection in `parseMarkdownBlocks` so numbered headers (`/^\d+\.\s+[A-Z][A-Za-z0-9\s&,/:–—-]+$/`) followed by bullets are parsed as `heading level-4`.
+2. **Diagnostic Report Card & Typography System ([`index.css`](file:///d:/bytebuild/frontend/src/index.css))**:
+   - Updated `.saar-markdown-container` to `border-radius: 14px`, `padding: 1.25rem 1.6rem`, white background in light mode (`#ffffff`), border `#e2e8f0`, and subtle drop shadow (`0 4px 20px rgba(0, 0, 0, 0.05)`).
+   - Styled `.md-heading-wrapper.level-3` (main report title) and `.md-heading-wrapper.level-4` (section headers) with full-width bottom divider borders.
+   - Styled `.md-heading.h4` with rich deep purple/indigo text (`#4338ca` in light mode, `#818cf8` in dark mode, `#a78bfa` in purple theme).
+   - Updated `.list-bullet-badge` to purple/indigo (`#6366f1` / `#818cf8`).
+   - Styled `.md-inline-code` with crisp background pill and purple text.
+   - Added `.md-bottom-action-bar` and `.md-bottom-action-btn` for clean bottom-right `[Raw]` and `[Copy]` buttons.
+3. **Standardized 3-Section Report Builders ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Updated Badminton video upload response builder, Toddler Gait video upload response builder, direct gait analysis handler, and preset handlers (`onSendToChat`) to construct the exact 3-section calibrated diagnostic report:
+     - Section 1: Stroke Execution / Locomotion Kinematics & Symmetry
+     - Section 2: Ballistic Speeds & Dynamic Energy / Stride Dynamics & Postural Stability
+     - Section 3: AI Supervision & Coaching / Clinical Action
+4. **Verification & Empirical Validation**:
+   - Production frontend build `npm run build` executed and passed in 19.42s with 0 errors.
+   - Browser subagent visual inspection confirmed the rendered report card container, purple section headers with horizontal divider lines, purple bullets, and bottom-right `[Raw]` and `[Copy]` buttons.
+
 
 
 

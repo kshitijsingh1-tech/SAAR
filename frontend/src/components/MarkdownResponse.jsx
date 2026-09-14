@@ -191,6 +191,22 @@ function parseMarkdownBlocks(rawText) {
       continue;
     }
 
+    // Numbered Section Header e.g. "1. Kinematic Stroke Execution" followed by bullet items
+    const isSectionHeader = /^\d+\.\s+[A-Z][A-Za-z0-9\s&,/:–—-]+$/.test(trimmed);
+    if (isSectionHeader) {
+      let peek = i + 1;
+      while (peek < lines.length && !lines[peek].trim()) peek++;
+      if (peek < lines.length && /^[-*•]/.test(lines[peek].trim())) {
+        blocks.push({
+          type: 'heading',
+          level: 4,
+          text: trimmed
+        });
+        i++;
+        continue;
+      }
+    }
+
     // 6. Lists & Prioritized Next Steps
     const isBullet = /^[-*•]\s+/.test(trimmed);
     const isNumber = /^\d+\.\s+/.test(trimmed);
@@ -618,21 +634,21 @@ export function MarkdownResponse({
 
       {/* Subtle Bottom Action Bar (only on assistant responses) */}
       {role === 'assistant' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+        <div className="md-bottom-action-bar">
           <button
             onClick={() => setShowRaw(!showRaw)}
             title="Toggle between formatted and raw view"
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
+            className="md-bottom-action-btn"
           >
-            <FileText size={11} />
+            <FileText size={12} />
             <span>{showRaw ? 'Formatted' : 'Raw'}</span>
           </button>
           <button
             onClick={handleCopy}
             title={pairedQuestion ? "Copy question and response to clipboard" : "Copy to clipboard"}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.8 }}
+            className="md-bottom-action-btn"
           >
-            {copied ? <Check size={11} color="var(--emerald)" /> : <Copy size={11} />}
+            {copied ? <Check size={12} color="var(--emerald)" /> : <Copy size={12} />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
