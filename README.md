@@ -41,7 +41,7 @@ Visual Input / Video / Tabular Data ───▶ [ Monolithic VLM / LLM ] ──
                                                                        ↳ Unfalsifiable Guesses
 ```
 
-**SAAR** (*Synthetic Auditable Autonomous Reasoner* — *“the distilled essence, fundamental truth, or core finding”*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop** combined with **deterministic physics and signal processing engines**.
+**SAAR** (*Discover What Matter*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop** combined with **deterministic physics and signal processing engines**.
 
 Instead of jumping directly to an unverified conclusion, SAAR constructs a **dynamic causal knowledge graph**, identifies epistemic uncertainty, runs specialized domain simulators, queries the human investigator for high-information-gain observations, and executes deterministic DSP pipelines to extract verified metrics across agriculture, pediatric gait, sports biomechanics, and civil infrastructure.
 
