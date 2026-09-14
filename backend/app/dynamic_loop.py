@@ -46,6 +46,28 @@ class DynamicWorkflowOrchestrator:
         image_input = image_data or image_url
         effective_images = list(images) if images else []
 
+        # If user provided a custom image or upload, never let a stale preset_id bleed into it
+        is_custom_upload = bool(image_input or effective_images) and not (
+            preset_id and any(p.get("image") == image_input for p in plugin.presets)
+        )
+        if is_custom_upload:
+            preset_id = None
+
+        # Autonomous domain classification if custom image is provided without an explicit preset
+        if not preset_id and (image_input or effective_images):
+            try:
+                from .services.image_classifier import image_classifier
+                primary_img = image_input or (effective_images[0] if effective_images else None)
+                if primary_img:
+                    classification = image_classifier.classify_image(primary_img)
+                    detected_domain = classification.get("domain")
+                    if detected_domain and detected_domain != domain and classification.get("confidence", 0) >= 0.75:
+                        print(f"[DynamicLoop] Auto-corrected domain from '{domain}' to '{detected_domain}' ({classification.get('description', '')})")
+                        domain = detected_domain
+                        plugin = self.get_plugin(domain)
+            except Exception as classify_err:
+                print(f"[DynamicLoop] Warning: Image classification probe failed: {classify_err}")
+
         # Only default to preset scenario if NO custom image and NO preset_id was provided
         if not preset_id and not image_input and not effective_images:
             preset_id = plugin.presets[0]["id"]
@@ -108,36 +130,40 @@ class DynamicWorkflowOrchestrator:
         ))
 
         # ---------------------------------------------------------
-        # Dynamic Tool Loop (Steps 2..N)
+        # Step 2: FIND UNKNOWNS - Gap Analysis & Hypotheses
+        # ---------------------------------------------------------
+        uncertainty, target_hypo = graph_engine.calculate_uncertainty()
+        step_counter += 1
+        snapshot_unk = graph_engine.export_state(step_count=step_counter)
+        steps.append(WorkflowStepModel(
+            step_number=step_counter,
+            state="FIND_UNKNOWNS",
+            title=f"{step_counter}. Uncertainty Detection & Gap Analysis",
+            description=f"Identified open research questions and hypothesis node requiring evidence verification.",
+            log_message=f"Graph uncertainty at {uncertainty*100:.1f}%. Target hypothesis: '{target_hypo or 'General Investigation'}'.",
+            graph_snapshot=snapshot_unk
+        ))
+
+        # ---------------------------------------------------------
+        # Dynamic Tool Execution (Steps 3..N)
         # ---------------------------------------------------------
         try:
             available_tools = plugin.get_available_tools(current_nodes=initial_nodes)
         except TypeError:
             available_tools = plugin.get_available_tools()
 
-        for tool_info in available_tools:
+        # Prioritize top 2 most targeted tools rather than blindly running every tool
+        selected_tools = available_tools[:2] if len(available_tools) > 2 else available_tools
+
+        for tool_info in selected_tools:
             tool_id = tool_info.get("tool_id", "unknown_tool")
             tool_name = tool_info.get("tool_name") or tool_info.get("name", tool_id)
 
-            # Step A: FIND UNKNOWNS
-            uncertainty, target_hypo = graph_engine.calculate_uncertainty()
-            step_counter += 1
-            snapshot_unk = graph_engine.export_state(step_count=step_counter)
-            steps.append(WorkflowStepModel(
-                step_number=step_counter,
-                state="FIND_UNKNOWNS",
-                title=f"{step_counter}. Uncertainty Detection & Gap Analysis",
-                description=f"Identified open research questions and hypothesis node requiring evidence verification.",
-                log_message=f"Graph uncertainty at {uncertainty*100:.1f}%. Target hypothesis: '{target_hypo or 'General Investigation'}'.",
-                graph_snapshot=snapshot_unk
-            ))
-
-            # Step B: SELECT ACTION & EXECUTE TOOL
             step_counter += 1
             tool_exec: ToolExecutionModel = plugin.execute_tool(
                 tool_id=tool_id,
-                current_nodes=snapshot_unk.nodes,
-                current_edges=snapshot_unk.edges
+                current_nodes=graph_engine.export_state(step_count=step_counter).nodes,
+                current_edges=graph_engine.export_state(step_count=step_counter).edges
             )
 
             # Apply tool results to Graph
@@ -157,7 +183,7 @@ class DynamicWorkflowOrchestrator:
             steps.append(WorkflowStepModel(
                 step_number=step_counter,
                 state="RUN_TOOL",
-                title=f"{step_counter}. Execute Specialized Tool: {tool_name}",
+                title=f"{step_counter}. Diagnostic Verification: {tool_name}",
                 description=tool_exec.output_findings,
                 log_message=f"Executed tool '{tool_name}'. Added {len(tool_exec.added_nodes)} nodes & {len(tool_exec.added_edges)} edges to reasoning graph.",
                 graph_snapshot=snapshot_tool,

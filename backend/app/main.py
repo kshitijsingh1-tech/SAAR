@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Query, Response, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 
 from .schemas import InvestigationRequest, InvestigationResponse, BaselineComparisonModel
 from .dynamic_loop import DynamicWorkflowOrchestrator
@@ -96,6 +97,23 @@ def get_baseline(domain: str = Query("infrastructure"), preset_id: Optional[str]
     if not preset_id:
         preset_id = plugin.presets[0]["id"]
     return plugin.get_baseline_comparison(preset_id)
+
+
+from .services.image_classifier import image_classifier
+
+
+class ImageClassificationRequest(BaseModel):
+    image_data: str
+    user_text: Optional[str] = None
+
+
+@app.post("/api/classify-image")
+def classify_image_endpoint(req: ImageClassificationRequest):
+    """Autonomous visual domain classification for uploaded or pasted images."""
+    try:
+        return image_classifier.classify_image(req.image_data, req.user_text)
+    except Exception as e:
+        return {"domain": "agriculture", "confidence": 0.5, "error": str(e)}
 
 
 # ===================================================================

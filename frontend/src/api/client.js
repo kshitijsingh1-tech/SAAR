@@ -382,4 +382,17 @@ export const getBadmintonRecommendationsV1 = async (jobId) => {
   return res.data;
 };
 
+export const classifyImage = async (imageData, userText = '') => {
+  try {
+    const res = await axios.post(`${API_BASE_URL}/api/classify-image`, {
+      image_data: imageData,
+      user_text: userText
+    });
+    return res.data;
+  } catch (err) {
+    console.warn('[client] Failed to classify image domain:', err);
+    return { domain: 'agriculture', confidence: 0.5 };
+  }
+};
+
 

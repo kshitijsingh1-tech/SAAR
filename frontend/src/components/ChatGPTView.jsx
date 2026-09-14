@@ -1246,32 +1246,81 @@ export function ChatGPTView({
 
                     {/* Sleek, subtle exploration shortcuts */}
                     {msg.role === 'assistant' && msg.report && (() => {
-                      const dLower = String(selectedDomain || '').toLowerCase();
-                      const isPed = dLower.includes('pediat') || dLower.includes('gait') || dLower.includes('toddle');
-                      const isSpo = dLower.includes('sport') || dLower.includes('athlet') || dLower.includes('badminton');
-                      const isMov = isPed || isSpo;
+                      const rep = msg.report;
+                      // Determine modality strictly by active report data structure
+                      const isImageInvestigation = Boolean(rep?.final_graph || rep?.vlm_raw_analysis || rep?.image_metadata || rep?.preset_metadata || rep?.nodes?.length > 0);
+                      const isPedGait = !isImageInvestigation && Boolean(rep?.assessment_id || rep?.cadence_range || (rep?.metrics && rep?.metrics.usable_step_count !== undefined));
+                      const isBadmintonSports = !isImageInvestigation && Boolean(rep?.court_calibration || rep?.speed_metrics || rep?.shots || (rep?.analysis_id && rep?.domain === 'sports'));
+                      const isTelemetryDataset = !isImageInvestigation && !isPedGait && !isBadmintonSports && Boolean(rep?.telemetry || rep?.perception?.features_detected);
+
                       return (
                         <div className="chat-tool-badges-row compact-row">
-                          {isMov ? (
+                          {isPedGait ? (
                             <>
                               <button
                                 type="button"
                                 className="tool-invoke-badge compact"
                                 onClick={() => onOpenTool('gait')}
-                                title={isSpo ? "Open Sports Kinematics Video Analysis" : "Open Pediatric Gait Video Analysis"}
+                                title="Open Pediatric Gait Video Analysis"
                               >
                                 <Film size={12} className="text-cyan" />
-                                <span>Video Analysis</span>
+                                <span>Toddler Gait Analysis</span>
                                 <ArrowRight size={10} />
                               </button>
                               <button
                                 type="button"
                                 className="tool-invoke-badge compact"
                                 onClick={() => onOpenTool('rag')}
-                                title="Open Peer-Reviewed Scientific References"
+                                title="Open Peer-Reviewed Pediatric References"
                               >
                                 <BookOpen size={12} className="text-indigo" />
                                 <span>References</span>
+                                <ArrowRight size={10} />
+                              </button>
+                            </>
+                          ) : isBadmintonSports ? (
+                            <>
+                              <button
+                                type="button"
+                                className="tool-invoke-badge compact"
+                                onClick={() => onOpenTool('badminton')}
+                                title="Open Badminton Athletic Biomechanics Studio"
+                              >
+                                <Film size={12} className="text-amber" />
+                                <span>Badminton Studio</span>
+                                <ArrowRight size={10} />
+                              </button>
+                              <button
+                                type="button"
+                                className="tool-invoke-badge compact"
+                                onClick={() => onOpenTool('rag')}
+                                title="Open Sports Science References"
+                              >
+                                <BookOpen size={12} className="text-indigo" />
+                                <span>References</span>
+                                <ArrowRight size={10} />
+                              </button>
+                            </>
+                          ) : isTelemetryDataset ? (
+                            <>
+                              <button
+                                type="button"
+                                className="tool-invoke-badge compact"
+                                onClick={() => onOpenTool('analytics')}
+                                title="Open Sensor Analytics Dashboard"
+                              >
+                                <BarChart2 size={12} className="text-cyan" />
+                                <span>Sensor Analytics</span>
+                                <ArrowRight size={10} />
+                              </button>
+                              <button
+                                type="button"
+                                className="tool-invoke-badge compact"
+                                onClick={() => onOpenTool('graph')}
+                                title="Open Causal Graph"
+                              >
+                                <GitFork size={12} className="text-purple" />
+                                <span>Causal Graph ({rep.relationships?.length || (rep.final_graph?.edges?.length ?? 5)} Edges)</span>
                                 <ArrowRight size={10} />
                               </button>
                             </>
@@ -1295,7 +1344,7 @@ export function ChatGPTView({
                                 title="Open active Causal Knowledge Graph"
                               >
                                 <GitFork size={12} className="text-purple" />
-                                <span>Causal Graph ({msg.report.relationships?.length || (msg.report.final_graph?.edges?.length ?? 5)} Edges)</span>
+                                <span>Causal Graph ({rep.relationships?.length || (rep.final_graph?.edges?.length ?? 5)} Edges)</span>
                                 <ArrowRight size={10} />
                               </button>
                             </>

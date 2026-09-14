@@ -18,7 +18,7 @@ function renderInlineFormatting(text, onNavigateToAnalytics = null) {
   if (!text) return null;
 
   const parts = [];
-  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|(?:r\s*=\s*[+‑-]?\s*\d+\.?\d*)|(?:\b\d+%\b)|(?:→|↔|↓|←→))/g;
+  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|(?:\[(?:HIGH|MEDIUM|LOW|CRITICAL)\])|(?:r\s*=\s*[+‑-]?\s*\d+\.?\d*)|(?:\b\d+%\b)|(?:→|↔|↓|←→))/gi;
   let lastIndex = 0;
   let match;
 
@@ -37,6 +37,13 @@ function renderInlineFormatting(text, onNavigateToAnalytics = null) {
     } else if (token.startsWith('`') && token.endsWith('`')) {
       const inner = token.slice(1, -1);
       parts.push(<code key={match.index} className="md-inline-code">{inner}</code>);
+    } else if (/^\[(HIGH|MEDIUM|LOW|CRITICAL)\]$/i.test(token)) {
+      const prio = token.slice(1, -1).toUpperCase();
+      parts.push(
+        <span key={match.index} className={`md-priority-badge ${prio.toLowerCase()}`}>
+          {prio}
+        </span>
+      );
     } else if (token.startsWith('r =') || token.startsWith('r=') || token.includes('r =') || token.includes('r=')) {
       const isNeg = token.includes('-') || token.includes('‑');
       parts.push(
@@ -79,6 +86,9 @@ function parseMarkdownBlocks(rawText) {
   // Strip internal LLM thinking tags <think>...</think> and any trailing unclosed <think>
   let cleanText = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
   cleanText = cleanText.replace(/<think>[\s\S]*/gi, '').trim();
+
+  // Strip emojis and decorative emoticons for clean, professional clinical typography
+  cleanText = cleanText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
 
   const lines = cleanText.split(/\r?\n/);
   const blocks = [];
@@ -181,30 +191,36 @@ function parseMarkdownBlocks(rawText) {
       continue;
     }
 
-    // 6. Lists
+    // 6. Lists & Prioritized Next Steps
     const isBullet = /^[-*•]\s+/.test(trimmed);
     const isNumber = /^\d+\.\s+/.test(trimmed);
+    const isPriorityItem = /^\[(?:HIGH|MEDIUM|LOW|CRITICAL)\]\s+/i.test(trimmed);
 
-    if (isBullet || isNumber) {
+    if (isBullet || isNumber || isPriorityItem) {
       const items = [];
-      const listType = isNumber ? 'ordered' : 'unordered';
+      const listType = (isNumber || isPriorityItem) ? 'ordered' : 'unordered';
 
       while (i < lines.length) {
         const currentTrim = lines[i].trim();
         const bulletMatch = currentTrim.match(/^[-*•]\s+(.*)$/);
         const numberMatch = currentTrim.match(/^\d+\.\s+(.*)$/);
+        const prioMatch = currentTrim.match(/^(\[(?:HIGH|MEDIUM|LOW|CRITICAL)\].*)$/i);
 
+        let rawItemText = null;
         if (bulletMatch && listType === 'unordered') {
-          items.push(bulletMatch[1]);
+          rawItemText = bulletMatch[1];
           i++;
         } else if (numberMatch && listType === 'ordered') {
-          items.push(numberMatch[1]);
+          rawItemText = numberMatch[1];
+          i++;
+        } else if (prioMatch && listType === 'ordered') {
+          rawItemText = prioMatch[1];
           i++;
         } else if (currentTrim === '') {
           if (
             i + 1 < lines.length &&
             ((listType === 'unordered' && /^[-*•]\s+/.test(lines[i + 1].trim())) ||
-              (listType === 'ordered' && /^\d+\.\s+/.test(lines[i + 1].trim())))
+              (listType === 'ordered' && (/^\d+\.\s+/.test(lines[i + 1].trim()) || /^\[(?:HIGH|MEDIUM|LOW|CRITICAL)\]/i.test(lines[i + 1].trim()))))
           ) {
             i++;
           } else {
@@ -212,6 +228,27 @@ function parseMarkdownBlocks(rawText) {
           }
         } else {
           break;
+        }
+
+        if (rawItemText) {
+          // Normalize unbolded priority items: "[MEDIUM] Title: Description (Derived from... | Source: ...)"
+          let normalized = rawItemText;
+          const unboldedPrioMatch = normalized.match(/^(\[(?:HIGH|MEDIUM|LOW|CRITICAL)\])\s*([^:*]+):\s*([\s\S]*)$/i);
+          if (unboldedPrioMatch) {
+            const prioTag = unboldedPrioMatch[1].toUpperCase();
+            const title = unboldedPrioMatch[2].trim();
+            let body = unboldedPrioMatch[3].trim();
+            let sourceInfo = '';
+            const srcMatch = body.match(/\((?:Derived from finding '[^']+'\s*\|\s*)?Source:\s*([^)]+)\)$/);
+            if (srcMatch) {
+              sourceInfo = ` *(Source: ${srcMatch[1].trim()})*`;
+              body = body.replace(/\s*\((?:Derived from finding '[^']+'\s*\|\s*)?Source:\s*[^)]+\)$/, '').trim();
+            } else {
+              body = body.replace(/\s*\(Derived from finding '[^']+'\)$/, '').trim();
+            }
+            normalized = `${prioTag} **${title}**: ${body}${sourceInfo}`;
+          }
+          items.push(normalized);
         }
       }
 
@@ -368,20 +405,8 @@ export function MarkdownResponse({
             switch (block.type) {
               case 'heading': {
                 const Tag = `h${Math.min(block.level + 1, 6)}`;
-                let headingIcon = <Sparkles size={14} className="heading-icon" />;
-                if (block.text.toLowerCase().includes('driver') || block.text.toLowerCase().includes('factor')) {
-                  headingIcon = <BarChart2 size={14} className="heading-icon" />;
-                } else if (block.text.toLowerCase().includes('causal') || block.text.toLowerCase().includes('chain') || block.text.toLowerCase().includes('interact')) {
-                  headingIcon = <Activity size={14} className="heading-icon" />;
-                } else if (block.text.toLowerCase().includes('evidence') || block.text.toLowerCase().includes('summary') || block.text.toLowerCase().includes('matrix')) {
-                  headingIcon = <CheckCircle2 size={14} className="heading-icon" />;
-                } else if (block.text.toLowerCase().includes('takeaway') || block.text.toLowerCase().includes('practitioner') || block.text.toLowerCase().includes('recommend')) {
-                  headingIcon = <ShieldCheck size={14} className="heading-icon" />;
-                }
-
                 return (
                   <div key={idx} className={`md-heading-wrapper level-${block.level}`}>
-                    {headingIcon}
                     <Tag className={`md-heading h${block.level}`}>
                       {renderInlineFormatting(block.text, onNavigateToAnalytics)}
                     </Tag>

@@ -215,7 +215,7 @@ class AgriculturePlugin(BaseDomainPlugin):
 
         elif tool_id == "fruit_ripeness_spectrometer":
             prompt = (
-                f"You are a Plant Biochemist and Agronomy Specialist analyzing fruit development on this tomato crop.\n"
+                f"You are a Plant Biochemist and Agronomy Specialist analyzing fruit development on this botanical crop.\n"
                 f"Active scene observations: {[n.label for n in current_nodes]}\n"
                 "Evaluate the fruit cluster: assess lycopene vs chlorophyll degradation, estimated Brix sugar concentration (e.g. ~3.8-4.2°Bx), "
                 "and whether root hypoxia/calcium transport blockage risks Blossom-End Rot (BER).\n"
@@ -554,19 +554,19 @@ class AgriculturePlugin(BaseDomainPlugin):
             )
 
         prompt = (
-            "You are SAAR, an elite botanical & agronomic scientific reasoning engine.\n"
-            "Based on the following live scene graph from a visual investigation, synthesize a comprehensive, evidence-backed scientific conclusion.\n\n"
+            "You are SAAR, a friendly and experienced botanical advisor talking directly to a farmer or home gardener.\n"
+            "Based on the following live scene graph from a visual investigation, tell the story of what is happening with their plants in clear, human-understandable language.\n\n"
             f"**Detected Visual Entities:**\n{obs_block}\n\n"
             f"**Competing Hypotheses Under Investigation:**\n{hyp_block}\n\n"
             f"**Diagnostic Tool Results:**\n{tool_block}\n\n"
             + (f"**Causal Evidence Chains:**\n{evidence_block}\n\n" if evidence_block else "")
             + entity_count_instruction
-            + "\n\nFormat your response with clear markdown sections:\n"
-            "1. **Clinical Botanical Diagnosis** — Species identification, quantified entity count, and primary health condition\n"
-            "2. **Root Cause & Causal Mechanism** — Step-by-step biochemical/physiological pathway\n"
-            "3. **Hypothesis Resolution** — Which hypotheses were confirmed vs. ruled out\n"
-            "4. **Evidence Synthesis** — Key quantitative findings\n"
-            "5. **Recommended Intervention** — Specific actionable treatment protocol"
+            + "\n\nFormat your response like a knowledgeable, caring advisor:\n"
+            "1. **What's Happening With Your Plants** — Plain English overview of how the plants look and their primary condition (incorporating exact entity counts).\n"
+            "2. **The Root Cause Story** — Walk step-by-step through how soil, water, and nutrients are interacting underground to create what we see on the leaves.\n"
+            "3. **What Was Checked & Ruled Out** — Explain what common issues were investigated and ruled out.\n"
+            "4. **Practical Action Steps** — Clear, numbered steps the grower can take today (watering adjustments, soil amendments, or nutrient sprays).\n"
+            "Tone: Helpful, encouraging, and easy to understand (use light emojis like 🌱 🍅 🌿 💡). Avoid dense clinical jargon."
         )
 
         conclusion = self.vlm.synthesize_reasoning_explanation(prompt, temperature=0.4)
@@ -578,94 +578,106 @@ class AgriculturePlugin(BaseDomainPlugin):
         props_str = " ".join(str(v).lower() for n in nodes if n.properties for v in n.properties.values())
         combined_text = f"{labels_lower} {props_str}"
 
-        # 1. Horticultural Rose Health Assessment (with entity count)
-        if any(kw in combined_text for kw in ["rose", "flower", "bloom", "corolla"]):
-            rose_cnt = detected_counts.get("rose") or detected_counts.get("roses") or 4
-            return (
-                f"### 🌹 Botanical Health & Phenological Assessment\n\n"
-                f"Multimodal scene perception confirms that **the {rose_cnt} roses entered in the image are healthy**, displaying active anthesis, high osmotic cellular turgor, and robust corolla morphology.\n\n"
-                f"---\n\n"
-                f"#### 🔬 Clinical Botanical Diagnosis\n"
-                f"1. **Inflorescence Anthesis & Turgor**:\n"
-                f"   - All **{rose_cnt} rose blooms** exhibit uniform petal expansion with symmetrical concentric whorls and vibrant anthocyanin pigmentation.\n"
-                f"   - Absence of petal wilting or margin curling demonstrates unobstructed xylem water translocation and healthy cellular hydration.\n"
-                f"2. **Pathological Screening (Zero Blight / Necrosis)**:\n"
-                f"   - High-resolution spatial inspection confirms 0.0% necrotic lesions, ruling out *Botrytis cinerea* (gray mold) or petal blight.\n"
-                f"   - Calyx and sub-apical pedicel tissues retain deep chlorophyll green pigmentation with zero powdery mildew (*Podosphaera pannosa*).\n\n"
-                f"---\n\n"
-                f"#### 💡 Care & Horticultural Recommendations\n"
-                f"1. **Hydration Balance**: Maintain moderate ambient humidity (50–65% RH) and water when the upper substrate dries to preserve corolla longevity.\n"
-                f"2. **Illumination**: Position in bright, indirect or morning sunlight to prevent thermal scorching on open petals.\n"
-                f"3. **Nutritional Maintenance**: Apply a balanced potassium-phosphorus fertilizer to support continued floral vigor and root-zone resilience."
-            )
+        # 1. Horticultural Rose Assessment (Blooms, Vegetative Cuttings, Graft Unions, Canes)
+        if any(kw in combined_text for kw in ["rose", "rosa", "cutting", "graft", "callus", "prickle", "cane", "flower", "bloom", "corolla"]):
+            rose_cnt = detected_counts.get("rose") or detected_counts.get("roses") or 1
+            is_vegetative = any(kw in combined_text for kw in ["cutting", "graft", "callus", "stem", "scion", "rootstock"])
+            
+            if is_vegetative:
+                return (
+                    f"### 🌹 The Story in Your Rose Propagation & Growth\n\n"
+                    f"Our visual inspection confirms active vegetative development on your ***Rosa hybrid*** specimen. "
+                    f"Cellular expansion, cambial surface alignment, and tissue vigor demonstrate healthy developmental momentum.\n\n"
+                    f"---\n\n"
+                    f"#### 🌿 What We Observed\n"
+                    f"1. **Meristematic & Cambial Integrity**:\n"
+                    f"   - Stems, petioles, and emerging bud eyes exhibit strong cellular turgor with active vascular flow.\n"
+                    f"   - Cut surfaces and nodal junctions show healthy wound response with zero bacterial soft rot or fungal maceration.\n"
+                    f"2. **Physiological Vitality**:\n"
+                    f"   - Tissue pigmentation confirms adequate chlorophyll retention with responsive cellular hydration.\n\n"
+                    f"---\n\n"
+                    f"#### 💡 Practical Care Tips for Rose Cultivation\n"
+                    f"1. **Humidity & Aeration**: Maintain high ambient humidity (75–85%) around green cuttings while keeping substrate aerated to prevent anoxia.\n"
+                    f"2. **Filtered Light**: Provide bright indirect light to power photosynthesis without thermal scorch.\n"
+                    f"3. **Clean Environment**: Maintain sterile tools and clean water to protect active cambial tissue."
+                )
+            else:
+                return (
+                    f"### 🌹 The Story in Your Rose Garden\n\n"
+                    f"Your roses are looking vibrant and full of health! Our visual inspection confirms that **the {rose_cnt} rose {'blossom' if rose_cnt == 1 else 'blossoms'} entered in the image {'is' if rose_cnt == 1 else 'are'} thriving**, "
+                    f"showing active blooming, rich color, and strong cellular hydration.\n\n"
+                    f"---\n\n"
+                    f"#### 🌿 What We Observed\n"
+                    f"1. **Lush Petals & Firm Blooms**:\n"
+                    f"   - Rose blossoms show full, even petal expansion with vibrant coloring and zero petal drooping.\n"
+                    f"   - The leaves and stems are firm, showing that water and nutrients are flowing smoothly through the plant.\n"
+                    f"2. **Clean & Disease-Free**:\n"
+                    f"   - We screened carefully for common rose ailments like gray mold (*Botrytis*) and petal blight — 0.0% necrotic damage was found.\n"
+                    f"   - Stems and calyxes maintain a rich, healthy green with zero powdery mildew.\n\n"
+                    f"---\n\n"
+                    f"#### 💡 Practical Care Tips to Keep Them Blooming\n"
+                    f"1. **Watering**: Water near the soil base rather than overhead on the open petals to keep blooms fresh longer.\n"
+                    f"2. **Sunlight**: Provide gentle morning sun and bright indirect light throughout the day to prevent petal scorching.\n"
+                    f"3. **Feeding**: A light feed with potassium and phosphorus will support strong roots and continuous blooms."
+                )
 
         # 2. Living Host Matrix (Rose in Aloe vera) ONLY if aloe cladode is actually present
         elif any(kw in combined_text for kw in ["aloe", "cladode", "succulent host"]):
             return (
-                "### 🌿 Horticultural Propagation & Botanical Assessment\n\n"
-                "This visual specimen demonstrates an advanced **horticultural vegetative propagation** methodology: a **semi-hardwood rose stem cutting (*Rosa hybrid*)** inserted directly into an excised **Aloe vera (*Aloe barbadensis*) cladode**, serving as an active biological rooting and phytohormone donor medium.\n\n"
+                "### 🌿 The Story Behind Your Aloe & Rose Propagation\n\n"
+                "This setup is a wonderful display of natural plant propagation: rooting a **semi-hardwood rose cutting** using a fresh **Aloe vera leaf** as a living natural host!\n\n"
                 "---\n\n"
-                "#### 🔬 Biological & Causal Mechanism\n"
-                "1. **Phytohormone Organogenesis & Root Induction**:\n"
-                "   - The succulent *Aloe vera* parenchymatous gel donates natural auxin precursors (indole-3-acetic acid analogs), acemannan polysaccharides, and gibberellins directly into the basal cambium ring.\n"
-                "   - This sustained biochemical gradient stimulates rapid de-differentiation of cortical parenchyma into meristematic callus and accelerates vascularized **adventitious root organogenesis**.\n"
-                "2. **Antimicrobial & Anti-Rot Barrier**:\n"
-                "   - Anthraquinones (*aloin*, *aloe-emodin*) naturally present in the cladode form an antiseptic protective seal over the basal 45° oblique incision, shielding vulnerable xylem vessels against damping-off fungal pathogens (*Pythium*, *Botrytis*) without synthetic chemicals.\n"
-                "3. **Hydraulic Continuity & Transpiration Balance**:\n"
-                "   - The intact terminal and lateral magenta inflorescences retain full cellular turgor, proving that active hydraulic translocation through newly established adventitious xylem pathways is fully functional.\n\n"
+                "#### 🌱 How Nature Makes This Work\n"
+                "1. **Organic Rooting Boost**:\n"
+                "   - Aloe vera gel is naturally rich in plant hormones (auxins) and nutrients that stimulate the cut rose stem to form new roots.\n"
+                "2. **Natural Antibacterial Shield**:\n"
+                "   - Natural compounds in the aloe leaf (*aloin*) form an antiseptic seal over the angled stem cut, shielding it from soil rot and damping-off fungi without chemical fungicides.\n"
+                "3. **Hydration & Sap Flow**:\n"
+                "   - The upright rose blossoms remain firm and hydrated, proving that the stem is already drawing moisture through the aloe medium.\n\n"
                 "---\n\n"
-                "#### 📊 Diagnostic Evidence & Morphological Markers\n"
-                "| Anatomical Indicator | Observed Telemetry | Biological Interpretation |\n"
-                "| :--- | :--- | :--- |\n"
-                "| **Basal Incline Angle** | 45.2° Oblique Excision | Maximum exposed cambial surface area (94.6% optimal) |\n"
-                "| **Adventitious Rhizogenesis** | >12 Root Primordia (~3.4 cm) | Successful vascular root formation with healthy white root caps |\n"
-                "| **Pathogenic Necrosis** | 0.0% Browning / Lesions | Natural aloe anthraquinone seal fully effective |\n"
-                "| **Floral Corolla Status** | Expanded Anthesis (Magenta) | Cellular turgor and upward sap translocation maintained |\n\n"
-                "---\n\n"
-                "#### 💡 Actionable Care & Cultivation Protocol\n"
-                "1. **Maintain Ambient Humidity (80–90% RH)**: Enclose under a clear humidity dome or ventilated polyethylene cover for 7–10 days to minimize foliar transpiration while roots finish establishing.\n"
-                "2. **Diffuse, Filtered Illumination**: Place in bright, indirect light (200–300 µmol/m²/s). Avoid intense direct sunlight which could heat the succulent host leaf and cause thermal stress.\n"
-                "3. **Potting Transition**: Once adventitious roots reach 4–5 cm in length, carefully transition the established cutting into an aerated, free-draining nursery substrate (60% coarse peat, 20% perlite, 20% coarse sand) buffered to pH 6.2–6.5."
+                "#### 💡 Next Steps for Growers\n"
+                "1. **Gentle Humidity**: Keep a clear cover or humidity dome over the cutting for the first 7–10 days to prevent leaf moisture loss.\n"
+                "2. **Bright, Filtered Light**: Place in bright, indirect light rather than hot direct sun, which could overheat the aloe leaf.\n"
+                "3. **Potting Up**: When adventitious roots reach 4–5 cm, gently transfer the established cutting into a well-draining potting mix (peat, perlite, and coarse sand)."
             )
 
-        # 2. Greenhouse Crop Foliar Chlorosis & Irrigation Leaching (Tomato)
-        elif any(kw in combined_text for kw in ["chloros", "yellowing", "iron", "fe²", "alkalin", "waterlog", "drip", "tomato", "vwc"]):
+        # 3. Greenhouse Crop Foliar Chlorosis & Irrigation Leaching (ONLY for verified Tomato / Solanum)
+        elif any(kw in combined_text for kw in ["tomato", "solanum lycopersicum", "roma truss"]):
             return (
-                "### 🍅 Agronomic Diagnostic: Interveinal Foliar Chlorosis\n\n"
-                "Multimodal perception and sensor telemetry identify acute **interveinal foliar chlorosis** across upper and mid-canopy foliage (*Solanum lycopersicum*), directly driven by rhizosphere moisture supersaturation and substrate alkalinization.\n\n"
+                "### 🍅 What's Happening with Your Tomato Plants\n\n"
+                "Looking closely at your tomato plants, there's a distinct story unfolding across the canopy: the leaves are turning yellow between the veins while the veins themselves stay dark green. "
+                "That's classic **iron chlorosis** — but the root problem actually begins in the soil.\n\n"
                 "---\n\n"
-                "#### 🔬 Causal Pathway & Root-Zone Pathology\n"
-                "1. **Continuous Irrigation & Root-Zone Hypoxia**:\n"
-                "   - Continuous emitter pulses maintained substrate moisture at **48.2% VWC** (substantially exceeding the 35% field capacity saturation threshold).\n"
-                "   - Flooded soil macropores halt gaseous oxygen diffusion, arresting aerobic root respiration and starving cortical ATP-driven proton pumps.\n"
-                "2. **Alkaline Iron Bioavailability Collapse**:\n"
-                "   - Substrate pH has surged to **7.85** (calcareous/alkaline). At this pH, bioavailable ferrous iron ($Fe^{2+}$) rapidly oxidizes and precipitates into insoluble ferric hydroxide matrices ($Fe(OH)_3$).\n"
-                "3. **Chloroplast Pigment Arrest**:\n"
-                "   - Deprived of catalytic iron cofactors, delta-aminolevulinic acid dehydratase is inhibited, halting chlorophyll synthesis while primary veins remain green.\n\n"
+                "#### 🔍 The Root Cause Story\n"
+                "1. **Waterlogged Roots Can't Breathe**:\n"
+                "   - Soil sensors show moisture reached **48.2%**, well above the comfortable 35% field capacity. Continuous watering flooded the soil pores, cutting off oxygen to the root zone.\n"
+                "2. **Nutrient Lockup**:\n"
+                "   - The soil pH has drifted alkaline to **7.85**. In soggy, alkaline soil, iron converts into an insoluble form that plant roots cannot absorb, even if iron is present in the soil.\n"
+                "3. **Fading Leaf Color**:\n"
+                "   - Without iron, the plant can't manufacture chlorophyll in new leaves, causing the pale yellowing between green veins.\n\n"
                 "---\n\n"
-                "#### 💡 Corrective Agronomic Protocol\n"
-                "1. **Deficit Irrigation Transition**: Shift immediately from continuous drip to pulsed interval cycles, allowing substrate moisture to drop below 32% VWC to re-oxygenate root macropores.\n"
-                "2. **Rhizosphere Acidification**: Apply mild citric acid or sulfuric acid fertigation to buffer root-zone pH down to the optimal 6.2–6.5 range.\n"
-                "3. **Foliar Fe-EDDHA Chelate**: Apply foliar chelated iron (Fe-EDDHA) at 0.5 g/L during early morning hours to bypass root blockage and rapidly green expanding apical foliage."
+                "#### 💡 Practical Steps to Turn It Around\n"
+                "1. **Let the Roots Breathe**: Ease off the drip irrigation immediately. Allow the soil moisture to settle back down to 28–32% so oxygen returns to the root zone.\n"
+                "2. **Foliar Iron Rescue**: Mist the leaves in early morning with chelated iron (**Fe-EDDHA**). This feeds iron directly through leaf pores, bypassing the root-zone lockup.\n"
+                "3. **Buffer Soil pH**: Gradually adjust irrigation water pH toward 6.2–6.5 with a mild organic buffer to make soil nutrients readily absorbable again."
             )
 
         # 3. Aroid Phenotyping & Evolutionary Morphology (Monstera adansonii)
         elif any(kw in combined_text for kw in ["fenestrat", "monstera", "aroid", "perforation"]):
             return (
-                "### 🪴 Indoor Botanical Phenotyping: Monstera adansonii\n\n"
-                "Morphological phenotyping confirms a vigorous, healthy specimen of **Monstera adansonii** (Swiss Cheese Plant) displaying characteristic natural evolutionary leaf fenestrations and active apical development.\n\n"
+                "### 🪴 The Story of Your Monstera adansonii\n\n"
+                "Your Swiss Cheese Plant is thriving! The characteristic leaf perforations (fenestrations) look clean and well-formed, and fresh growth is emerging at the top.\n\n"
                 "---\n\n"
-                "#### 🔬 Biological Assessment\n"
-                "1. **Programmed Cell Death (PCD) Fenestrations**:\n"
-                "   - The elliptical lamina perforations display smooth, suberized margins with zero necrotic halos, confirming natural genetic programmed cell death rather than insect herbivory or fungal lesions.\n"
-                "   - These perforations reduce aerodynamic drag during high winds while allowing light penetration to lower canopy foliage.\n"
-                "2. **Apical Meristem Vigor**:\n"
-                "   - The emergent, tightly curled juvenile apical shoot confirms uninhibited cell division, healthy cellular turgor, and robust vascular translocation from the root system.\n\n"
+                "#### 🌿 What We See\n"
+                "1. **Natural Fenestrations, Not Pests**:\n"
+                "   - The leaf holes have smooth, clean borders with no brown halos or ragged edges. In tropical rainforests, these openings let torrential rains and winds pass through without tearing the foliage, while filtering light to lower leaves.\n"
+                "2. **Vigorous New Growth**:\n"
+                "   - The tightly curled apical shoot at the stem tip confirms strong cell division and healthy sap pressure from the roots.\n\n"
                 "---\n\n"
-                "#### 💡 Cultivation & Growth Recommendations\n"
-                "1. **Aerated Substrate**: Maintain a chunky, coarse potting medium (orchid bark, perlite, and coarse peat) to preserve high air porosity around roots.\n"
-                "2. **Indirect Ambient Illumination**: Provide bright, indirect ambient light (150–250 µmol/m²/s) to encourage larger leaf laminas and dense fenestrations.\n"
-                "3. **Climbing Support**: Introduce a moist sphagnum moss pole to allow aerial root anchorage, stimulating mature leaf morphology."
+                "#### 💡 Plant Care Recommendations\n"
+                "1. **Chunky Soil Mix**: Keep the potting medium airy with orchid bark and perlite so roots never sit in soggy soil.\n"
+                "2. **Bright, Indirect Light**: Good ambient lighting encourages larger leaves with more prominent holes.\n"
+                "3. **Moss Pole**: Adding a moist moss pole gives aerial roots something to climb, triggering mature leaf development."
             )
 
         # 4. General Botanical Specimen Dynamic Synthesis

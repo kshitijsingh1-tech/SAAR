@@ -385,7 +385,7 @@ Structure:
             gemini_keys = [os.getenv("GEMINI_API_KEY")]
 
         for g_key in gemini_keys:
-            for model_name in ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]:
+            for model_name in ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={g_key}"
                 payload = {
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -647,11 +647,11 @@ Structure:
 
         # Try active generation models with vision capabilities
         candidate_models = [
+            "gemini-3.7-flash",
+            "gemini-3.1-flash-lite",
             "gemini-3.5-flash",
             "gemini-3.6-flash",
-            "gemini-3.1-flash-lite",
-            "gemini-flash-latest",
-            "gemini-3.7-flash"
+            "gemini-flash-latest"
         ]
         for model in candidate_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -670,10 +670,7 @@ Structure:
             except urllib.error.HTTPError as e:
                 err_body = e.read().decode("utf-8", errors="ignore")
                 print(f"[VLMService] Gemini ({model}) failed (HTTP {e.code}): {err_body[:200]}")
-                if e.code == 429:
-                    key_pool.record_quota_exhausted("gemini", api_key, cooldown_sec=60.0)
-                    break
-                elif "API_KEY_INVALID" in err_body:
+                if "API_KEY_INVALID" in err_body:
                     key_pool.record_key_invalid("gemini", api_key, reason="API_KEY_INVALID")
                     break
                 continue
@@ -1393,12 +1390,16 @@ Structure:
 
         # P0 Action 1+3: System instruction + Thinking mode for deep scientific reasoning
         synthesis_system_prompt = (
-            "You are SAAR (सार), an elite Visual Scientific Reasoning Engine. "
-            "You synthesize evidence-backed, structured scientific diagnoses with: "
-            "clear markdown headings (## / ###), bold causal mechanism chains, "
-            "quantitative evidence tables where applicable, and actionable recommendations. "
-            "Think deeply about causal mechanisms before generating your response. "
-            "Use precise scientific terminology grounded in the domain."
+            "You are SAAR (सार), a professional scientific reasoning and causal intelligence system. "
+            "You explain analytical findings with clarity, clinical and technical rigor, and accessibility. "
+            "CRITICAL TONE RULES: "
+            "1) Lead with the primary analytical finding in precise, clear language. "
+            "2) Weave empirical evidence, physical measurements, and confidence intervals naturally into your narrative. "
+            "3) Do NOT use emojis, emoticons, or decorative icons. Maintain a clean, professional tone. "
+            "4) Adapt your voice by domain: objective and reassuring for pediatric movement screening, practical for agricultural agronomy, analytical for sports biomechanics. "
+            "5) End with clear, actionable clinical or operational guidance. "
+            "6) Format using clean, well-structured Markdown with descriptive section headers. "
+            "7) Keep all scientific accuracy intact."
         )
 
         # 1. Primary: Google Gemini Pool
@@ -1407,7 +1408,7 @@ Structure:
             gemini_candidates = [os.getenv("GEMINI_API_KEY")]
 
         for g_key in gemini_candidates:
-            for gemini_model in ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]:
+            for gemini_model in ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={g_key}"
                 payload = {
                     "systemInstruction": {
@@ -1437,10 +1438,7 @@ Structure:
                 except Exception as e:
                     err_msg = str(e)
                     print(f"[VLMService] Gemini ({gemini_model}) synthesis failed on key {g_key[:6]}...: {e}")
-                    if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
-                        key_pool.record_quota_exhausted("gemini", g_key, cooldown_sec=60.0)
-                        break
-                    elif "API_KEY_INVALID" in err_msg:
+                    if "API_KEY_INVALID" in err_msg:
                         key_pool.record_key_invalid("gemini", g_key)
                         break
                     continue
@@ -1452,7 +1450,9 @@ Structure:
 
         groq_url = "https://api.groq.com/openai/v1/chat/completions"
         for gr_key in groq_candidates:
-            for model in ["qwen/qwen3.6-27b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "groq/compound", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
+            # Prioritize models with high rate limit capacity on Groq
+            groq_models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b", "groq/compound"]
+            for model in groq_models:
                 payload = {
                     "model": model,
                     "messages": [
@@ -1480,9 +1480,8 @@ Structure:
                 except Exception as e:
                     err_msg = str(e)
                     print(f"[VLMService] Groq synthesis failed for model {model}: {e}")
-                    if "429" in err_msg or "Too Many Requests" in err_msg or "Rate limit" in err_msg:
-                        key_pool.record_quota_exhausted("groq", gr_key, cooldown_sec=60.0)
-                        break
+                    # Continue trying next models on the same key rather than instantly breaking
+                    continue
 
         # 3. Alternative: OpenRouter Fallback
         openrouter_key = os.getenv("OPENROUTER_API_KEY")

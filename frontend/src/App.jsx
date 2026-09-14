@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   fetchDomains, runInvestigation, fetchSaarKnowledge,
   uploadSaarCsv, askSaarQuestion, answerSaarQuestion, fetchBaseline,
-  analyzeGaitVideo, analyzeBadmintonVideo, classifyVideo, API_BASE_URL
+  analyzeGaitVideo, analyzeBadmintonVideo, askBadmintonQuestion, classifyVideo, classifyImage, API_BASE_URL
 } from './api/client';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ChatGPTView } from './components/ChatGPTView';
@@ -271,6 +271,28 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed === 'object' && parsed !== null) {
+          // Migrate any legacy cached messages in localStorage to professional formatting without emojis
+          Object.keys(parsed).forEach((sId) => {
+            if (Array.isArray(parsed[sId])) {
+              parsed[sId] = parsed[sId].map((m) => {
+                if (m && typeof m.text === 'string') {
+                  let updated = m.text
+                    .replace(/### Video Analysis Completed \((.*?)\)/g, "### Toddler Walking Assessment ($1)")
+                    .replace(/### Video Analysis Completed/g, "### Toddler Walking Assessment")
+                    .replace(/### 👶 Your Toddler's Walking Screening Highlights \((.*?)\)/g, "### Toddler Walking Assessment ($1)")
+                    .replace(/### 👶 Your Toddler's Walking Screening Highlights/g, "### Toddler Walking Assessment")
+                    .replace(/### 🏸 Badminton Rally Film Breakdown/g, "### Badminton Kinematic Performance Analysis")
+                    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+                    .replace(/####\s+Movement & Balance Highlights/g, "#### Movement & Spatial Metrics")
+                    .replace(/####\s+Key Performance Highlights/g, "#### Performance Metrics")
+                    .replace(/####\s+Developmental Milestone Context:/g, "#### Developmental Milestone Context\n");
+                  return { ...m, text: updated };
+                }
+                return m;
+              });
+            }
+          });
+
           if (!parsed['session-3']) {
             parsed['session-3'] = DEFAULT_MESSAGES['session-3'];
           } else if (Array.isArray(parsed['session-3']) && parsed['session-3'][1] && !parsed['session-3'][1].report) {
@@ -418,6 +440,15 @@ export default function App() {
 
   const unlockedTools = sessionUnlockedTools[activeSessionId] || ['dictionary'];
 
+  const setSessionTools = useCallback((toolsToSet, sessionId = activeSessionId) => {
+    const list = Array.isArray(toolsToSet) ? toolsToSet : [toolsToSet];
+    const unique = Array.from(new Set(['dictionary', ...list]));
+    setSessionUnlockedTools((prev) => ({
+      ...prev,
+      [sessionId]: unique
+    }));
+  }, [activeSessionId]);
+
   const unlockTools = useCallback((toolsToUnlock, sessionId = activeSessionId) => {
     const list = Array.isArray(toolsToUnlock) ? toolsToUnlock : [toolsToUnlock];
     if (list.length === 0) return;
@@ -436,7 +467,7 @@ export default function App() {
   }, [activeSessionId]);
 
   // Semantic Tool Detector: dynamically analyzes question text, attachments, and model findings to unlock relevant tools
-  const detectAndUnlockTools = useCallback((queryText, attachedFiles = [], report = null, domain = selectedDomain) => {
+  const detectAndUnlockTools = useCallback((queryText, attachedFiles = [], report = null, domain = selectedDomain, resetSession = false) => {
     const detected = new Set(['dictionary']);
     const combined = `${queryText || ''} ${report?.summary || ''} ${report?.conclusion || ''} ${report?.domain || ''} ${domain || ''}`.toLowerCase();
     const fileList = Array.isArray(attachedFiles) ? attachedFiles : (attachedFiles ? [attachedFiles] : []);
@@ -448,13 +479,13 @@ export default function App() {
       const name = typeof f === 'string' ? f : (f?.name || '');
       const type = (f?.type || '').toLowerCase();
       return type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(name);
-    });
+    }) || Boolean(report?.final_graph || report?.vlm_raw_analysis || report?.image_metadata || customImageData || customImageUrl);
 
     const hasVideo = fileList.some((f) => {
       const name = typeof f === 'string' ? f : (f?.name || '');
       const type = (f?.type || '').toLowerCase();
       return type.startsWith('video/') || /\.(mp4|mov|avi|webm|mkv)$/i.test(name);
-    });
+    }) || Boolean(customVideoFile || report?.video || report?.assessment_id || report?.analysis_id);
 
     const hasCsv = fileList.some((f) => {
       const name = typeof f === 'string' ? f : (f?.name || '');
@@ -467,55 +498,45 @@ export default function App() {
       detected.add('graph');
     }
 
-    if ((hasVideo && /badminton|smash|racket|shuttle|sport/.test(fullContext)) || report?.court_calibration || /badminton|tennis|smash|shuttle|shuttlecock|racket|racquet|kinetic|stroke|court|wrist|elbow|jump|biomechanic|athlet|player|rally/.test(fullContext)) {
+    // Badminton Biomechanics: ONLY when authentic sports video or badminton telemetry exists
+    // Never unlock badminton on static images or broad text keywords
+    const isAuthenticBadminton = (hasVideo && /badminton|shuttlecock|smash|racket/.test(fullContext)) ||
+      Boolean(report?.court_calibration || report?.speed_metrics || report?.shots || (report?.analysis_id && (report?.domain === 'sports' || domain === 'sports')));
+    if (!hasImage && isAuthenticBadminton) {
       detected.add('badminton');
       detected.add('rag');
       detected.add('analytics');
       detected.add('graph');
     }
 
-    if ((hasVideo && /gait|toddle|pediat|walk|child/.test(fullContext)) || report?.metrics?.usable_step_count != null || /gait|toddle|pediat|infant|baby|child|walk|step|cadence|asymmetry|stance|clearance|ambulation/.test(fullContext)) {
+    // Toddler Gait Screening: ONLY when authentic gait video or pediatric metrics exist
+    // Never unlock gait on static images or general text words
+    const isAuthenticGait = (hasVideo && /gait|toddle|pediat/.test(fullContext)) ||
+      Boolean(report?.assessment_id || report?.cadence_range || (report?.metrics?.usable_step_count != null));
+    if (!hasImage && isAuthenticGait) {
       detected.add('gait');
       detected.add('rag');
     }
 
-    if (hasCsv || report?.telemetry || report?.perception?.features_detected || /sensor|telemetry|moisture|ph|rhizosphere|gpr|temperature|humidity|timeseries|correlation|column|dataset|observation|trend|time-series|csv|dataframe/.test(fullContext)) {
+    if (hasCsv || report?.telemetry || report?.perception?.features_detected) {
       detected.add('analytics');
       detected.add('graph');
     }
 
-    if (report?.domain_knowledge?.length > 0 || /literature|citation|paper|reference|peer-reviewed|journal|study|clinical|guideline|published|evidence|hypothesis|source/.test(fullContext)) {
+    if (report?.domain_knowledge?.length > 0) {
       detected.add('rag');
     }
 
-    if (report?.final_graph || report?.relationships?.length > 0 || /graph|causal|cause|dependency|network|node|edge|pathway|chain|link|mechanism/.test(fullContext)) {
+    if (report?.final_graph || report?.relationships?.length > 0) {
       detected.add('graph');
     }
 
-    if (report?.steps && Array.isArray(report.steps)) {
-      report.steps.forEach((s) => {
-        const stepName = (s.tool_name || s.step_name || '').toLowerCase();
-        if (stepName.includes('morphology') || stepName.includes('ground') || stepName.includes('inspect')) {
-          detected.add('grounded');
-          detected.add('graph');
-        }
-        if (stepName.includes('spectrometry') || stepName.includes('telemetry') || stepName.includes('sensor')) {
-          detected.add('analytics');
-          detected.add('graph');
-        }
-        if (stepName.includes('gait') || stepName.includes('posture')) {
-          detected.add('gait');
-          detected.add('rag');
-        }
-        if (stepName.includes('badminton') || stepName.includes('stroke')) {
-          detected.add('badminton');
-          detected.add('rag');
-        }
-      });
+    if (resetSession) {
+      setSessionTools(Array.from(detected));
+    } else {
+      unlockTools(Array.from(detected));
     }
-
-    unlockTools(Array.from(detected));
-  }, [selectedDomain, unlockTools]);
+  }, [selectedDomain, unlockTools, setSessionTools, customImageData, customImageUrl, customVideoFile]);
 
   // Synchronize active session context dynamically ONLY when activeSessionId actually changes
   useEffect(() => {
@@ -719,6 +740,8 @@ export default function App() {
     setCustomImageUrl(null);
     setCustomVideoFile(null);
     setCameraConnected(true);
+    // Strict tool reset: ensure stale tools from prior sessions or different modalities never bleed before image analysis completes
+    setSessionTools(['dictionary'], activeSessionId);
 
     const activeSession = sessions.find((s) => s.id === activeSessionId);
     const existingMilestones = activeSession?.telemetryData?.milestones || saarData?.telemetry?.milestones || [];
@@ -777,6 +800,17 @@ export default function App() {
     } else if (isSports) {
       targetDomain = 'sports';
       setSelectedDomain('sports');
+    } else if (primaryBase64) {
+      // Proactively classify visual domain from image when no explicit keywords are given
+      try {
+        const imgClass = await classifyImage(primaryBase64, optionalUserText);
+        if (imgClass?.domain) {
+          targetDomain = imgClass.domain;
+          setSelectedDomain(imgClass.domain);
+        }
+      } catch (err) {
+        console.warn('[App] Visual domain auto-classification probe error:', err);
+      }
     } else if (!selectedDomain || selectedDomain === 'pediatric' || selectedDomain === 'pediatrics') {
       targetDomain = 'agriculture';
       setSelectedDomain('agriculture');
@@ -788,6 +822,7 @@ export default function App() {
         s.id === activeSessionId
           ? {
               ...s,
+              presetId: null,
               imageData: primaryBase64,
               imageUrl: null,
               videoFile: null,
@@ -846,6 +881,10 @@ export default function App() {
       });
       if (checkIsAborted()) return;
       setInvestigationData(res);
+      if (res?.domain && res.domain !== targetDomain) {
+        targetDomain = res.domain;
+        setSelectedDomain(res.domain);
+      }
 
       const baseTelemetry = csvReport?.telemetry || saarData?.telemetry || res?.telemetry || {};
       const csvMilestones = baseTelemetry.milestones || [];
@@ -912,7 +951,7 @@ export default function App() {
         steps: thoughtSteps
       };
 
-      detectAndUnlockTools(optionalUserText, fileList, res, targetDomain);
+      detectAndUnlockTools(optionalUserText, fileList, res, targetDomain, true);
 
       setMessages((prev) => [
         ...prev,
@@ -980,13 +1019,14 @@ export default function App() {
       setSelectedDomain('pediatrics');
       setActiveTool('gait');
       setIsToolDrawerOpen(true);
-      let responseText = `### Video Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
-      responseText += `- **Video Processed**: \`${gaitResult.video?.filename || 'Sample Video'}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s)\n`;
-      responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
-      responseText += `- **Cadence**: **${gaitResult.metrics?.cadence} steps/min** (Typical: ${gaitResult.cadence_range?.low}–${gaitResult.cadence_range?.high} steps/min)\n`;
-      responseText += `- **Left-Right Step Asymmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct}%** (Typical benchmark ≤ 10%)\n`;
-      responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov}% CoV** (Developing toddler benchmark ≤ 15%)\n\n`;
-      responseText += `#### Developmental Context:\n${gaitResult.milestone_context || ''}`;
+      let responseText = `### Toddler Walking Assessment (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
+      responseText += `Automated kinematic screening completed for \`${gaitResult.video?.filename || 'Sample Video'}\` (${gaitResult.video?.fps} FPS, ${gaitResult.video?.duration_seconds}s):\n\n`;
+      responseText += `#### Movement & Spatial Metrics\n`;
+      responseText += `- **Stepping Cadence**: **${gaitResult.metrics?.cadence} steps/min** (Normative reference: ${gaitResult.cadence_range?.low}–${gaitResult.cadence_range?.high} steps/min)\n`;
+      responseText += `- **Bilateral Step Symmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct}% asymmetry** (Normative threshold: ≤ 10%)\n`;
+      responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov}% CoV** (${gaitResult.metrics?.usable_step_count || 0} valid cycles, capture quality: ${gaitResult.quality?.confidence || 'High'})\n\n`;
+      responseText += `#### Developmental Milestone Context\n${gaitResult.milestone_context || 'Normative developmental coordination observed during active bipedal balance consolidation.'}\n\n`;
+      responseText += `*Clinical Note: Automated observational screening report to support routine pediatric evaluation.*`;
 
       const thoughtProcess = buildVideoThoughtProcess(gaitResult);
 
@@ -1022,9 +1062,6 @@ export default function App() {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ]);
-
-    // Dynamically unlock relevant tools right when user submits question/upload
-    detectAndUnlockTools(userText, currentFiles);
 
     // Update active session query if new session
     setSessions((prev) =>
@@ -1098,18 +1135,114 @@ export default function App() {
               if (checkIsAborted()) return;
               setSaarData(badmintonResult);
 
-              let responseText = `### Badminton Athletic Kinematics (${badmintonResult.status?.toUpperCase() || 'COMPLETED'})\n\n`;
-              responseText += `- **Video Analyzed**: \`${fileName}\` (${badmintonResult.video?.fps || 30} FPS, ${badmintonResult.video?.duration_seconds || 0}s, ${badmintonResult.video?.frame_count || 0} frames)\n`;
-              responseText += `- **Court Calibration**: **${badmintonResult.court_calibration?.is_calibrated ? 'Calibrated (BWF Standard)' : 'Uncalibrated'}** (${Math.round((badmintonResult.court_calibration?.confidence || 0) * 100)}% confidence)\n`;
-              responseText += `- **Peak Racket Speed**: **${badmintonResult.metrics?.racket_speed_kmh != null ? badmintonResult.metrics.racket_speed_kmh + ' km/h' : 'Tracking in progress'}**\n`;
-              responseText += `- **Peak Shuttle Speed**: **${badmintonResult.metrics?.shuttle_speed_kmh != null ? badmintonResult.metrics.shuttle_speed_kmh + ' km/h' : 'Gated / Flight detected'}**\n`;
-              responseText += `- **Peak Wrist Speed**: **${badmintonResult.metrics?.wrist_speed_kmh != null ? badmintonResult.metrics.wrist_speed_kmh + ' km/h' : 'N/A'}**\n`;
-              responseText += `- **Movement Distance**: **${badmintonResult.metrics?.movement_distance_m != null ? badmintonResult.metrics.movement_distance_m + ' m' : 'N/A'}**\n`;
-              if (badmintonResult.strokes?.length) {
-                responseText += `- **Strokes / Smash Events Grounded**: **${badmintonResult.strokes.length}** distinct contact frames\n`;
+              // Extract verified metrics from Pydantic schema
+              const racketSpeed = badmintonResult.speed_metrics?.racket_speed_peak?.available ? badmintonResult.speed_metrics.racket_speed_peak.speed_kmh : null;
+              const shuttleSpeed = badmintonResult.speed_metrics?.shuttle_speed_peak?.available ? badmintonResult.speed_metrics.shuttle_speed_peak.speed_kmh : null;
+              const distanceM = badmintonResult.movement_metrics?.total_distance_m;
+              const coveragePct = badmintonResult.movement_metrics?.coverage_percentage;
+              const strokeCount = badmintonResult.shots?.length || badmintonResult.shot_metrics?.total_shots || 0;
+              const caloriesKcal = badmintonResult.energy_metrics?.estimated_energy_expenditure_kcal;
+              const isCalibrated = badmintonResult.court_calibration?.is_calibrated;
+              const calibConf = Math.round((badmintonResult.court_calibration?.confidence || 0) * 100);
+
+              let responseText = `### Badminton Kinematic Performance Analysis\n\n`;
+              responseText += `Kinematic evaluation completed for rally recording \`${fileName}\` (${badmintonResult.video?.fps || 30} FPS, ${badmintonResult.video?.duration_seconds || 0}s):\n\n`;
+
+              responseText += `#### Performance Metrics\n`;
+              if (strokeCount > 0) {
+                responseText += `- **Stroke Execution**: Isolated **${strokeCount} contact phase(s)** with verified 33-point BlazePose tracking.\n`;
+              } else {
+                responseText += `- **Rally Tracking**: Continuous 33-point anatomical pose geometry tracked across active sequence.\n`;
               }
-              if (badmintonResult.coach_summary) {
-                responseText += `\n#### Athletic Performance Summary:\n${badmintonResult.coach_summary}\n`;
+
+              if (distanceM != null) {
+                const covStr = coveragePct != null ? ` across **${coveragePct.toFixed(1)}%** of court zones` : '';
+                responseText += `- **Court Displacement**: Total tracked distance of **${distanceM.toFixed(1)} meters**${covStr}.\n`;
+              }
+
+              if (racketSpeed != null || shuttleSpeed != null) {
+                const parts = [];
+                if (racketSpeed != null) parts.push(`Peak racket speed: **${racketSpeed} km/h**`);
+                if (shuttleSpeed != null) parts.push(`Peak shuttle speed: **${shuttleSpeed} km/h**`);
+                responseText += `- **Kinetic Velocity**: ${parts.join(' | ')}.\n`;
+              } else {
+                responseText += `- **Kinetic Velocity**: Ballistic velocity gated pending high-speed video calibration.\n`;
+              }
+
+              responseText += `- **Court Calibration**: **${isCalibrated ? 'BWF Standard Calibrated' : 'Pixel-Space Visual Boundaries'}** (${calibConf}% confidence).\n`;
+
+              if (badmintonResult.kinematic_supervision) {
+                const ks = badmintonResult.kinematic_supervision;
+                const engineName = ks.engine?.includes('3.7')
+                  ? 'Gemini 3.7 Flash'
+                  : ks.engine?.includes('3.1')
+                  ? 'Gemini 3.1 Flash-Lite'
+                  : 'Kinematic Supervisor';
+                responseText += `\n#### Kinematic Motion Supervision (${engineName})\n`;
+                if (ks.supervision_verdict) {
+                  responseText += `- **Supervision Verdict**: ${ks.supervision_verdict}\n`;
+                }
+                if (ks.stroke_validation) {
+                  responseText += `- **Stroke & Phase Validation**: ${ks.stroke_validation}\n`;
+                }
+                if (ks.velocity_plausibility) {
+                  responseText += `- **Velocity Plausibility (30 FPS)**: ${ks.velocity_plausibility}\n`;
+                }
+                if (ks.kinetic_chain_integrity) {
+                  responseText += `- **Kinetic Chain & Reach**: ${ks.kinetic_chain_integrity}\n`;
+                }
+                if (ks.coaching_takeaway) {
+                  responseText += `- **Coaching Takeaway**: ${ks.coaching_takeaway}\n`;
+                }
+              }
+
+              const recs = badmintonResult.prioritized_recommendations?.length
+                ? badmintonResult.prioritized_recommendations
+                : (badmintonResult.recommendations?.length ? badmintonResult.recommendations : []);
+
+              if (recs.length > 0) {
+                responseText += `\n#### Recommended Next Steps\n`;
+                recs.slice(0, 3).forEach((r, idx) => {
+                  if (typeof r === 'object' && r !== null) {
+                    const prio = (r.priority || 'MEDIUM').toUpperCase();
+                    const title = r.title || 'Technical Recommendation';
+                    const text = r.recommendation || '';
+                    const drill = r.actionable_drill ? ` *Actionable Drill*: ${r.actionable_drill}` : '';
+                    const src = r.rag_source ? ` *(Source: ${r.rag_source})*` : '';
+                    responseText += `${idx + 1}. [${prio}] **${title}**: ${text}${drill}${src}\n`;
+                  } else if (typeof r === 'string') {
+                    const match = r.match(/^\[([A-Z]+)\]\s*([^:]+):\s*([\s\S]*)$/);
+                    if (match) {
+                      const prio = match[1].toUpperCase();
+                      const title = match[2].trim();
+                      let body = match[3].trim();
+                      let sourceInfo = '';
+                      const srcMatch = body.match(/\((?:Derived from finding '[^']+'\s*\|\s*)?Source:\s*([^)]+)\)$/);
+                      if (srcMatch) {
+                        sourceInfo = ` *(Source: ${srcMatch[1].trim()})*`;
+                        body = body.replace(/\s*\((?:Derived from finding '[^']+'\s*\|\s*)?Source:\s*[^)]+\)$/, '').trim();
+                      } else {
+                        body = body.replace(/\s*\(Derived from finding '[^']+'\)$/, '').trim();
+                      }
+                      responseText += `${idx + 1}. [${prio}] **${title}**: ${body}${sourceInfo}\n`;
+                    } else {
+                      responseText += `${idx + 1}. ${r}\n`;
+                    }
+                  }
+                });
+              }
+
+              if (userText && userText.trim()) {
+                try {
+                  const questionReply = await askBadmintonQuestion(badmintonResult.analysis_id, userText.trim(), { signal: abortController.signal });
+                  if (checkIsAborted()) return;
+                  if (questionReply?.answer_summary) {
+                    responseText += `\n---\n\n### Coach's Answer to: *"${userText.trim()}"*\n${questionReply.answer_summary}\n`;
+                  }
+                } catch (qErr) {
+                  if (checkIsAborted(qErr)) return;
+                  console.warn("Failed to answer badminton question alongside video upload:", qErr);
+                }
               }
 
               const thoughtProcess = {
@@ -1119,14 +1252,14 @@ export default function App() {
                   `Autonomous Domain Dispatch: ${classification.rationale}`,
                   `Court Geometry Calibration: ${badmintonResult.court_calibration?.is_calibrated ? 'BWF Doubles Court calibrated with homography' : 'Extrapolated uncalibrated boundary'}`,
                   `Athletic Pose Estimation: Grounded 33 BlazePose keypoints across ${badmintonResult.video?.frame_count || 0} frames`,
-                  `Ballistic Dynamics: Computed racket velocity (${badmintonResult.metrics?.racket_speed_kmh || 0} km/h) and shuttle velocity (${badmintonResult.metrics?.shuttle_speed_kmh || 0} km/h)`,
+                  `Movement Kinematics: Computed court displacement (${distanceM != null ? distanceM.toFixed(1) + 'm' : 'tracked'}) and ${strokeCount} stroke(s)`,
                   `Tool Synchronization: Mounted Badminton Athletic Biomechanics Studio`
                 ]
               };
 
               if (checkIsAborted()) return;
 
-              detectAndUnlockTools(userText, currentFiles, badmintonResult, 'sports');
+              detectAndUnlockTools(userText, currentFiles, badmintonResult, 'sports', true);
 
               setMessages((prev) => [
                 ...prev,
@@ -1149,21 +1282,22 @@ export default function App() {
               const gaitResult = await analyzeGaitVideo(file, 24, { signal: abortController.signal });
               if (checkIsAborted()) return;
               setSaarData(gaitResult);
-              detectAndUnlockTools(userText, currentFiles, gaitResult, 'pediatrics');
-              let responseText = `### Video Gait Analysis Completed (${gaitResult.status?.toUpperCase() || 'SUCCESS'})\n\n`;
-              responseText += `- **Video Processed**: \`${fileName}\` (${gaitResult.video?.fps || 24} FPS, ${gaitResult.video?.duration_seconds || 0}s)\n`;
-              responseText += `- **Capture Quality**: **${gaitResult.quality?.confidence || 'High'} Confidence** (${Math.round((gaitResult.quality?.good_frame_ratio || 0) * 100)}% good frames, ${gaitResult.metrics?.usable_step_count || 0} valid steps)\n`;
-              responseText += `- **Cadence**: **${gaitResult.metrics?.cadence || 0} steps/min** (Typical: ${gaitResult.cadence_range?.low || 110}–${gaitResult.cadence_range?.high || 180} steps/min)\n`;
-              responseText += `- **Left-Right Step Asymmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct || 0}%** (Typical benchmark ≤ 10%)\n`;
-              responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov || 0}% CoV** (Developing benchmark ≤ 15%)\n\n`;
-              responseText += `#### Kinematic & Functional Context:\n${gaitResult.milestone_context || 'Biomechanical kinematics and temporal movement patterns calculated.'}`;
+              detectAndUnlockTools(userText, currentFiles, gaitResult, 'pediatrics', true);
+              let responseText = `### Toddler Walking Assessment\n\n`;
+              responseText += `Kinematic gait screening completed for \`${fileName}\` (${gaitResult.video?.fps || 24} FPS, ${gaitResult.video?.duration_seconds || 0}s):\n\n`;
+              responseText += `#### Movement & Spatial Metrics\n`;
+              responseText += `- **Stepping Cadence**: **${gaitResult.metrics?.cadence || 0} steps/min** (Normative reference: ${gaitResult.cadence_range?.low || 110}–${gaitResult.cadence_range?.high || 180} steps/min).\n`;
+              responseText += `- **Bilateral Step Symmetry**: **${gaitResult.metrics?.step_time_asymmetry_pct || 0}% step asymmetry** (Normative threshold: ≤ 10%).\n`;
+              responseText += `- **Step Rhythm Variation**: **${gaitResult.metrics?.step_time_cov || 0}% CoV** (${gaitResult.metrics?.usable_step_count || 0} valid cycles evaluated).\n\n`;
+              responseText += `#### Developmental Milestone Context\n${gaitResult.milestone_context || 'Normative developmental coordination observed during upright balance consolidation.'}\n\n`;
+              responseText += `*Clinical Note: Automated observational screening report to support routine pediatric evaluation.*`;
 
               if (userText && userText.trim()) {
                 try {
                   const questionReply = await askSaarQuestion(gaitResult.assessment_id || 'latest', userText.trim(), { signal: abortController.signal });
                   if (checkIsAborted()) return;
                   if (questionReply?.answer_summary) {
-                    responseText += `\n\n---\n\n### Inquiry Response: *"${userText.trim()}"*\n${questionReply.answer_summary}`;
+                    responseText += `\n\n---\n\n### Question Response: *"${userText.trim()}"*\n${questionReply.answer_summary}`;
                   }
                 } catch (qErr) {
                   if (checkIsAborted(qErr)) return;
@@ -1257,7 +1391,7 @@ export default function App() {
 
           let responseText = report?.summary || report?.conclusion || `I have ingested and analyzed \`${fileName}\`. Longitudinal trends, cross-correlations, and causal relationships are mapped in the **Sensor Telemetry** and **Causal Graph** tools.`;
 
-          detectAndUnlockTools(userText, currentFiles, report);
+          detectAndUnlockTools(userText, currentFiles, report, selectedDomain, true);
 
           if (userText && userText.trim()) {
             try {

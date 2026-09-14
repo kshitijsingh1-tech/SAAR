@@ -713,10 +713,11 @@ class BadmintonPipeline:
                     f"H_OVERHEAD_EXTENSION: Contact elbow angle averaged {contact_pose_metrics.elbow_extension_deg:.1f}°, demonstrating verified full overhead reach extension."
                 )
 
-        # 21. Multimodal Cognitive Supervision (Gemini 1.5 Sports Video Supervisor)
+        # 21. Multimodal Cognitive Supervision (Gemini Kinematic Motion Supervisor)
         supervisor_insights = gemini_sports_supervisor.supervise_rally_analysis(
             video_metadata=metadata.model_dump(),
             shots=[s.model_dump() for s in kinematics_enhanced_shots],
+            speed_metrics=speed_metrics.model_dump() if speed_metrics else None,
             court_calibration=court_calibration.model_dump() if court_calibration else None,
             movement_metrics=movement_metrics.model_dump() if movement_metrics else None
         )
@@ -750,7 +751,8 @@ class BadmintonPipeline:
             rejection_reason=None,
             status=BadmintonAnalysisStatus.QUALITY_ASSESSED_PIPELINE_PENDING,
             graph_data=None,
-            enhancement=enhancement_meta
+            enhancement=enhancement_meta,
+            kinematic_supervision=supervisor_insights
         )
         prioritized_recs = self.recommendation_engine.generate_recommendations(temp_result)
         recommendations = [r.to_summary_string() for r in prioritized_recs]
@@ -798,9 +800,10 @@ class BadmintonPipeline:
             evidence=evidence,
             limitations=limitations,
             rejection_reason=None,
-            status=BadmintonAnalysisStatus.QUALITY_ASSESSED_PIPELINE_PENDING,
+            status=BadmintonAnalysisStatus.COMPLETED,
             graph_data=graph_data,
-            enhancement=enhancement_meta
+            enhancement=enhancement_meta,
+            kinematic_supervision=supervisor_insights
         )
 
     def compare_longitudinal_sessions(

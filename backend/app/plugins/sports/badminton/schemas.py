@@ -423,6 +423,7 @@ class BadmintonAnalysisResult(BaseModel):
     status: BadmintonAnalysisStatus = BadmintonAnalysisStatus.NOT_YET_IMPLEMENTED
     graph_data: Optional[GraphStateModel] = None
     enhancement: Optional[EnhancementMetadata] = None
+    kinematic_supervision: Optional[Dict[str, Any]] = None
 
     @property
     def graph(self) -> Optional[GraphStateModel]:

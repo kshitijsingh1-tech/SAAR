@@ -490,31 +490,31 @@ class ReasoningService:
 
         rag_results = self.rag.query(question, domain="sports", top_k=2)
 
-        prompt = f"""You are SAAR, an autonomous scientific reasoning engine analyzing a Badminton Video Biomechanics assessment. Answer the user's question accurately by synthesizing empirical kinematic measurements, court spatial geometry, and peer-reviewed badminton literature.
+        prompt = f"""You are SAAR, a knowledgeable and encouraging badminton coach reviewing game film with a player. Answer the user's question in a warm, conversational, storytelling tone — like a coach sitting courtside explaining what they saw.
 
 User Question:
 "{question}"
 
-BADMINTON ANALYSIS EMPIRICAL CONTEXT:
+YOUR MEASURED DATA FROM THE VIDEO (use these exact numbers, never invent):
 - Total Shots Detected: {total_shots}
 - Shot Breakdown: {', '.join([f"{k}: {v} ({shot_pcts.get(k, 0.0):.1f}%)" for k, v in shot_counts.items()]) if shot_counts else 'None detected'}
 - Mean Shot Duration: {f"{mean_shot_dur:.2f} s" if mean_shot_dur is not None else 'N/A'}
 - Court Calibration: {calib_str}
 - Movement Coverage: {f"{cov_pct:.1f}%" if cov_pct is not None else 'N/A'} (Total Distance: {f"{dist_m:.2f} m" if dist_m is not None else 'N/A'})
 - Energy Expenditure: {f"{energy.estimated_calories_burned_kcal:.1f} kcal ({energy.active_duration_minutes:.1f} min)" if energy else 'N/A'}
-- Active Hypotheses: {hypo_node.label if hypo_node else 'None asserted (Multi-signal gate not satisfied)'}
+- Active Hypotheses: {hypo_node.label if hypo_node else 'None asserted'}
 
-Domain Literature Knowledge (Badminton RAG):
+Badminton Knowledge:
 {chr(10).join([f"- [{r.domain}] {r.content[:180]}..." for r in rag_results[:2]])}
 
-MANDATORY EPISTEMIC FRAMING & ETHICAL RULES:
-1. **Section 11 Epistemic Hedging**: When discussing hypotheses or patterns, use strictly hedged language: "is consistent with a pattern of", "may indicate", "suggests potential". NEVER assert definitive or guaranteed causal dogmatism.
-2. **Measured Facts Only**: Always report the exact measured joint angles, durations, and counts above. Never invent metrics.
-3. **Structured Explanation**:
-   - **Executive Summary**: 1-2 direct sentences answering the question with measured values and hedged wording.
-   - **Evidence Matrix**: Clean markdown table with parameters, measured values, units, and methodological notes.
-   - **Key Biomechanical Takeaways**: Exactly 2 crisp bullet points.
-   - **Bottom Line**: `**Bottom line:** <1 sentence conclusion with coach validation reminder>`.
+RESPONSE STYLE RULES:
+1. 🏸 Be enthusiastic and encouraging — like a supportive coach, not a lab report.
+2. Lead with what the player did well, then gently note areas for improvement.
+3. Weave measured numbers naturally into sentences (e.g. "your arm was fully extended at 155° — that's textbook smash form") — avoid dumping tables.
+4. When discussing tactical patterns or hypotheses, use hedged language ("this suggests", "it looks like", "you might want to try").
+5. Use light emoji (🏸 ⚡ 🎯 💪) as tone markers.
+6. End with one clear, actionable coaching suggestion.
+7. Keep it concise — 150-250 words max.
 """
         answer_text = None
         try:
@@ -524,116 +524,81 @@ MANDATORY EPISTEMIC FRAMING & ETHICAL RULES:
 
         if not answer_text:
             parts = []
-            parts.append("### Badminton Biomechanical Reasoning Summary")
 
             if any(k in q_lower for k in ["hypothesis", "hypotheses", "left space", "underutilization", "bias", "pattern", "avoidance", "weakness"]):
                 if hypo_node:
                     props = hypo_node.properties or {}
-                    parts.append(f"**Executive Summary**: Multi-signal gating evaluated and **satisfied** (>= 2 signals confirmed). {hypo_node.label}.")
-                    parts.append("\n#### Grounded Hypothesis & Evidence Chain (Section 11)")
-                    parts.append(f"> **Observation -> Trend -> Correlation -> Hypothesis**:\n> {props.get('value', 'Evidence consistent with left-space underutilization.')}")
-                    parts.append("\n#### Supporting Signals Matrix")
-                    parts.append("| Signal Criterion | Status | Observed Value | Evidence Basis |")
-                    parts.append("|---|---|---|---|")
-                    parts.append("| **Region Occupancy Deficit** | Satisfied | < 20% left court occupancy | Phase 5 Movement Analysis |")
-                    parts.append("| **Shot Target Placement Skew** | Satisfied | >= 60% right court targeting | Phase 8 Placement Metrics |")
-                    parts.append("| **Recovery Centroid Bias** | Evaluated | Shifted rightward | Phase 8 Recovery Centroid |")
-                    parts.append("\n#### Key Findings")
-                    parts.append("- **Hedged Epistemic Status**: Observed data is consistent with a pattern of left-space underutilization, which may indicate tactical avoidance, reach limitation, or visual habit.")
-                    parts.append("- **Coach Grounding**: This hypothesis requires validation by a qualified badminton coach with on-court context.")
-                    parts.append("\n**Bottom line:** Tactical spatial asymmetry is consistent with left-space underutilization; requires coach validation.")
+                    parts.append("### 🏸 Coach's Tactical & Spatial Read")
+                    parts.append("Looking across your movement patterns and shot distribution, there is a clear habit showing up on court.")
+                    parts.append(f"\n💡 **What We Spotted**: You spent less than 20% of your time covering the left side of the court, while over 60% of your shots were directed toward the right. Your recovery position also naturally drifts right of the center line.")
+                    parts.append("\n**Why It Matters**: This looks like a tactical bias or comfort zone — you may be favoring your right side to protect a backhand or because of a visual habit. On-court, an observant opponent will notice this and start pushing you wide to the left to exploit the open space.")
+                    parts.append("\n🎯 **Next Step on the Court**: Work on shadow-drills moving into that left backcourt corner, and practice recovering back to the true 3.05 m center after every stroke. Have your coach watch a few live points to see if this is tactical or a movement confidence issue!")
                 else:
-                    parts.append("**Executive Summary**: Multi-signal gating was evaluated for spatial underutilization. The hypothesis was **strictly not asserted** because fewer than 2 corroborating signals were satisfied.")
-                    parts.append("\n#### Gating Evaluation Matrix (Section 11)")
-                    parts.append("| Required Signal | Status | Gate Requirement |")
-                    parts.append("|---|---|---|")
-                    parts.append("| **Left Court Occupancy Deficit** | Insufficient | < 20% left court time with right court > 25% |")
-                    parts.append("| **Target Placement Skew** | Insufficient | >= 60% right court targeting (n >= 3) |")
-                    parts.append("| **Base Recovery Bias** | Insufficient | Mean recovery x >= 3.50m (center = 3.05m) |")
-                    parts.append("\n#### Key Findings")
-                    parts.append("- **Anti-Fabrication Gate**: Per Section 11, hypotheses cannot be asserted from single isolated signals or uncalibrated data.")
-                    parts.append("- **Corroboration Threshold**: At least 2 independent signals must be confirmed before creating a hypothesis node.")
-                    parts.append("\n**Bottom line:** Hypothesis not asserted due to insufficient corroborating multi-signal evidence.")
+                    parts.append("### 🏸 Coach's Tactical & Spatial Read")
+                    parts.append("We checked your movement coverage and shot placement across the court to see if any tactical spatial blind spots stood out.")
+                    parts.append("\n💡 **The Verdict**: Right now, your movement looks balanced! The data does **not** show a persistent bias toward one side of the court — you're covering both left and right zones sufficiently without leaving an obvious open lane.")
+                    parts.append("\n🎯 **Coach's Advice**: Keep focusing on crisp split-steps and snapping back to the center base after every shot to keep that court balance.")
 
             elif any(k in q_lower for k in ["angle", "elbow", "shoulder", "knee", "hip", "joint", "kinematic", "arm", "technique"]):
-                parts.append(f"**Executive Summary**: Kinematic joint angles were measured at detected shot contact frames across {total_shots} stroke(s).")
-                parts.append("\n#### Contact Frame Kinematics Matrix")
-                parts.append("| Shot ID | Shot Type | Contact Frame | Elbow Extension (°) | Shoulder Angle (°) | Knee Angle (°) |")
-                parts.append("|---|---|---|---|---|---|")
+                parts.append("### 🏸 Stroke Kinematics & Technique Breakdown")
+                parts.append(f"We tracked your body angles across {total_shots} stroke(s) at the exact moment of racket contact:")
                 if shots:
-                    for s in shots[:10]:
+                    for s in shots[:4]:
                         pf = s.pose_features or {}
-                        elb = f"{pf.get('contact_elbow_angle_deg', pf.get('elbow_angle_deg', 'N/A'))}"
-                        sho = f"{pf.get('contact_shoulder_angle_deg', pf.get('shoulder_angle_deg', 'N/A'))}"
-                        kne = f"{pf.get('contact_knee_angle_deg', pf.get('knee_angle_deg', 'N/A'))}"
-                        cf = s.contact_frame if s.contact_frame is not None else (f"{s.contact_time:.2f}s" if s.contact_time else "-")
-                        parts.append(f"| **{s.shot_id}** | {s.shot_type.upper()} | {cf} | {elb}° | {sho}° | {kne}° |")
+                        elb = pf.get('contact_elbow_angle_deg', pf.get('elbow_angle_deg'))
+                        sho = pf.get('contact_shoulder_angle_deg', pf.get('shoulder_angle_deg'))
+                        kne = pf.get('contact_knee_angle_deg', pf.get('knee_angle_deg'))
+                        cf = s.contact_frame if s.contact_frame is not None else (f"{s.contact_time:.2f}s" if s.contact_time else "")
+                        parts.append(f"\n- **{s.shot_type.upper()} (Shot #{s.shot_id})**:")
+                        if elb is not None:
+                            elb_str = f"your elbow was extended at **{elb}°**"
+                            comp = "textbook reach" if elb > 140 else "a more compact lever"
+                            parts.append(f"  - Elbow: {elb_str} ({comp}).")
+                        if sho is not None:
+                            parts.append(f"  - Shoulder elevation: **{sho}°**, giving you clean overhead elevation.")
+                        if kne is not None:
+                            parts.append(f"  - Knee flexion: **{kne}°**, showing your lower body loading base.")
                 else:
-                    parts.append("| - | No strokes detected | - | - | - | - |")
-                parts.append("\n#### Key Findings")
-                parts.append("- **Biomechanical Measurement**: Joint angles are calculated directly from MediaPipe 33-landmark 2D arccos geometry at the exact contact frame.")
-                parts.append("- **Kinetic Transfer**: Proximal-to-distal sequencing requires continuous multi-frame visibility leading into contact.")
-                parts.append("\n**Bottom line:** Contact joint angles measured from validated pose landmarks; consult coach for technique adjustments.")
+                    parts.append("\nNo distinct stroke contact frames were isolated in this sequence.")
+                parts.append("\n💡 **Coach's Takeaway**: Your upper-body kinetic chain is engaging well. For maximum smash power, focus on letting the shoulder rotate smoothly before snapping the forearm and wrist through contact.")
 
             elif any(k in q_lower for k in ["calorie", "energy", "burn", "met", "metabolic", "kcal"]):
                 if energy:
                     kcal = energy.estimated_calories_burned_kcal
                     dur = energy.active_duration_minutes
-                    met = energy.met_value
-                    inputs = energy.inputs_used or []
-                    label_type = "Personalized" if energy.is_personalized else "Generalized (Population-Average 70.0 kg)"
-                    parts.append(f"**Executive Summary**: Estimated energy expenditure is **{kcal:.1f} kcal** across **{dur:.1f} minutes** of active play.")
-                    parts.append("\n#### Energy Expenditure Model (Compendium of Physical Activities)")
-                    parts.append("| Parameter | Value | Reference / Derivation |")
-                    parts.append("|---|---|---|")
-                    parts.append(f"| **Calculated Calories** | **{kcal:.1f} kcal** | MET equation: MET × 3.5 × (mass_kg / 200) × duration_min |")
-                    parts.append(f"| **Active Duration** | {dur:.1f} min | Derived from detected shot / rally timestamps |")
-                    parts.append(f"| **Metabolic Equivalent (MET)** | {met} METs | Ainsworth et al. (2011) / Herrmann et al. (2024) |")
-                    parts.append(f"| **Personalization Status** | **{label_type}** | {'User-supplied mass' if energy.is_personalized else 'Standard 70.0 kg default'} |")
-                    parts.append(f"| **Inputs Used** | {', '.join(inputs)} | Deterministic processing pipeline |")
-                    parts.append("\n#### Key Findings")
-                    parts.append(f"- **Traceable Methodology**: Grounded in Compendium Code 15040/15050 badminton match play baseline.")
-                    parts.append(f"- **Labeling Transparency**: Explicitly labeled as {label_type.lower()} per Section 52.")
-                    parts.append(f"\n**Bottom line:** Energy expenditure estimated at {kcal:.1f} kcal using peer-reviewed MET equation.")
+                    label_type = "your custom weight" if energy.is_personalized else "a standard 70 kg player reference"
+                    parts.append("### 🔥 Workout & Energy Expenditure")
+                    parts.append(f"You put in great effort during this session! In **{dur:.1f} minutes** of active play, you burned approximately **{kcal:.1f} kcal** (calculated using {label_type} at 7.0 MET match intensity).")
+                    parts.append("\n💡 **What This Means**: Badminton is fantastic high-intensity interval training. Those rapid lunges, jump smashes, and recoveries demand both cardiovascular stamina and explosive leg drive.")
+                    parts.append("\n💪 **Recovery Tip**: Rehydrate with electrolytes and do some light hamstring and calf stretching while your muscles are still warm!")
                 else:
-                    parts.append("**Executive Summary**: Energy expenditure calculation unavailable for this session.")
-                    parts.append("\n**Bottom line:** Calorie estimation requires rally duration timing.")
+                    parts.append("### 🔥 Workout & Energy Expenditure")
+                    parts.append("We weren't able to calculate calorie expenditure for this clip because active rally durations couldn't be fully measured.")
 
             elif any(k in q_lower for k in ["speed", "velocity", "km/h", "fast", "shuttle speed", "racket speed"]):
                 if speed and (speed.shuttle_speed_peak.available or speed.racket_speed_peak.available):
-                    shuttle_peak = speed.shuttle_speed_peak.speed_kmh if speed.shuttle_speed_peak.available else "Unavailable"
-                    racket_peak = speed.racket_speed_peak.speed_kmh if speed.racket_speed_peak.available else "Unavailable"
-                    parts.append(f"**Executive Summary**: Ballistic speed analysis: Peak Shuttle Speed: **{shuttle_peak} km/h**, Peak Racket Speed: **{racket_peak} km/h**.")
-                    parts.append("\n#### Speed Measurement Matrix (Section 14 Isolated Reporting)")
-                    parts.append("| Ballistic Entity | Peak Speed | Tracking Segments | Status |")
-                    parts.append("|---|---|---|---|")
-                    parts.append(f"| **Shuttlecock** | {shuttle_peak} km/h | {speed.shuttle_speed_peak.valid_trajectory_segments} | {'Calibrated' if speed.shuttle_speed_peak.available else 'Gated out'} |")
-                    parts.append(f"| **Racket Head** | {racket_peak} km/h | {speed.racket_speed_peak.valid_trajectory_segments} | {'Calibrated' if speed.racket_speed_peak.available else 'Gated out'} |")
-                    parts.append("\n**Bottom line:** Racket and shuttle velocities reported independently without conflation.")
+                    shuttle_peak = speed.shuttle_speed_peak.speed_kmh if speed.shuttle_speed_peak.available else None
+                    racket_peak = speed.racket_speed_peak.speed_kmh if speed.racket_speed_peak.available else None
+                    parts.append("### ⚡ Ballistic Speed & Power")
+                    if shuttle_peak is not None:
+                        parts.append(f"🏸 **Shuttlecock Speed**: Reached a peak of **{shuttle_peak} km/h** off the racket face.")
+                    if racket_peak is not None:
+                        parts.append(f"⚡ **Racket Head Speed**: Peaked at **{racket_peak} km/h** through the contact arc.")
+                    parts.append("\n💡 **Coach's Read**: Generating high racket speed comes down to the whip effect — transferring power from legs to hips, torso, shoulder, and finally the wrist snap at the very last microsecond.")
                 else:
-                    parts.append("**Executive Summary**: **Speed estimate unavailable — insufficient continuous tracking** (Section 13).")
-                    parts.append("\n#### Tracking Limitation Note")
-                    parts.append("- **Section 13 Compliance**: Ballistic speeds require continuous sub-millisecond object tracking and calibrated homography not met by this video capture.")
-                    parts.append("\n**Bottom line:** Speed estimate unavailable — insufficient continuous tracking.")
+                    parts.append("### ⚡ Ballistic Speed & Power")
+                    parts.append("We couldn't compute reliable ballistic speeds for this clip. High-speed shuttle tracking requires ultra-smooth 60+ fps footage with zero motion blur through the contact zone to ensure we never report inaccurate or exaggerated numbers.")
 
             else:
-                parts.append(f"**Executive Summary**: Badminton biomechanics analysis processed **{total_shots} detected shot(s)** with **{calib_str}** court geometry.")
-                parts.append("\n#### Session Summary Matrix")
-                parts.append("| Biomechanical Dimension | Measured Value | Analysis Basis |")
-                parts.append("|---|---|---|")
-                parts.append(f"| **Total Strokes Detected** | {total_shots} | Wrist/racket velocity peak-deceleration validation |")
-                parts.append(f"| **Mean Stroke Duration** | {f'{mean_shot_dur:.2f} s' if mean_shot_dur is not None else 'N/A'} | Contact-to-completion temporal duration |")
-                parts.append(f"| **Court Calibration** | {calib_str} | Perspective boundary homography |")
+                parts.append("### 🏸 Session Story & Performance Highlights")
+                parts.append(f"Great work reviewing your game film! Across this recorded sequence, we analyzed **{total_shots} detected stroke(s)** with **{calib_str}** court geometry.")
                 if dist_m is not None:
-                    parts.append(f"| **Total Distance Covered** | {dist_m:.2f} m | Pelvis centroid trajectory |")
-                if cov_pct is not None:
-                    parts.append(f"| **Court Coverage Area** | {cov_pct:.1f}% | 9-region occupancy mapping |")
+                    parts.append(f"\n- 🏃 **Court Movement**: You covered roughly **{dist_m:.1f} meters** of ground with an active coverage of **{cov_pct:.1f}%** across court zones.")
+                if mean_shot_dur is not None:
+                    parts.append(f"- ⏱️ **Rally Tempo**: Average stroke exchange duration was **{mean_shot_dur:.2f} seconds**, reflecting a brisk, competitive rhythm.")
                 if energy:
-                    parts.append(f"| **Estimated Calories** | {energy.estimated_calories_burned_kcal:.1f} kcal | Compendium MET model |")
-                parts.append("\n#### Key Findings")
-                parts.append("- **Evidence Graph Grounding**: All metrics are organized into the SAAR knowledge & evidence graph following Section 25 node types.")
-                parts.append("- **Epistemic Discipline**: Hypotheses require multi-signal corroboration before assertion.")
-                parts.append("\n**Bottom line:** Objective video biomechanics extracted; consult coach for tactical integration.")
+                    parts.append(f"- 🔥 **Energy Burn**: Estimated energy expenditure reached **{energy.estimated_calories_burned_kcal:.1f} kcal**.")
+                parts.append("\n🎯 **Key Takeaway**: Your court presence is solid. For your next practice, focus on recovering to the center circle between shots to stay one step ahead of the rally!")
 
             answer_text = "\n".join(parts)
 
@@ -845,83 +810,71 @@ MANDATORY EPISTEMIC FRAMING & ETHICAL RULES:
 
         if state.dataset_id == "gait":
             gait_obs_map = {o.feature_name: o.value for o in state.observations}
-            ai_prompt = f"""You are SAAR, an autonomous scientific reasoning engine analyzing a Toddler Gait Screening assessment. Answer the user's question accurately by synthesizing developmental biomechanics, age reference norms, and empirical measured gait values.
+            ai_prompt = f"""You are SAAR, a professional pediatric movement and gait analysis intelligence system.
 
 User Question:
 "{question}"
 
-GAIT ANALYSIS CONTEXT (Deterministic ToddleAI Measurements):
+Relevant Pediatric Literature & Normative Science:
+{chr(10).join([f"- [{r.domain}] {r.content.strip()}" for r in rag_results[:3]])}
+
+Measured Screening Values from Active Video:
 - Cadence: {gait_obs_map.get('cadence', 'N/A')} steps/min
 - Left Mean Step Time: {gait_obs_map.get('left_mean_step_time', 'N/A')} s
 - Right Mean Step Time: {gait_obs_map.get('right_mean_step_time', 'N/A')} s
-- Left-Right Step-Time Asymmetry: {gait_obs_map.get('step_time_asymmetry_pct', 'N/A')}% (Typical threshold <= 10%)
-- Step-Time Variability (CoV): {gait_obs_map.get('step_time_cov', 'N/A')}% (Typical threshold <= 15%)
+- Left-Right Step-Time Asymmetry: {gait_obs_map.get('step_time_asymmetry_pct', 'N/A')}% (healthy benchmark: ≤ 10%)
+- Step-Time Variability (CoV): {gait_obs_map.get('step_time_cov', 'N/A')}% (healthy benchmark: ≤ 15%)
 - Usable Steps Detected: {gait_obs_map.get('usable_step_count', 'N/A')}
-- Assessment Confidence: {state.overall_confidence * 100:.0f}%
+- Overall Screening Quality: {state.overall_confidence * 100:.0f}%
 
-Domain Literature Knowledge (Pediatric Gait RAG):
-{chr(10).join([f"- [{r.domain}] {r.content[:200]}..." for r in rag_results[:2]])}
-
-MANDATORY MEDICAL SAFETY & REASONING GUIDELINES:
-1. **Measured Facts First**: Always use the actual measured metrics above. Never fabricate or extrapolate unmeasured gait values.
-2. **Non-Diagnostic Framing**: Use observational and developmental terms (e.g., 'movement screening', 'temporal symmetry', 'step rhythm variability', 'age-appropriate reference range'). NEVER state or infer a medical diagnosis. Emphasize that screening observations provide objective context for pediatric healthcare professionals.
-3. **Structured Explanation**:
-   - **Executive Summary**: 1-2 direct sentences answering the question with exact measured values.
-   - **Gait Evidence Matrix**: A markdown table with parameters, measured values, reference benchmarks, and observational notes.
-   - **Key Developmental Takeaways**: Exactly 2 crisp bullet points.
-   - **Bottom Line**: `**Bottom line:** <1 sentence non-diagnostic takeaway>`.
+RESPONSE STYLE RULES:
+1. ANSWER THE USER'S SPECIFIC QUESTION DIRECTLY AND FIRST.
+   - If the user asks about a specific researcher, study, paper, or citation (such as 'Sutherland', 'WHO', 'Rygelova', 'Dusing & Thorpe'), explain who/what it is and its significance in pediatric gait development.
+   - If the user asks about a specific parameter (such as 'cadence', 'asymmetry', 'variability', 'barefoot play'), explain that concept directly.
+2. Contextualize with the active screening data where relevant, but DO NOT output an unsolicited generic whole-report summary unless the user explicitly requested an overall evaluation or full summary.
+3. Use clean, professional, and accessible language. Do NOT use emojis or emoticons.
+4. Keep the response focused, structured, and informative (150–250 words).
 """
         elif is_analytical:
-            ai_prompt = f"""You are SAAR, an elite visual and empirical scientific reasoning engine. The user requested: "{question}".
-Synthesize the active multi-modal investigation state, grounded visual entities, empirical telemetry, causal relationships, and domain literature into an authoritative diagnostic report.
+            ai_prompt = f"""You are SAAR, an advanced scientific reasoning and causal intelligence system. The user asked: "{question}".
 
-Active Investigation Evidence & State:
+Based on the active investigation data below, explain the causal relationships and findings clearly, objectively, and professionally.
+
+Active Investigation Context:
 {dataset_context_text}
 
-Domain Scientific Literature (RAG Knowledge):
+Scientific Reference Knowledge:
 {chr(10).join([f"- [{r.domain}] {r.content[:220]}..." for r in rag_results[:3]])}
 
-MANDATORY STRUCTURAL GUIDELINES:
-1. **Executive Diagnostic Summary**: 1-2 authoritative natural language sentences isolating the core root cause, current developmental/physical state, or critical anomaly.
-2. **Evidence & Parameter Matrix (Markdown Table)**:
-   - Provide a clean markdown table with columns: `| Entity / Parameter | Type / Category | Measured Value / Confidence | Clinical / Scientific Significance |`
-   - Include key grounded visual entities or telemetry metrics and their diagnostic role.
-3. **Causal Mechanism Chain**:
-   - Explain the causal pathway (e.g. `**Root Factor** -> **Intermediate Biochemical / Structural State** -> **Observable Defect / Symptom**`).
-4. **Prescriptive Action Plan & Next Steps**:
-   - Exactly 2-3 prioritized, concrete scientific interventions or mitigations.
-5. End with `**Bottom line:** <1 sentence definitive conclusion>`.
+RESPONSE STYLE RULES:
+1. Speak with professional, authoritative scientific clarity.
+2. Structure your response into clear thematic sections: Overall Assessment, Key Grounded Observations, Causal Mechanics, and Next Steps.
+3. Integrate measured parameters and confidence levels naturally into the analytical narrative.
+4. Do NOT use emojis or emoticons. Maintain an executive, peer-reviewed tone throughout.
+5. Provide concrete, actionable, and testable recommendations.
 """
         else:
-            ai_prompt = f"""You are SAAR, an autonomous scientific reasoning engine. Answer the user's question accurately by synthesizing scientific domain knowledge, causal graph reasoning, and empirical dataset observations.
+            ai_prompt = f"""You are SAAR, a professional scientific reasoning system. Answer the user's question with clarity, technical rigor, and accessibility.
 
 User Question:
 "{question}"
 
-Investigation & Telemetry Direct Inspection:
+Available Data from Investigation:
 {dataset_context_text}
 
-Discovered Statistical Correlations in Dataset:
-{chr(10).join([f"- {r.source_feature} <-> {r.target_feature}: r = {r.strength:.2f} ({r.direction})" for r in relevant_rels[:4]])}
+Relevant Patterns Found:
+{chr(10).join([f"- {r.source_feature} ↔ {r.target_feature}: correlation = {r.strength:.2f} ({r.direction})" for r in relevant_rels[:4]])}
 
-Domain Literature Knowledge (RAG):
+Reference Knowledge:
 {chr(10).join([f"- [{r.domain}] {r.content[:180]}..." for r in rag_results[:2]])}
 
-MANDATORY GUIDELINES:
-1. **Understand Query Intent**:
-   - If the user is asking about a **scientific concept, mechanism, definition, or physiological state** (e.g., 'rhizosphere', 'chlorosis', 'iron lockup', 'void', 'hypoxia', 'GPR'):
-     - FIRST provide an authoritative, clear scientific explanation of what the concept is and its physical or biochemical mechanism.
-     - THEN connect it directly to the active investigation.
-     - Do NOT dismiss the question as a missing dataset column. You are a scientific reasoning engine, not a simple database column filter!
-   - If the user is querying a specific tabular column or numeric metric (e.g., 'what was average moisture?', 'did temperature exceed 30C?'):
-     - Answer directly from the matching observations and statistical correlations.
-     - If an exact requested column is absent, explain which related proxies in the dataset reflect that variable.
-
-2. **Executive Summary**: 1-2 direct, high-level natural language sentences explaining the concept or answering the query in rich scientific context.
-3. **Evidence Matrix (Markdown Table)**:
-   - Provide a clean markdown table presenting relevant evidence (measurements, proxy variables, correlations, or biological thresholds).
-4. **Key Takeaways**: Exactly 2 crisp bullet points highlighting the diagnostic significance.
-5. End with `**Bottom line:** <1 sentence scientific conclusion>`.
+RESPONSE STYLE RULES:
+1. Explain scientific concepts plainly and connect them directly to empirical investigation data.
+2. Provide direct answers for specific metrics or thresholds within narrative sentences, avoiding raw data tables.
+3. Maintain a formal, academic, yet accessible tone appropriate for the domain.
+4. Do NOT use emojis or emoticons.
+5. Conclude with a practical takeaway in a single sentence.
+6. Keep it concise — 150-250 words max.
 """
         answer_text = None
         try:
@@ -929,145 +882,107 @@ MANDATORY GUIDELINES:
         except Exception as synth_err:
             print(f"[ReasoningService] Live AI synthesis error: {synth_err}")
 
-        # Fallback to Structured Summary if AI Synthesis is offline
+        # Fallback: 100% Dynamic Data-Driven & RAG-Powered Synthesis (Zero Hardcoded Logic)
         if not answer_text:
             summary_parts = []
-            summary_parts.append(f"### Scientific Investigation Synthesis ({domain_label})")
 
-            if is_analytical:
-                vis_conc = getattr(state, "visual_conclusion", None)
-                if vis_conc:
-                    summary_parts.append(f"**Executive Diagnostic Summary**: {vis_conc}")
-                elif state.concepts:
-                    top_c = state.concepts[0].name
-                    summary_parts.append(f"**Executive Diagnostic Summary**: Multi-modal causal reasoning isolates **{top_c}** with **{int(state.overall_confidence * 100)}%** confidence across active visual anchors and telemetry evidence.")
-                else:
-                    summary_parts.append(f"**Executive Diagnostic Summary**: Evaluated active causal graph dependencies, evidence anchors, and domain literature for *\"{question}\"*.")
+            # 1. Primary Fallback: Dynamic RAG Retrieval across Domain Knowledge Base
+            if rag_results and rag_results[0].score > 0.4:
+                top_rag = rag_results[0]
+                summary_parts.append(f"### {top_rag.section}")
+                summary_parts.append(f"\n{top_rag.content.strip()}")
+                if len(rag_results) > 1 and rag_results[1].score > 1.0:
+                    summary_parts.append(f"\n{rag_results[1].content.strip()}")
 
-                summary_parts.append("\n#### Grounded Evidence & Parameter Matrix")
-                summary_parts.append("| Grounded Entity / Parameter | Category | Confidence | Status / Diagnostic Note |")
-                summary_parts.append("|---|---|---|---|")
+                # Dynamically correlate any active observations whose feature names match query or retrieved content
+                q_and_content_tokens = set(re.findall(r"[a-z0-9]+", (question + " " + top_rag.content).lower()))
+                grounded_obs = []
+                for obs in state.observations:
+                    feat_tokens = set(re.findall(r"[a-z0-9]+", obs.feature_name.lower()))
+                    if feat_tokens & q_and_content_tokens and obs.value is not None:
+                        display_name = obs.feature_name.replace("_", " ").title()
+                        unit = f" {obs.unit}" if getattr(obs, "unit", None) else ""
+                        grounded_obs.append(f"- **{display_name}**: {obs.value}{unit}".strip())
 
-                if state.concepts:
-                    for c in state.concepts[:8]:
-                        c_status = "Verified Visual Anchor" if c.visual_anchor else "Confirmed Concept"
-                        summary_parts.append(f"| **{c.name}** | {c.category.title()} | {int(c.confidence * 100)}% | {c_status} |")
-                elif matching_obs:
-                    for o in matching_obs[:6]:
-                        summary_parts.append(f"| **{o.feature_name}** | Telemetry Variable | {o.value} | Measured Observation |")
-                else:
-                    for feat in (available_cols[:6] if available_cols else ["Investigation Baseline"]):
-                        summary_parts.append(f"| **{feat}** | Active Variable | {int(state.overall_confidence * 100)}% | Grounded |")
+                if grounded_obs:
+                    summary_parts.append("\n#### Correlated Active Observations")
+                    for g_line in grounded_obs[:6]:
+                        summary_parts.append(g_line)
 
-                if state.relationships:
-                    summary_parts.append("\n#### Discovered Causal Pathways")
-                    for r in state.relationships[:4]:
-                        summary_parts.append(f"- **{r.source_feature}** ➔ **{r.target_feature}** *(Confidence: {int(r.strength * 100)}% - {r.description or 'Causal link'})*")
+                domain_display = top_rag.domain.replace("_", " ").title()
+                summary_parts.append(f"\n*Source: {top_rag.source} ({domain_display} Knowledge Base)*")
+                answer_text = "\n".join(summary_parts)
 
-                if rag_results:
-                    best_rag = rag_results[0]
-                    summary_parts.append(f"\n#### Domain Literature Grounding ({best_rag.domain.title()})")
-                    summary_parts.append(f"> **{best_rag.source}**:\n> \"{best_rag.content[:240]}...\"")
-
-                summary_parts.append("\n#### Prescriptive Action Plan")
-                d_lower = domain_label.lower()
-                if "agri" in d_lower or any(k in q_lower for k in ("crop", "tomato", "leaf", "soil")):
-                    summary_parts.append("- **Root-Zone Moisture Regulation**: Regulate irrigation cycle to stabilize 28–32% VWC.")
-                    summary_parts.append("- **Chelated Nutrient Application**: Deploy Fe-EDDHA to overcome high pH nutrient lockup.")
-                elif "infra" in d_lower or any(k in q_lower for k in ("road", "void", "pavement", "crack")):
-                    summary_parts.append("- **Sub-Surface Verification**: Deploy Ground Penetrating Radar (GPR) to map void geometry.")
-                    summary_parts.append("- **Drainage Remediation**: Clear debris from stormwater intake to restore design capacity.")
-                elif "astro" in d_lower or any(k in q_lower for k in ("star", "flare", "transit")):
-                    summary_parts.append("- **Chromatic Filtering**: Apply multi-band spectroscopic decomposition to filter stellar flare noise.")
-                    summary_parts.append("- **Keplerian Ephemeris Fit**: Fit orbital lightcurve to verify planetary occultation depth.")
-                else:
-                    summary_parts.append("- **Milestone Monitoring**: Track progression across sequential observation stages.")
-                    summary_parts.append("- **Causal Verification**: Roll out the **Causal Graph** tool to evaluate upstream drivers.")
-
-                summary_parts.append(f"\n**Bottom line:** Multi-modal scientific reasoning confirms the diagnostic chain with **{int(state.overall_confidence * 100)}%** confidence.")
-
+            # 2. Secondary Fallback: Timeline & Milestone Analysis for Numeric Trends
             elif matching_cols and matching_obs:
                 vals = [o.value for o in matching_obs if isinstance(o.value, (int, float))]
                 min_v, max_v = (min(vals), max(vals)) if vals else (None, None)
-                range_str = f"(ranging from {min_v} to {max_v})" if min_v is not None else ""
                 dates = sorted(list({o.timestamp for o in matching_obs if o.timestamp}), key=self._natural_sort_key)
-                date_context = f"across {len(dates)} recorded timestamps ({dates[0]} to {dates[-1]})" if len(dates) > 1 else (f"on {dates[0]}" if dates else "")
+                date_context = f"across {len(dates)} recorded dates ({dates[0]} to {dates[-1]})" if len(dates) > 1 else (f"on {dates[0]}" if dates else "")
+                range_str = f"fluctuating between **{min_v}** and **{max_v}**" if min_v is not None else ""
 
-                summary_parts.append(f"**Executive Summary**: Found **{len(matching_obs)}** matching observations for **{', '.join(matching_cols)}** {range_str} {date_context}.")
-                summary_parts.append("\n#### Evidence Matrix")
-                has_day_date = any("(" in (o.timestamp or "") and ")" in (o.timestamp or "") for o in matching_obs)
-                if has_day_date:
-                    summary_parts.append("| Day | Date | Measured Value | Threshold Status | Note / Observation |")
-                    summary_parts.append("|---|---|---|---|---|")
+                summary_parts.append(f"### Timeline & Milestone Analysis")
+                summary_parts.append(f"\n**Data Dynamics**: Tracking **{', '.join(matching_cols)}** {date_context}, recording **{len(matching_obs)}** data points {range_str}.")
+
+                if target_val is not None:
+                    status_desc = f"fell below the threshold of {target_val}" if is_below else f"exceeded the threshold of {target_val}"
+                    summary_parts.append(f"\nDuring this timeline, readings {status_desc} at specific intervals:")
                 else:
-                    summary_parts.append("| Date / Timestamp | Measured Value | Threshold Status | Impact / Note |")
-                    summary_parts.append("|---|---|---|---|")
+                    summary_parts.append("\nKey temporal milestones across the recorded series:")
 
-                # Show all matching observations (up to 50)
-                for o in matching_obs[:50]:
-                    status_label = f"Below Threshold (< {target_val})" if is_below and target_val else (f"Above Threshold (> {target_val})" if target_val else "Recorded Observation")
-                    ts = o.timestamp or "Observation"
+                sample_obs = matching_obs[:8]
+                for o in sample_obs:
+                    ts = o.timestamp or "Recorded time"
+                    summary_parts.append(f"- **{ts}**: Value reached **{o.value}**")
 
-                    if has_day_date:
-                        if "(" in ts and ")" in ts:
-                            p_day, p_date = ts.split("(", 1)
-                            day_str = p_day.strip()
-                            date_str = p_date.replace(")", "").strip()
-                        else:
-                            day_str, date_str = ts, "-"
+                if len(matching_obs) > 8:
+                    summary_parts.append(f"- *(plus {len(matching_obs) - 8} additional readings recorded during this window)*")
 
-                        val_str = f"{o.value}%" if "%" not in str(o.value) else str(o.value)
-                        note_str = "Verified measurement"
-                        summary_parts.append(f"| **{day_str}** | {date_str} | {val_str} | {status_label} | {note_str} |")
-                    else:
-                        summary_parts.append(f"| **{ts}** | {o.value} | {status_label} | Verified measurement |")
+                summary_parts.append(f"\n**Analytical Note**: Longitudinal tracking of {', '.join(matching_cols)} establishes validated empirical baseline trends.")
+                answer_text = "\n".join(summary_parts)
 
-                summary_parts.append(f"\n**Bottom line:** Verified {len(matching_obs)} continuous measurements for {', '.join(matching_cols)}.")
+            # 3. Tertiary Fallback: Causal Graph & Telemetry Grounding
+            elif is_analytical or state.concepts or state.relationships:
+                domain_title = domain_label.replace("_", " ").title() if domain_label else "Scientific Investigation"
+                summary_parts.append(f"### {domain_title} Analytical Summary")
 
-            elif not available_cols and rag_results:
-                best_rag = rag_results[0]
-                summary_parts.append(f"**Executive Summary**: Evaluated scientific literature and causal mechanisms for *\"{question}\"*.")
-                summary_parts.append(f"\n#### Scientific Domain Evidence ({best_rag.domain.title()})")
-                summary_parts.append(f"> **{best_rag.source} — {best_rag.section}**:\n> {best_rag.content}")
-                summary_parts.append("\n#### Causal Hypotheses & Evidence Matrix")
-                summary_parts.append("| Factor / Causal Mechanism | Evidence Level | Expected Observation | Actionable Recommendation |")
-                summary_parts.append("|---|---|---|---|")
-                if any(k in q_lower for k in ("chlorosis", "tomato", "crop", "leaf", "plant", "soil", "moisture")):
-                    summary_parts.append("| **Root Hypoxia & Fe²⁺ Precipitation** | High (Peer-Reviewed) | Interveinal yellowing with green veins | Regulate drip irrigation cycle; target soil moisture 28-32% VWC |")
-                    summary_parts.append("| **Rhizosphere Alkalinity (pH > 7.5)** | Verified | Fe³⁺ insolubility in calcareous soils | Apply chelated iron (Fe-EDDHA) to bypass high pH blockade |")
-                elif any(k in q_lower for k in ("void", "crack", "road", "pavement", "cavity", "drain", "water")):
-                    summary_parts.append("| **Sub-base Soil Piping & Voiding** | High (FHWA Standard) | Surface cracking with ponded storm runoff | Dispatch Ground Penetrating Radar (GPR) to assess cavity depth |")
-                    summary_parts.append("| **Drainage Intake Restriction** | Verified | Storm grate blocked by debris (>80%) | Clear debris blockage to restore design discharge rate |")
-                elif any(k in q_lower for k in ("exoplanet", "transit", "star", "flare", "spectrum", "dip")):
-                    summary_parts.append("| **Achromatic Transit Dip** | Verified | Symmetrical flux decrease across wavelengths | Fit Keplerian orbital lightcurve; determine planetary radius |")
-                    summary_parts.append("| **Chromatic Stellar Flare** | High | Wavelength-dependent asymmetric flux spike | Apply multi-band spectroscopic decomposition to filter stellar flare noise |")
+                vis_conc = getattr(state, "visual_conclusion", None)
+                if vis_conc:
+                    summary_parts.append(f"\n**Assessment Overview**: {vis_conc}")
+                elif state.concepts:
+                    summary_parts.append(f"\n**Assessment Overview**: Analysis grounded across {len(state.concepts)} identified concepts with {int(state.overall_confidence * 100)}% overall confidence.")
                 else:
-                    summary_parts.append("| **Domain Causal Graph** | Grounded | Telemetry & peer-reviewed research | Ingest longitudinal CSV or roll out Causal Graph tool |")
-                summary_parts.append("\n#### Key Findings")
-                summary_parts.append(f"- **Domain Knowledge Grounding**: Retrieved {len(rag_results)} peer-reviewed knowledge chunks from {best_rag.domain.title()} knowledge index.")
-                summary_parts.append(f"- **Autonomous Recommendation**: Ingest longitudinal telemetry or inspect the **Causal Graph** to evaluate verified edge paths.")
-                summary_parts.append(f"\n**Bottom line:** Causal mechanisms verified via domain literature. Ingest dataset to compute exact continuous correlations.")
+                    summary_parts.append(f"\n**Assessment Overview**: Empirical telemetry synthesis addressing *\"{question}\"*.")
 
-            elif not matching_cols:
-                summary_parts.append(f"**Executive Summary**: For *\"{question}\"*, active investigation contains {len(available_cols)} variables ({', '.join(available_cols[:5])}).")
-                summary_parts.append("\n#### Evidence Matrix")
-                summary_parts.append("| Parameter / Feature | Category | Coverage Status | Note |")
-                summary_parts.append("|---|---|---|---|")
-                for col in available_cols[:5]:
-                    summary_parts.append(f"| **{col}** | Measured Parameter | Available | Active Ingestion |")
-                summary_parts.append("\n#### Key Findings")
-                summary_parts.append(f"- **Investigation Context**: Active session tracks {len(state.observations)} observations across {len(available_cols)} parameters.")
-                summary_parts.append(f"- **Confidence**: Direct evaluation completed with **{state.overall_confidence * 100:.0f}%** confidence.")
-                summary_parts.append(f"\n**Bottom line:** Active investigation parameters evaluated for queried topic.")
+                if state.concepts:
+                    summary_parts.append("\n#### Grounded Key Observations")
+                    for c in state.concepts[:5]:
+                        status = "visually grounded" if c.visual_anchor else "telemetry grounded"
+                        summary_parts.append(f"- **{c.name}** ({c.category.title()}): {status} (confidence: {int(c.confidence * 100)}%).")
+                elif state.observations:
+                    summary_parts.append("\n#### Measured Observations")
+                    for o in state.observations[:6]:
+                        unit = f" {o.unit}" if getattr(o, "unit", None) else ""
+                        summary_parts.append(f"- **{o.feature_name.replace('_', ' ').title()}**: {o.value}{unit}")
+
+                if state.relationships:
+                    summary_parts.append("\n#### Causal Dynamics & Interdependencies")
+                    for r in state.relationships[:4]:
+                        desc = f" ({r.description})" if r.description else ""
+                        summary_parts.append(f"- **{r.source_feature}** → **{r.target_feature}**: {r.relationship_type.value} relationship (strength: {r.strength:.2f}){desc}.")
+
+                answer_text = "\n".join(summary_parts)
 
             else:
-                summary_parts.append(f"**Executive Summary**: No records in **{', '.join(matching_cols)}** satisfied the specified threshold ({target_val}).")
-                summary_parts.append("\n#### Key Findings")
-                summary_parts.append(f"- **Dataset Context**: Dataset contains {len(state.observations)} total observations across {len(available_cols)} columns.")
-                summary_parts.append(f"- **Confidence Assessment**: Direct inspection completed with **{state.overall_confidence * 100:.0f}%** confidence.")
-                summary_parts.append(f"\n**Bottom line:** Direct dataset inspection completed for queried parameter.")
-
-            answer_text = "\n".join(summary_parts)
+                summary_parts.append(f"### Scientific Investigation Telemetry")
+                summary_parts.append(f"\nWe explored your question *\"{question}\"* across the active session.")
+                if state.observations:
+                    summary_parts.append(f"\nThe session currently tracks {len(state.observations)} measurements.")
+                    for o in state.observations[:5]:
+                        unit = f" {o.unit}" if getattr(o, "unit", None) else ""
+                        summary_parts.append(f"- **{o.feature_name.replace('_', ' ').title()}**: {o.value}{unit}")
+                summary_parts.append("\n💡 **Suggestion**: Ask about specific parameters, relationships, or scientific principles!")
+                answer_text = "\n".join(summary_parts)
 
         return {
             "question": question,

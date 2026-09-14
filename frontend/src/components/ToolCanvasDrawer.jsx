@@ -139,7 +139,7 @@ export function ToolCanvasDrawer({
   let toolsMeta = [
     { id: 'grounded', label: 'Image Analysis (Query & Graph)', icon: <Crosshair size={15} /> },
     { id: 'badminton', label: 'Badminton Biomechanics', icon: <Zap size={15} /> },
-    { id: 'gait', label: 'Video Analysis (Motion & Gait)', icon: <Activity size={15} /> },
+    { id: 'gait', label: 'Toddler Walking Screening', icon: <Activity size={15} /> },
     { id: 'graph', label: 'Causal Knowledge Graph', icon: <GitFork size={15} /> },
     { id: 'analytics', label: 'Sensor Analytics', icon: <BarChart2 size={15} />, badge: !hasSensorData ? 'Upload' : null },
     { id: 'rag', label: 'References', icon: <BookOpen size={15} /> },
@@ -303,6 +303,7 @@ export function ToolCanvasDrawer({
               steps={investigationData?.steps || []}
               conclusion={investigationData?.conclusion || ''}
               baseline={investigationData?.baseline || null}
+              saarData={saarData}
               sessions={sessions}
               activeSessionId={activeSessionId}
               onSwitchSession={onSwitchSession}

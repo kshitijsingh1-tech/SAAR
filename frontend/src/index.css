@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ---------------------------------------------------------------------------
    Theme Tokens (Strictly Pure White Background with Very Dark Black Texts)
@@ -24,12 +24,12 @@
   --text-dim: #475569;
   --input-bg: #ffffff;
 
-  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-heading: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* Typography System: SAAR / Headings in Space Grotesk Bold, Everything else in Manrope */
+/* Typography System: Clean, professional Inter typography */
 h1, h2, h3, h4, h5, h6,
 .landing-brand-title,
 .brand-title,
@@ -44,8 +44,8 @@ h1, h2, h3, h4, h5, h6,
 .hero-heroic-title,
 .domains-section-title {
   font-family: var(--font-heading);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.018em;
   color: var(--text-main);
 }
 
@@ -1442,35 +1442,42 @@ body {
 /* Headings */
 .md-heading-wrapper {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
-  margin-top: 0.6rem;
-  margin-bottom: 0.1rem;
-  padding-bottom: 0.3rem;
+  margin-top: 1rem;
+  margin-bottom: 0.3rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--border-color);
 }
 
-.md-heading-wrapper.level-1,
-.md-heading-wrapper.level-2 {
-  margin-top: 0.8rem;
-  color: var(--primary);
+.md-heading-wrapper.level-1 {
+  margin-top: 0.4rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.45rem;
+}
+
+.md-heading-wrapper.level-2,
+.md-heading-wrapper.level-3 {
+  margin-top: 1.1rem;
 }
 
 .heading-icon {
-  color: var(--primary);
-  flex-shrink: 0;
+  display: none;
 }
 
 .md-heading {
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-weight: 600;
   color: var(--text-main);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  margin: 0;
+  line-height: 1.35;
 }
 
-.md-heading.h1 { font-size: 1.15rem; color: var(--primary); }
-.md-heading.h2 { font-size: 1.05rem; }
-.md-heading.h3 { font-size: 0.95rem; color: var(--text-main); font-weight: 600; }
-.md-heading.h4 { font-size: 0.88rem; color: var(--text-muted); }
+.md-heading.h1 { font-size: 1.15rem; font-weight: 700; color: var(--text-main); }
+.md-heading.h2 { font-size: 1.05rem; font-weight: 600; color: var(--text-main); }
+.md-heading.h3 { font-size: 0.95rem; font-weight: 600; color: var(--text-main); }
+.md-heading.h4 { font-size: 0.88rem; font-weight: 600; color: var(--text-muted); }
 
 .compact .md-heading.h1 { font-size: 0.98rem; }
 .compact .md-heading.h2 { font-size: 0.90rem; }
@@ -1605,28 +1612,29 @@ body {
 .md-unordered-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
   list-style: none;
   padding: 0;
-  margin: 0.2rem 0;
+  margin: 0.35rem 0;
 }
 
 .md-list-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
+  line-height: 1.6;
 }
 
 .list-number-badge {
   display: inline-grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   background: var(--primary-bg);
   color: var(--primary);
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.70rem;
+  font-weight: 600;
   flex-shrink: 0;
   margin-top: 2px;
   border: 1px solid var(--border-color);
@@ -1634,8 +1642,8 @@ body {
 
 .list-bullet-badge {
   color: var(--primary);
-  font-size: 1.1rem;
-  line-height: 1;
+  font-size: 0.72rem;
+  line-height: 1.65;
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -1643,6 +1651,44 @@ body {
 .list-text {
   flex: 1;
   color: var(--text-main);
+  font-size: 0.91rem;
+  line-height: 1.6;
+}
+
+/* Priority Badges in Markdown */
+.md-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: middle;
+  line-height: 1.35;
+}
+
+.md-priority-badge.high,
+.md-priority-badge.critical {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+}
+
+.md-priority-badge.medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.md-priority-badge.low {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border: 1px solid rgba(59, 130, 246, 0.28);
 }
 
 /* Blockquotes */
