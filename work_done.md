@@ -2509,6 +2509,39 @@ When an inquiry prompt (e.g. *"Why does my smash clip the net tape?"*) was sent 
      - Tool rollout bar immediately transitioned to unlocked state for `Badminton Biomechanics` (`badminton_unlocked_after_questions_1789427476559.png`).
      - Clicked `Badminton Biomechanics`: Badminton Biomechanics & Kinematics Studio drawer opened with full video player, court heatmap, and stroke analytics (`badminton_studio_drawer_opened_1789427498643.png`).
 
+---
+
+## 38. [2026-09-15] Comprehensive Documentation Synchronization: Master Architecture Specification (`architecture.md`) & Root `README.md`
+
+**Primary Files Modified**:
+- [`architecture.md`](file:///d:/bytebuild/architecture.md)
+- [`README.md`](file:///d:/bytebuild/README.md)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Goal
+The user requested:
+> *"update readme and push to github and update architecture md"*
+
+To provide complete architectural transparency and open-source documentation integrity, the master repository documentation needed to be synchronized with all recent production features:
+1. Master Architecture Specification (`architecture.md`): detailing system topology, VLM fallback hierarchies (Gemini 3.7/3.1 + Groq Vision), deterministic kinematics engines (Badminton BWF homography + BlazePose, ToddleAI 11-stage gait DSP), Bayesian adaptive inquiry triage, strict tool gating protocols, and dynamic presentation parser architecture.
+2. Root `README.md`: updated with clear navigation links to architectural specifications, domain capability overviews, mathematical grounding summaries, quickstart commands across Windows/macOS/Linux, and local port references.
+3. Synchronize repository state with GitHub (`git push origin main`).
+
+### Implemented Solution & Non-Regression Invariants
+1. **Master Architecture Specification ([`architecture.md`](file:///d:/bytebuild/architecture.md))**:
+   - Outlines the **Zero-Hardcoding Directive** and epistemic honesty rules governing presentation purity.
+   - Comprehensive ASCII system topology diagrams detailing communication between React 18, FastAPI, MediaPipe, NetworkX Causal Store, and BM25 RAG.
+   - Formal mathematical definitions: BWF $3 \times 3$ court homography ($H$), Savitzky-Golay zero phase-lag DSP filter, sub-frame quadratic vertex heel-strike interpolation, Robinson Step Time Asymmetry, and 9-zone court coverage.
+   - State machine diagram for the Adaptive Inquiry Engine & Tool Gating Protocol.
+2. **Updated Root Documentation ([`README.md`](file:///d:/bytebuild/README.md))**:
+   - Added prominent navigation bar referencing [`architecture.md`](architecture.md), [`BADMINTON_ARCHITECTURE.md`](BADMINTON_ARCHITECTURE.md), and [`AGENTS.md`](AGENTS.md).
+   - Documented the Badminton Biomechanics Studio, ToddleAI Pediatric Gait Engine, Adaptive Diagnostic Triage, and Precision Agriculture.
+   - Up-to-date environment variables configuration (Google Gemini 3.7/3.1 Flash and Groq API keys).
+3. **Repository Synchronization**:
+   - Staged and committed all changes cleanly to `main` branch.
+   - Pushed commits to GitHub remote `origin/main`.
+
+
 
 
 
