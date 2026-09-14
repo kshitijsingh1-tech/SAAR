@@ -1766,6 +1766,59 @@ When the user pasted a photo of a rose (`pasted_evidence_1789334816930.png`) int
   - `agriculture`: 9 channels verified live on port 8002.
 - **Frontend Production Build**:
   - `npm run build` completed with **0 errors** (1448 modules transformed).
-- **Backend Test Suite**:
-  - `python -m pytest` passed **41 of 41 tests (100%)** with **0 failures**.
 
+---
+
+## Entry 44: Zero-Assumption Epistemic Honesty & User Prompting for Visual Image Analysis
+- **Date Solved**: 2026-09-14
+- **Primary Files Modified**:
+  - `backend/app/plugins/agriculture_plugin.py`
+  - `backend/app/vlm_service.py`
+  - `work_done.md`
+
+### Problem Description & Symptoms
+When analyzing a standalone optical photo of a plant (e.g. rose with chlorosis `pasted_evidence_1789380042598.png`), the Saar reasoning agent asserted specific unmeasured empirical and subsurface metrics as established facts:
+- *"We have identified 8 mg of iron-rich chelate supplement currently present in the soil profile..."*
+- *"Our diagnostic tools detected dissolved oxygen levels below 0.8 mg/L..."*
+- *"When your soil remains saturated for more than 96 consecutive hours..."*
+- *"Your air-filled porosity is currently at 24%..."*
+
+An optical camera photograph can only observe visible phenotypes (bloom count, petal turgor, foliar color / chlorosis pattern, container presence). It cannot measure subsurface dissolved oxygen, soil saturation hours, substrate porosity percentage, or chemical concentrations without physical sensors.
+
+### Root Cause Analysis
+1. **Mock Parameters in Tool Execution Layer (`agriculture_plugin.py`)**:
+   - `rhizosphere_anoxia_simulator` injected hardcoded mock values (`dissolved_oxygen_mg_l: 0.72`, `atp_inhibition_pct: 82.0`, `input_params: hours_saturated: 120`).
+   - `substrate_aeration_profiler` injected `air_porosity_pct: 24.2` and `pythium_risk: "low"`.
+   - `rhizosphere_ph_speciation_tool` injected `fe2_soluble_ppm: 0.04` and `ph: 7.85`.
+   These simulated tool outputs were executed during dynamic loop reasoning even when NO physical sensors or telemetry existed in the scene graph.
+2. **LLM Synthesis Prompting Without Epistemic Guardrails (`agriculture_plugin.py` & `vlm_service.py`)**:
+   - The prompt passed these mock tool findings directly to the LLM and instructed it to *"tell the story of how soil, water, and nutrients are interacting underground"*.
+   - The LLM treated those tool outputs as literal ground truth facts and extrapolated from its training priors on rose chlorosis treatments to hallucinate *"8 mg of iron-rich chelate supplement"*.
+3. **Keyword Over-Matching in Tool Selection**:
+   - In `agriculture_plugin.py:get_available_tools`, the generic keyword `"rose"` was listed under `vegetative_propagation_evaluator`, causing flowering rose bushes to match vegetative stem cutting propagation tools.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Zero-Assumption Epistemic Honesty in Tool Execution (`agriculture_plugin.py`)**:
+   - Implemented `has_soil_sensor` and `has_ph_sensor` guards in `execute_tool`.
+   - When analyzing images without physical telemetry, tools (`rhizosphere_anoxia_simulator`, `substrate_aeration_profiler`, `rhizosphere_ph_speciation_tool`) NEVER emit fabricated numbers.
+   - Instead, they emit honest unverified hypotheses with inquiry targets (`requires_user_input: True`, `inquiry_targets: ["watering_frequency", "pot_drainage", "soil_moisture_feel"]`).
+2. **Scoping Propagation Tool Triggers**:
+   - Removed generic `"rose"` and `"stem"` keywords from `vegetative_propagation_evaluator`, restricting activation to explicit propagation contexts (`["propagat", "cutting", "scion", "aloe", "rhizogen", "callus", "rootstock"]`).
+3. **Synthesis Prompt Directives & Active User Inquiry (`agriculture_plugin.py` & `vlm_service.py`)**:
+   - Added Rule 8 to `synthesis_system_prompt` in `vlm_service.py` forbidding hallucinating unmeasured subsurface or chemical numbers on image-only inputs.
+   - Restructured `generate_final_conclusion` into 5 clear sections:
+     - **What Is Happening With Your Plant**: Grounded visual observations (exact entity counts, bloom condition, foliar chlorosis).
+     - **Physiological Causal Hypotheses**: Scientific biological mechanisms, explicitly identified as unverified hypotheses because subsurface roots and soil cannot be observed optically.
+     - **What Was Checked & Ruled Out**: Visible pathology, pest damage, and acute scorch.
+     - **Questions for the Grower (To Confirm Diagnosis)**: Actively prompts the user for container drainage, watering schedule, soil mix, and fertilization history instead of assuming.
+     - **Practical Next Steps**: Conservative, risk-free care guidance without unverified chemical dosages.
+
+### Verification & Empirical Confirmation
+- **Live LLM Synthesis Verification**:
+  - Tested rose chlorosis visual graph with Gemini `gemini-3.1-flash-lite`.
+  - Confirmed: ZERO fabricated numbers (no DO mg/L, no saturation hours, no porosity %, no 8 mg chelate).
+  - Confirmed: Generated 4 precise diagnostic questions prompting the grower for container drainage, watering cadence, soil mix, and fertilizer history.
+- **Unit Test Suite**:
+  - `python -m pytest` executed with all 41 tests passing (100%).
+- **Frontend Production Build**:
+  - `npm run build` succeeded with 0 errors.
