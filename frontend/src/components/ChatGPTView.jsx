@@ -529,7 +529,7 @@ export function ChatGPTView({
       const container = chatgptBodyRef.current;
       if (!container) return;
       const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-      const isUp = distanceFromBottom > 60;
+      const isUp = distanceFromBottom > 120;
       isUserScrolledUpRef.current = isUp;
       if (showScrollBottomBtnRef.current !== isUp) {
         showScrollBottomBtnRef.current = isUp;
@@ -574,13 +574,10 @@ export function ChatGPTView({
         const container = chatgptBodyRef.current;
         if (!container || isUserScrolledUpRef.current) return;
         const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-        if (distanceFromBottom < 40) {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'auto'
-          });
+        if (distanceFromBottom < 15) {
+          container.scrollTop = container.scrollHeight;
         }
-      }, 50);
+      }, 80);
     });
     observer.observe(thread);
     return () => {

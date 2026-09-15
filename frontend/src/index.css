@@ -5628,17 +5628,15 @@ body {
 /* Chat Messages Body */
 .chatgpt-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  display: flex;
-  justify-content: center;
+  display: block;
   padding: 1.5rem 1rem 3.5rem;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
-  transform: translateZ(0);
-  will-change: scroll-position;
-  -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chatgpt-body::-webkit-scrollbar {
@@ -5757,10 +5755,10 @@ body {
 .chatgpt-messages-thread {
   width: 100%;
   max-width: 800px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  contain: layout style;
 }
 
 /* Welcome Screen */
@@ -6149,6 +6147,7 @@ body {
   flex-direction: column;
   align-items: center;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .composer-context-tray {

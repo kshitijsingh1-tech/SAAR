@@ -437,7 +437,7 @@ function extractDiscoveredPairs(content, explicitRelationships = []) {
   return pairs;
 }
 
-export function MarkdownResponse({
+function MarkdownResponseComponent({
   content,
   pairedQuestion = null,
   role = 'assistant',
@@ -735,3 +735,6 @@ export function MarkdownResponse({
     </div>
   );
 }
+
+export const MarkdownResponse = React.memo(MarkdownResponseComponent);
+export default MarkdownResponse;
