@@ -493,7 +493,12 @@ export function ChatGPTView({
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const chatgptBodyRef = useRef(null);
+  const messagesThreadRef = useRef(null);
   const lastPasteTimeRef = useRef(0);
+
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const isUserScrolledUpRef = useRef(false);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -514,13 +519,47 @@ export function ChatGPTView({
   const saarLogoSrc = isLightMode ? '/saar-logo-dark.png' : '/saar-logo-white.png';
   const saarWordmarkSrc = isLightMode ? '/saar-wordmark-dark.png' : '/saar-wordmark-white.png';
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const handleScroll = useCallback(() => {
+    const container = chatgptBodyRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isUp = distanceFromBottom > 160;
+    isUserScrolledUpRef.current = isUp;
+    setShowScrollBottomBtn(isUp);
+  }, []);
+
+  const scrollToBottom = useCallback((force = false, behavior = 'smooth') => {
+    const container = chatgptBodyRef.current;
+    if (!container) return;
+    if (!force && isUserScrolledUpRef.current) return;
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior
+    });
+  }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isProcessing]);
+    scrollToBottom(false, 'smooth');
+  }, [messages, isProcessing, scrollToBottom]);
+
+  // Keep view anchored when dynamic child elements resize (e.g. adaptive questions expanding or concluding)
+  useEffect(() => {
+    const thread = messagesThreadRef.current;
+    if (!thread) return;
+    const observer = new ResizeObserver(() => {
+      const container = chatgptBodyRef.current;
+      if (!container) return;
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distanceFromBottom < 240) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    });
+    observer.observe(thread);
+    return () => observer.disconnect();
+  }, []);
 
   // Global mouseup listener to display floating "Ask Saar" over highlighted text
   useEffect(() => {
@@ -1114,8 +1153,8 @@ export function ChatGPTView({
       </header>
 
       {/* Centered Conversation Area */}
-      <div className="chatgpt-body">
-        <div className="chatgpt-messages-thread">
+      <div className="chatgpt-body" ref={chatgptBodyRef} onScroll={handleScroll}>
+        <div className="chatgpt-messages-thread" ref={messagesThreadRef}>
           {messages.length === 0 ? (
             /* Welcome / Empty State */
             <div className="chatgpt-welcome-canvas">
@@ -1540,9 +1579,22 @@ export function ChatGPTView({
             </div>
           )}
 
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} style={{ height: '8px' }} />
         </div>
       </div>
+
+      {showScrollBottomBtn && (
+        <button
+          type="button"
+          className="chat-scroll-bottom-btn"
+          onClick={() => scrollToBottom(true, 'smooth')}
+          title="Scroll to latest messages"
+          aria-label="Scroll to bottom"
+        >
+          <ChevronDown size={15} />
+          <span>Jump to latest</span>
+        </button>
+      )}
 
       {/* Floating Scientific Tools Action in Chat Area */}
       <div className="chat-floating-tools-anchor">

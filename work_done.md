@@ -2635,3 +2635,45 @@ When an inquiry was triggered upon video analysis, a premature `Calibrated Kinem
      - Confirmed: Answering questions dynamically updates live Bayesian hypothesis bars.
      - Confirmed: Upon answering all questions in sequence, the final `Calibrated Kinematic Diagnostic Report: Grip Orientation & Pronation Bevel Twist (100% Confidence)` appears as the sole diagnostic report.
      - Confirmed: Clicking `Restart Triage` resets to Question 1 and hides the diagnostic report again.
+
+---
+
+## 42. [2026-09-15] Intelligent Chat Scrolling Architecture, Floating "Jump to Latest" Button & Sleek Custom Scrollbar
+
+**Primary Files Modified**:
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`frontend/src/index.css`](file:///d:/bytebuild/frontend/src/index.css)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Feedback
+The user asked:
+> *"check the frontend the scrolling feature i mean"*
+
+Upon thorough browser inspection, several UX friction points in chat scrolling were identified:
+1. **Raw Default Browser Scrollbar**: The chat container `.chatgpt-body` lacked custom scrollbar styling, falling back to the wide Windows desktop default with grey arrows.
+2. **Missing Jump to Latest Control**: When a user scrolled up to read earlier evidence or graph nodes, there was no floating control to return to the bottom.
+3. **Scroll Jerk on User Reading**: The previous auto-scroll effect unconditionally scrolled to the bottom on every message update, disrupting users who were reading earlier messages.
+4. **Insufficient Bottom Clearance**: Bottom padding was limited to `2rem`, leaving bottom action buttons (`Launch Badminton Biomechanics Studio`, `Restart Triage`, `Copy`, `Raw`) pressed right against the composer tray.
+
+### Implemented Solution & Non-Regression Invariants
+1. **User Scroll Position Awareness ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - Added `chatgptBodyRef` and `messagesThreadRef`.
+   - Tracked `distanceFromBottom`: if $> 160\text{px}$, user is marked as scrolled up (`isUserScrolledUp = true`) and `showScrollBottomBtn` triggers.
+   - `scrollToBottom(force, behavior)` respects user reading position: auto-scroll does not yank the viewport down if the user is scrolled up unless explicitly triggered.
+2. **Dynamic Height Adjustment via `ResizeObserver` ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - Added a `ResizeObserver` to `.chatgpt-messages-thread`. When dynamic interactive elements (such as `<AdaptiveInquiryCard>` transitions or reports) expand, the container smoothly maintains anchor if the user was within $240\text{px}$ of the bottom.
+3. **Floating "Jump to Latest" Button ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx) & [`index.css`](file:///d:/bytebuild/frontend/src/index.css))**:
+   - Positioned an animated, glassmorphism floating pill (`.chat-scroll-bottom-btn`) displaying `↓ Jump to latest` above the composer input.
+   - Clicking smoothly scrolls to the newest message, automatically hiding when reaching the bottom.
+   - Tailored themes supported: Pure Light, Pure Dark, and Lavender White.
+4. **Sleek Custom Scrollbar & Bottom Clearance ([`index.css`](file:///d:/bytebuild/frontend/src/index.css))**:
+   - Styled `.chatgpt-body` with `scrollbar-width: thin`, rounded 8px semi-transparent thumb, and smooth hover transition.
+   - Increased bottom padding to `3.5rem` (`padding: 1.5rem 1rem 3.5rem`), ensuring action buttons have generous clearance above the bottom composer.
+5. **Empirical Verification**:
+   - Production build `npm run build` passed with **0 errors** in 20.08s.
+   - Live browser subagent validation:
+     - Verified custom sleek scrollbar rendering on right edge.
+     - Verified `↓ Jump to latest` button appears when scrolled up $> 160\text{px}$ (`jump_to_latest_visible_1789433827754.png`).
+     - Verified clicking `Jump to latest` executes smooth physics-based scroll to the bottom (`chat_scrolled_to_bottom_1789433843658.png`).
+     - Verified complete clearance for diagnostic buttons above the composer.
+
