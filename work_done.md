@@ -2598,17 +2598,40 @@ When inspecting the screen, two contradictory blocks were visible in the chat me
      - Verified `Badminton Rally Kinematic Ingestion & Perception` is 100% absent from the viewport.
      - Verified `Calibrated Kinematic Diagnostic Report: Grip Orientation & Pronation Bevel Twist (100% Confidence)` is cleanly rendered as the sole diagnostic report.
      - Visual screenshot saved to `badminton_report_header_1789431175723.png`.
+---
 
+## 41. [2026-09-15] Strict Diagnostic Report Timing Enforcement (Deferred Until All Questions Are Answered)
 
+**Primary Files Modified**:
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
 
+### Problem Description & User Feedback
+The user explicitly stated:
+> *"Calibrated Kinematic Diagnostic Report (100% Confidence) i only want this after all questions asked"*
 
+When an inquiry was triggered upon video analysis, a premature `Calibrated Kinematic Diagnostic Report` was generated immediately above the question card before the athlete/investigator answered any diagnostic questions.
 
+### Root Cause Analysis
+1. In `App.jsx`, when `userConcernText` was present, `responseText` was still being assigned a premature diagnostic report string instead of being deferred.
+2. In `ChatGPTView.jsx`, `hideMainText` only hid the text if `concludedSessions[index]` was true, meaning while questions were active/pending, any report text in `cleanText` was rendered above the questions.
+3. `AdaptiveInquiryCard.jsx` lacked an `onSessionReset` callback to notify parent components when triage is restarted or reset back to Question 1.
 
-
-
-
-
-
-
-
-
+### Implemented Solution & Non-Regression Invariants
+1. **Deferred Report Construction ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Updated `responseText`: when `userConcernText` is present, `responseText` is set to `''` (deferred until all questions are answered).
+2. **Premature Report Suppression ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - Added `isPrematureReport = Boolean(msg.adaptiveConcern && !concludedSessions[index] && /Calibrated.*Diagnostic Report/i.test(cleanText))`.
+   - Updated `hideMainText = isIngestionPreamble || isPrematureReport || (msg.adaptiveConcern && concludedSessions[index])`.
+   - Connected `onSessionReset` to set `concludedSessions[index] = false` when triage restarts.
+3. **Session Reset Signal ([`AdaptiveInquiryCard.jsx`](file:///d:/bytebuild/frontend/src/components/AdaptiveInquiryCard.jsx))**:
+   - `initSession` triggers `onSessionReset()` to cleanly reset question progression state.
+4. **Empirical Verification**:
+   - Production build `npm run build` completed with **0 errors** in 30.70s.
+   - Live browser subagent validation:
+     - Confirmed: While questions are active (Question 1 to ~4), `Calibrated Kinematic Diagnostic Report` is **100% hidden** from the screen.
+     - Confirmed: Answering questions dynamically updates live Bayesian hypothesis bars.
+     - Confirmed: Upon answering all questions in sequence, the final `Calibrated Kinematic Diagnostic Report: Grip Orientation & Pronation Bevel Twist (100% Confidence)` appears as the sole diagnostic report.
+     - Confirmed: Clicking `Restart Triage` resets to Question 1 and hides the diagnostic report again.

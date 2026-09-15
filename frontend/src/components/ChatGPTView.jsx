@@ -1220,7 +1220,9 @@ export function ChatGPTView({
                           const { thought, cleanText } = extractThoughtFromText(msg.text);
                           const activeThought = msg.thoughtProcess || thought;
                           const isIngestionPreamble = /Badminton Rally Kinematic Ingestion & Perception/i.test(cleanText);
-                          const hideMainText = isIngestionPreamble || (msg.adaptiveConcern && concludedSessions[index]);
+                          // The Calibrated Diagnostic Report must only be shown AFTER all questions have been asked/concluded!
+                          const isPrematureReport = Boolean(msg.adaptiveConcern && !concludedSessions[index] && /Calibrated.*Diagnostic Report/i.test(cleanText));
+                          const hideMainText = isIngestionPreamble || isPrematureReport || (msg.adaptiveConcern && concludedSessions[index]);
                           return (
                             <>
                               {msg.role === 'assistant' && activeThought && (
@@ -1241,6 +1243,9 @@ export function ChatGPTView({
                                     userConcern={msg.adaptiveConcern}
                                     subjectId={msg.subjectId || 'child_leo_24m'}
                                     onOpenTool={onOpenTool}
+                                    onSessionReset={() => {
+                                      setConcludedSessions((prev) => ({ ...prev, [index]: false }));
+                                    }}
                                     onSessionComplete={(completedSession) => {
                                       setConcludedSessions((prev) => ({ ...prev, [index]: true }));
                                       if (onAdaptiveInquiryComplete) {

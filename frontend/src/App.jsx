@@ -1350,7 +1350,8 @@ export default function App() {
                 "Badminton stroke power, smash penetration, and trajectory inquiry"
               );
 
-              const responseText = `### Calibrated Kinematic Diagnostic Report (${calibConf}% Confidence)\n\n` +
+              const responseText = userConcernText ? '' : (
+                `### Calibrated Kinematic Diagnostic Report (${calibConf}% Confidence)\n\n` +
                 `Subject biomechanical model successfully calibrated with contextual prior: **"${contextPrior}"**.\n\n` +
                 `1. Kinematic Stroke Execution\n\n` +
                 `• **Stroke Isolation**: Detected **${strokeCount || 5} contact phases** with 33-point BlazePose 3D joint tracking.\n` +
@@ -1360,7 +1361,8 @@ export default function App() {
                 `• **Court Displacement**: **${distVal}m** traversed across **${covVal}%** court area.\n\n` +
                 `3. AI Kinematic Supervision & Coaching Action\n\n` +
                 `• **Kinematic Recommendation**: ${coachingRec}\n` +
-                `• **Adaptive Baseline**: Stored to athlete profile memory to track longitudinal improvement over future sessions.`;
+                `• **Adaptive Baseline**: Stored to athlete profile memory to track longitudinal improvement over future sessions.`
+              );
 
               const thoughtProcess = {
                 title: `Thought for ${(Math.random() * 0.4 + 2.1).toFixed(1)}s`,

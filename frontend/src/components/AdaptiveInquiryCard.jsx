@@ -22,6 +22,7 @@ const AdaptiveInquiryCard = ({
   subjectId = 'child_leo_24m',
   baselineComparison,
   onSessionComplete,
+  onSessionReset,
   onClose,
   onOpenTool
 }) => {
@@ -43,6 +44,9 @@ const AdaptiveInquiryCard = ({
     setLoading(true);
     setError(null);
     setSelectedOption(null);
+    if (onSessionReset) {
+      onSessionReset();
+    }
     try {
       const defaultConcern = subjectId?.includes('badminton')
         ? "Badminton stroke power, smash penetration, and trajectory inquiry"
