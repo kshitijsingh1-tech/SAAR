@@ -577,7 +577,7 @@ export default function App() {
   }, [selectedDomain, unlockTools, setSessionTools, customImageData, customImageUrl, customVideoFile]);
 
   // Adaptive Inquiry Completion handler: unlocks domain tools ONLY after all diagnostic questions are answered
-  const handleAdaptiveInquiryComplete = useCallback((completedSession) => {
+  const handleAdaptiveInquiryComplete = useCallback((completedSession, sourceMsg) => {
     if (!completedSession) return;
     const domain = completedSession.domain || (completedSession.subjectId?.includes('badminton') ? 'sports' : '');
     const isBadminton = domain === 'sports' ||
@@ -596,6 +596,20 @@ export default function App() {
       if (isGait) {
         unlockTools(['gait', 'verdict', 'rag']);
       }
+    }
+
+    if (completedSession.conclusion) {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m === sourceMsg || (m.role === 'assistant' && /Badminton Rally Kinematic Ingestion & Perception/i.test(m.text || ''))) {
+            return {
+              ...m,
+              text: completedSession.conclusion
+            };
+          }
+          return m;
+        })
+      );
     }
   }, [unlockTools]);
 
@@ -1336,27 +1350,17 @@ export default function App() {
                 "Badminton stroke power, smash penetration, and trajectory inquiry"
               );
 
-              let responseText;
-              if (userConcernText) {
-                responseText = `### 🏸 Badminton Rally Kinematic Ingestion & Perception\n\n` +
-                  `Ingested video footage with contextual inquiry: **"${contextPrior}"**.\n\n` +
-                  `• **Court Geometry**: BWF court plane calibrated with perspective homography (${calibConf}% confidence).\n` +
-                  `• **Stroke Isolation**: Grounded 33 BlazePose 3D joint keypoints across **${strokeCount || 5} stroke phase(s)** (Primary: \`${shotType}\` at ${sTime}s–${eTime}s).\n` +
-                  `• **Ballistic Speeds**: Optical flow transfer registered at **${peakSpeed} km/h** with **${distVal}m** court displacement.\n\n` +
-                  `To isolate stroke variance, evaluate biomechanical pathologies, and formulate your calibrated diagnostic assessment, please complete the interactive triage below:`;
-              } else {
-                responseText = `### Calibrated Kinematic Diagnostic Report (${calibConf}% Confidence)\n\n` +
-                  `Subject biomechanical model successfully calibrated with contextual prior: **"${contextPrior}"**.\n\n` +
-                  `1. Kinematic Stroke Execution\n\n` +
-                  `• **Stroke Isolation**: Detected **${strokeCount || 5} contact phases** with 33-point BlazePose 3D joint tracking.\n` +
-                  `• **Primary Stroke**: \`${shotType}\` at timestamp **${sTime}s – ${eTime}s**.\n\n` +
-                  `2. Ballistic Speeds & Dynamic Energy\n\n` +
-                  `• **Kinetic Transfer**: Frame-differentiated optical flow velocity calibrated at **${peakSpeed} km/h** equivalent.\n` +
-                  `• **Court Displacement**: **${distVal}m** traversed across **${covVal}%** court area.\n\n` +
-                  `3. AI Kinematic Supervision & Coaching Action\n\n` +
-                  `• **Kinematic Recommendation**: ${coachingRec}\n` +
-                  `• **Adaptive Baseline**: Stored to athlete profile memory to track longitudinal improvement over future sessions.`;
-              }
+              const responseText = `### Calibrated Kinematic Diagnostic Report (${calibConf}% Confidence)\n\n` +
+                `Subject biomechanical model successfully calibrated with contextual prior: **"${contextPrior}"**.\n\n` +
+                `1. Kinematic Stroke Execution\n\n` +
+                `• **Stroke Isolation**: Detected **${strokeCount || 5} contact phases** with 33-point BlazePose 3D joint tracking.\n` +
+                `• **Primary Stroke**: \`${shotType}\` at timestamp **${sTime}s – ${eTime}s**.\n\n` +
+                `2. Ballistic Speeds & Dynamic Energy\n\n` +
+                `• **Kinetic Transfer**: Frame-differentiated optical flow velocity calibrated at **${peakSpeed} km/h** equivalent.\n` +
+                `• **Court Displacement**: **${distVal}m** traversed across **${covVal}%** court area.\n\n` +
+                `3. AI Kinematic Supervision & Coaching Action\n\n` +
+                `• **Kinematic Recommendation**: ${coachingRec}\n` +
+                `• **Adaptive Baseline**: Stored to athlete profile memory to track longitudinal improvement over future sessions.`;
 
               const thoughtProcess = {
                 title: `Thought for ${(Math.random() * 0.4 + 2.1).toFixed(1)}s`,

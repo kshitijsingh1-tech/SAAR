@@ -1219,19 +1219,23 @@ export function ChatGPTView({
                         {(() => {
                           const { thought, cleanText } = extractThoughtFromText(msg.text);
                           const activeThought = msg.thoughtProcess || thought;
+                          const isIngestionPreamble = /Badminton Rally Kinematic Ingestion & Perception/i.test(cleanText);
+                          const hideMainText = isIngestionPreamble || (msg.adaptiveConcern && concludedSessions[index]);
                           return (
                             <>
                               {msg.role === 'assistant' && activeThought && (
                                 <ThoughtProcessPill thought={activeThought} />
                               )}
-                              <MarkdownResponse
-                                content={msg.role === 'assistant' ? cleanText : msg.text}
-                                pairedQuestion={pairedText}
-                                role={msg.role}
-                                onAskSaar={handleAskSaarFromAction}
-                              />
+                              {!hideMainText && (
+                                <MarkdownResponse
+                                  content={msg.role === 'assistant' ? cleanText : msg.text}
+                                  pairedQuestion={pairedText}
+                                  role={msg.role}
+                                  onAskSaar={handleAskSaarFromAction}
+                                />
+                              )}
                               {msg.adaptiveConcern && (
-                                <div style={{ marginTop: '16px', maxWidth: '780px' }}>
+                                <div style={{ marginTop: hideMainText ? '0' : '16px', maxWidth: '780px' }}>
                                   <AdaptiveInquiryCard
                                     investigationId={msg.investigationId || "latest"}
                                     userConcern={msg.adaptiveConcern}

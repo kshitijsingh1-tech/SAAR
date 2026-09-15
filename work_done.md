@@ -2563,6 +2563,43 @@ When a user uploaded a badminton video accompanied by a specific concern (e.g., 
 4. **Unified Diagnostic Header**:
    - Aligned conclusion title in `adaptive_inquiry.py` to `## Calibrated Kinematic Diagnostic Report: {top_name} ({top_prob}% Confidence)`.
 
+---
+
+## 40. [2026-09-15] Complete Elimination of Ingestion Preamble & Exclusive Presentation of Calibrated Diagnostic Report
+
+**Primary Files Modified**:
+- [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx)
+- [`frontend/src/components/ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx)
+- [`work_done.md`](file:///d:/bytebuild/work_done.md)
+
+### Problem Description & User Direct Feedback
+The user explicitly requested:
+> *"Badminton Rally Kinematic Ingestion & Perception i donot want this i only want Calibrated Kinematic Diagnostic Report: Grip Orientation & Pronation Bevel Twist (100% Confidence) this to be shown only"*
+
+When inspecting the screen, two contradictory blocks were visible in the chat message:
+1. An unrequested top preamble: `### Badminton Rally Kinematic Ingestion & Perception`
+2. The concluded diagnostic report: `## Calibrated Kinematic Diagnostic Report: Grip Orientation & Pronation Bevel Twist (100% Confidence)`
+
+### Root Cause Analysis
+1. In `App.jsx`, `responseText` had been set to `### 🏸 Badminton Rally Kinematic Ingestion & Perception...` whenever `userConcernText` was truthy.
+2. In `ChatGPTView.jsx`, `<MarkdownResponse content={cleanText} />` unconditionally rendered this preamble text above the `<AdaptiveInquiryCard>`, resulting in both the preamble and the concluded report card being rendered stacked on screen.
+
+### Implemented Solution & Non-Regression Invariants
+1. **Total Elimination of Ingestion Preamble ([`App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx))**:
+   - Completely deleted the `### 🏸 Badminton Rally Kinematic Ingestion & Perception` string generation.
+   - Synchronized `handleAdaptiveInquiryComplete` to automatically sanitize any legacy/cached messages matching the preamble pattern to display `completedSession.conclusion`.
+2. **Selective Markdown Presentation Layer ([`ChatGPTView.jsx`](file:///d:/bytebuild/frontend/src/components/ChatGPTView.jsx))**:
+   - Added `isIngestionPreamble = /Badminton Rally Kinematic Ingestion & Perception/i.test(cleanText)`.
+   - Added `hideMainText = isIngestionPreamble || (msg.adaptiveConcern && concludedSessions[index])`.
+   - When `hideMainText` is true, the top text is suppressed, allowing the elevated `AdaptiveInquiryCard` (or concluded report) to render exclusively as the single primary white report card matching the user's specification.
+3. **Empirical Verification**:
+   - Production build `npm run build` completed with **0 errors** in 36.77s.
+   - Browser subagent performed live verification on `http://localhost:3000`:
+     - Verified `Badminton Rally Kinematic Ingestion & Perception` is 100% absent from the viewport.
+     - Verified `Calibrated Kinematic Diagnostic Report: Grip Orientation & Pronation Bevel Twist (100% Confidence)` is cleanly rendered as the sole diagnostic report.
+     - Visual screenshot saved to `badminton_report_header_1789431175723.png`.
+
+
 
 
 
