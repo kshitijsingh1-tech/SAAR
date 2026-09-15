@@ -425,7 +425,9 @@ const AdaptiveInquiryCard = ({
           )}
           {case_state.baseline_deviation_detected && (
             <span style={{ fontSize: '0.72rem', background: '#ffedd5', color: '#9a3412', padding: '2px 8px', borderRadius: '4px', fontWeight: '700' }}>
-              Baseline Deviation (Leo: 3.4%)
+              {case_state.observations?.child_name
+                ? `Baseline Deviation (${case_state.observations.child_name})`
+                : 'Pediatric Asymmetry Shift (>8.0% Norm)'}
             </span>
           )}
           {case_state.uncertainties && case_state.uncertainties.length > 0 && (

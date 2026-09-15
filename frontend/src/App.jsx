@@ -579,25 +579,41 @@ export default function App() {
   // Adaptive Inquiry Completion handler: unlocks domain tools ONLY after all diagnostic questions are answered
   const handleAdaptiveInquiryComplete = useCallback((completedSession, sourceMsg) => {
     if (!completedSession) return;
-    const domain = completedSession.domain || (completedSession.subjectId?.includes('badminton') ? 'sports' : '');
+    const domain = completedSession.domain || (
+      (completedSession.subjectId?.includes('badminton') || completedSession.subject_id?.includes('badminton')) ? 'sports' : ''
+    );
     const isBadminton = domain === 'sports' ||
       domain === 'badminton' ||
       completedSession.subjectId?.includes('badminton') ||
+      completedSession.subject_id?.includes('badminton') ||
       completedSession.subjectId?.includes('player') ||
+      completedSession.subject_id?.includes('player') ||
       /badminton|smash|racket|shuttle/.test(completedSession.conclusion || '');
 
     if (isBadminton) {
-      // All required questions answered for analysis — now unlock badminton tool!
+      // All required questions answered for analysis — now unlock badminton tool and open studio!
+      if (sourceMsg?.report) {
+        setSaarData(sourceMsg.report);
+      }
       unlockTools(['badminton', 'verdict', 'rag', 'analytics']);
+      setActiveTool('badminton');
+      setIsToolDrawerOpen(true);
     } else {
       const isGait = domain === 'clinical' ||
         domain === 'pediatrics' ||
         domain === 'gait' ||
         completedSession.subjectId?.includes('child') ||
+        completedSession.subject_id?.includes('child') ||
         completedSession.subjectId?.includes('toddler') ||
+        completedSession.subject_id?.includes('toddler') ||
         /gait|walk|step|limp|asymmetry/.test(completedSession.conclusion || '');
       if (isGait) {
+        if (sourceMsg?.report) {
+          setSaarData(sourceMsg.report);
+        }
         unlockTools(['gait', 'verdict', 'rag', 'analytics']);
+        setActiveTool('gait');
+        setIsToolDrawerOpen(true);
       }
     }
 
@@ -1656,17 +1672,27 @@ export default function App() {
       if (checkIsAborted()) return;
       let reply = askRes.answer_summary || `Evaluated causal evidence graph against inquiry: "${msgText}".`;
 
-      if (askRes.overall_confidence) {
+      const isUnrecognized = Boolean(askRes.is_unrecognized || /Unrecognized Input|Unrelated Query|Unrelated \/ Unrecognized/i.test(reply));
+
+      if (askRes.overall_confidence && !isUnrecognized) {
         reply += `\n\n- **Graph Evidence**: ${askRes.evidence_count || (active?.final_graph?.nodes?.length ?? 5)} verified nodes referenced.\n- **Current Confidence**: **${((askRes.overall_confidence || 0.88) * 100).toFixed(0)}%**.`;
       }
 
-      if (askRes.domain_knowledge && askRes.domain_knowledge.length > 0) {
+      if (askRes.domain_knowledge && askRes.domain_knowledge.length > 0 && !isUnrecognized) {
         reply += `\n\n> **Peer-Reviewed Citation** (*${askRes.domain_knowledge[0].source || 'Domain Index'}*):\n> "${askRes.domain_knowledge[0].content}"`;
       }
 
-      const nodeCount = askRes.evidence_count || active?.final_graph?.nodes?.length || 6;
-      const confPct = Math.round((askRes.overall_confidence || 0.91) * 100);
-      const thoughtProcess = {
+      const nodeCount = isUnrecognized ? 0 : (askRes.evidence_count || active?.final_graph?.nodes?.length || 6);
+      const confPct = isUnrecognized ? null : Math.round((askRes.overall_confidence || 0.91) * 100);
+      const thoughtProcess = isUnrecognized ? {
+        title: 'Input Analysis',
+        summary: `Identified unrelated or unrecognized input · Active ${selectedDomain || 'scientific'} investigation`,
+        steps: [
+          `Input Parsing: Evaluated prompt "${msgText.slice(0, 30)}" against domain lexicon`,
+          `Relevance Filtering: Input is outside scope of active ${selectedDomain || 'scientific'} investigation`,
+          `Status: Prompted user to ask question relevant to active investigation or upload new data`
+        ]
+      } : {
         title: `Thought for ${(Math.random() * 0.4 + 1.2).toFixed(1)}s`,
         summary: `Traversed ${nodeCount} causal graph nodes · Retrieved domain RAG citations (${confPct}% confidence)`,
         steps: [
@@ -1682,12 +1708,12 @@ export default function App() {
       const msgLower = (msgText || '').toLowerCase();
       const isBadmintonQuery = ['badminton', 'smash', 'racket', 'shuttle', 'court', 'stroke', 'rally'].some(k => msgLower.includes(k));
       const isPedGaitQuery = !isBadmintonQuery && ['walk', 'limp', 'gait', 'toddler', 'asymmetry', 'optimal', 'step'].some(k => msgLower.includes(k));
-      const adaptiveConcern = (isPedGaitQuery || isBadmintonQuery) ? msgText.trim() : null;
+      const adaptiveConcern = (!isUnrecognized && (isPedGaitQuery || isBadmintonQuery)) ? msgText.trim() : null;
       const targetSubjectId = isBadmintonQuery ? 'player_badminton' : 'child_toddler';
 
-      if (!adaptiveConcern) {
+      if (!adaptiveConcern && !isUnrecognized) {
         detectAndUnlockTools(msgText, currentFiles, askRes);
-      } else {
+      } else if (adaptiveConcern) {
         // While interactive diagnostic questions are pending for analysis, domain studio tools remain locked!
         // Domain studio (Badminton / Gait) unlocks ONLY after all required questions are answered.
         setSessionTools(['dictionary', 'rag'], activeSessionId);

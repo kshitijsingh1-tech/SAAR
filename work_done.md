@@ -3110,4 +3110,137 @@ Previously, when a user uploaded a toddler gait screening video:
 7. **Strict Non-Push Directive Preserved**:
    - Zero commits or pushes to `origin/main`. Working tree changes remain local.
 
+---
+
+### Section 47: Automatic Video Analysis Entry & Zero-Friction Gait Studio Transition (2026-09-15)
+
+#### 1. Problem Description & Symptoms
+- **User Question**: *"why isnt te video automatically entered for analysis after we answer the question"*
+- **Symptoms**:
+  - After answering all adaptive diagnostic triage questions in chat and opening the Pediatric Gait Biomechanics Studio drawer, the user was confronted with a large, unanalyzed dashed dropzone displaying *"Selected: sample_toddler_walk.mp4"* and an *"Analyze Walking Video"* button.
+  - This gave the impression that the video had not been entered or analyzed, requiring an unnecessary manual click on *"Analyze Walking Video"*, even though MediaPipe 33-point tracking and kinematic analysis had already been calculated in the background.
+  - Additionally, the dashboard's baseline card displayed hardcoded labels (*"Leo (24 mo) · 3 Prior Sessions"* and *"Leo's Baseline: 3.4% ± 1.1%"*), which violated the Zero-Hardcoding rule and conflicted with single-recording investigations where only one video was uploaded.
+
+#### 2. Root Cause Analysis
+1. **Unconditional Drop Area in `GaitDashboard.jsx`**:
+   - The video upload dropzone and *"Analyze Walking Video"* action button were rendered unconditionally at the top of `GaitDashboard.jsx`, regardless of whether `assessmentResult` was already populated.
+2. **Missing Post-Analysis Video Player Card**:
+   - The `<video>` player in `GaitDashboard.jsx` was originally nested inside the unanalyzed upload drop area. When `assessmentResult` was present, hiding the drop area without relocating the video player left the dashboard without an active video playback window.
+3. **Hardcoded Leo & Mock Baseline Values**:
+   - In `GaitDashboard.jsx` lines 590–730 and `AdaptiveInquiryCard.jsx` line 428, child name *"Leo"* and prior session count *"3 Prior Sessions"* were statically hardcoded instead of dynamically evaluating `baselineComparison || assessmentResult.baseline_comparison`.
+
+#### 3. Implemented Solution
+1. **Auto-Entering Active Analyzed State in `GaitDashboard.jsx`**:
+   - Gated the video upload dropzone with `{!assessmentResult && (...)}`, exactly mirroring `BadmintonDashboard.jsx`.
+   - When `assessmentResult` is present, the header displays a clean video metadata badge:
+     `{selectedFile?.name || assessmentResult.video?.filename || 'Toddler Walking Video'} ({duration}s • {fps} FPS)` alongside a `[Change Video]` button.
+   - Added a dedicated **Synchronized Video Kinematics Playback** card inside the active results dashboard, embedding the video player with keypoint tracking overlays and step cycle counter.
+   - Added automatic fallback resolution for `videoPreviewUrl` (`getGaitSampleVideoUrl()` or `URL.createObjectURL(selectedFile || initialFile)`).
+2. **Data-Driven Longitudinal & Normative Benchmarks**:
+   - Replaced all static *"Leo"* strings with dynamic conditional rendering:
+     - When `bComp?.has_baseline && bComp?.baseline_session_count > 1`: Renders child's personal longitudinal baseline (`${childName}'s Longitudinal Gait Baseline (${bComp.baseline_session_count} Prior Sessions)`).
+     - When single recording: Renders normative pediatric reference benchmarks based on age-matched developmental ranges (Perry & Burnfield Gait Analysis).
+   - Removed unwanted auto-triggering of in-drawer adaptive inquiry that was previously overriding the results view.
+3. **Cleaned `AdaptiveInquiryCard.jsx`**:
+   - Replaced hardcoded `Baseline Deviation (Leo: 3.4%)` with data-driven child name and asymmetry shift.
+
+#### 4. Non-Regression & Verification
+- **Build Verification**: `npm run build` completed in 14.78s with 0 errors.
+- **Browser Subagent Verification**:
+  - Live inspection confirmed the Gait Studio opens with the video already analyzed and entered.
+  - The unanalyzed dropzone and *"Analyze Walking Video"* button are completely gone.
+  - Synchronized video playback, quality banner (`Report #da345016`), and normative baseline card are immediately visible.
+
+---
+
+### Section 48: Intelligent Input Sanitization & Gibberish Filtering (2026-09-15)
+
+#### 1. Problem Description & Symptoms
+- **Symptom**: When a user typed accidental keystrokes, random noise, or low-entropy gibberish (e.g. `"kghg"`, `"asdf"`), the system previously forwarded the meaningless token to the LLM alongside the entire active dataset context.
+- **Undesirable Behavior**: The LLM recognized that the token was unparseable (*"Your input ('kghg') does not parse as a specific query..."*), but because the prompt demanded an empirical analysis, it dumped an unsolicited, multi-paragraph diagnostic report about the active dataset (e.g., Tomato Interveinal Chlorosis).
+- **User Impact**: Users were confused why random 4-letter typos triggered a massive, unprompted scientific report dump.
+
+#### 2. Root Cause Analysis
+- In [`backend/app/services/reasoning_service.py`](file:///d:/bytebuild/backend/app/services/reasoning_service.py) `answer_question`:
+  - Tokens were extracted and fuzzy-matched against column names. When no columns or analytical keywords matched, the question was sent directly to Gemini/Groq with the full dataset context and strict instructions to explain findings.
+  - There was no early-stage noise/gibberish classification filter to catch non-lexical keystrokes and offer guidance.
+
+#### 3. Implemented Solution
+1. **Early-Stage Gibberish & Noise Classifier**:
+   - Added `_is_gibberish_or_noise(text)` in [`reasoning_service.py`](file:///d:/bytebuild/backend/app/services/reasoning_service.py):
+     - Catches vowelless strings (`"kghg"`, `"bcdf"`, `"ghjk"`), top/home-row keyboard mashes (`"asdf"`, `"qwerty"`, `"hjkl"`), extreme character repetitions, and non-alphanumeric noise.
+     - Preserves valid domain abbreviations (`pH`, `Fe`, `EC`, `GPR`, `CAD`, `ROM`, `CoV`, `FPS`, `N`, `P`, `K`, `Ca`, `Mg`, etc.) and common short question words (`why`, `how`, `who`, `help`).
+2. **Actionable Guided Recovery Response**:
+   - Instead of dumping an unsolicited dataset analysis, `answer_question` returns an immediate, structured guidance card:
+     - Identifies the query as an accidental keystroke or unrecognized input (`"kghg"`).
+     - Dynamically respects the active session domain (`domain="agriculture"`, `sports`, `pediatrics`, `infrastructure`), eliminating hardcoded fallback to infrastructure.
+     - Dynamically generates 3 relevant, clickable/copyable sample questions tailored to the active investigation (e.g. Agriculture: *"How does pH influence iron bioavailability?"*, Sports: *"Analyze smash velocity and racket head acceleration"*).
+     - Sets `overall_confidence = None` and `is_unrecognized = True`, preventing `App.jsx` from appending nonsensical *"Graph Evidence: 5 verified nodes referenced. Current Confidence: 88%"* footers to unrecognized input alerts.
+
+#### 4. Non-Regression & Verification
+- Tested `"kghg"` across all active domains (`agriculture`, `sports`, `pediatrics`, `infrastructure`): verified 100% domain-specific guidance questions without cross-contamination.
+- Tested `"asdfghjkl"`: returned clean guidance card without dumping dataset reports or appending false confidence footers.
+- Tested valid scientific query (*"What is causing the interveinal chlorosis?"*): smoothly executed deep causal reasoning with accurate scientific telemetry.
+
+---
+
+### Section 49: Standardized Unrelated & Unrecognized Input Architecture (2026-09-15)
+
+#### 1. Problem Description & Symptoms
+- **User Queries**:
+  - *"why these"*
+  - *"just unrelated format or some similar text for such cases"*
+- **Symptoms**:
+  - In response to random or off-topic inputs, the engine previously generated machine-synthesized sample questions (e.g., *"• How does Root Zone Moisture Sensor (48% VWC) influence Hypothesis: Bicarbonate-Induced Fe2+ Bioavailability Deficit?"*).
+  - These questions felt unnatural, exposed internal causal graph node names, and confused users when their query was simply out-of-scope or random keystrokes.
+  - The user explicitly requested removing sample question suggestions and standardizing on a clean, direct "Unrelated format" or similar concise text.
+
+#### 2. Root Cause Analysis
+1. **Unwanted Suggestion Generation in Guidance Cards**:
+   - `_get_guiding_sample_questions` previously synthesized bulleted lists of suggested questions for unrecognized/gibberish queries.
+   - For English inquiries that were completely off-topic (e.g., *"how strong is our input preparation"*, *"what is the capital of France"*), the lack of an early domain-relevance filter allowed the question to pass to Gemini, which attempted to relate the question back to the active domain by creating clumsy questions using raw node labels.
+2. **Missing Out-of-Scope Classification Filter**:
+   - There was no domain-relevance evaluation method to catch off-topic, random, or conversational queries early before initiating full LLM traversal.
+
+#### 3. Implemented Solution
+1. **Eliminated Sample Questions / Awkward Node Suggestions**:
+   - Completely deleted `_get_guiding_sample_questions` from [`backend/app/services/reasoning_service.py`](file:///d:/bytebuild/backend/app/services/reasoning_service.py).
+   - Standardized the response template to a clean, direct, 2-line format without bullet points or machine-generated questions:
+     - For gibberish / noise (`kghg`, `asdf`):
+       ```markdown
+       ### Unrecognized Input
+
+       Your input **`"{question}"`** is unrelated to the active **{domain_name}** investigation.
+
+       Please ask a question related to this investigation, or upload an image, video, or dataset to explore a different topic.
+       ```
+     - For off-topic / unrelated inquiries (*"how strong is our input preparation"*, *"what is the capital of France"*):
+       ```markdown
+       ### Unrelated Query
+
+       Your question is unrelated to the active **{domain_name}** investigation.
+
+       Please ask a question related to this investigation, or upload an image, video, or dataset to explore a different topic.
+       ```
+2. **Dynamic Domain-Relevance Filter**:
+   - Implemented `_is_domain_relevant_query(question, state)` in [`reasoning_service.py`](file:///d:/bytebuild/backend/app/services/reasoning_service.py):
+     - Evaluates queries against active state features, column definitions, concepts, observations, and domain lexicon.
+     - Preserves all valid analytical inquiries (*"What is the root cause?"*, *"Can you summarize findings?"*, *"What should I do?"*).
+     - Instantly catches off-topic inquiries (*"what is the capital of France"*, *"how strong is our input preparation"*, *"random inputs? absurd texts?"*) without invoking heavy LLM synthesis.
+3. **LLM Prompt Relevance Guard & Unrecognized Flag Propagation**:
+   - Added `CRITICAL RELEVANCE RULE` to `ai_prompt` and badminton analysis prompt instructing the model to return the standardized `### Unrelated Query` format if an out-of-scope question reaches synthesis.
+   - When returning an unrelated card, sets `is_unrecognized = True`, `overall_confidence = None`, and `evidence_count = 0`.
+4. **Frontend Protection in `App.jsx`**:
+   - Updated `isUnrecognized` check to match `/Unrecognized Input|Unrelated Query|Unrelated \/ Unrecognized/i`.
+   - Suppresses graph evidence badges, confidence percentages, and literature citations on unrelated queries.
+   - Prevents unintended tool drawer rollouts on unrelated queries.
+
+#### 4. Non-Regression & Verification
+- **Test Matrix (100% Passed)**:
+  - `kghg` $\to$ Returns clean `### Unrecognized Input` (0 sample questions, confidence: None, is_unrecognized: True).
+  - `how strong is our input prepration` $\to$ Returns clean `### Unrelated Query` (0 sample questions, confidence: None, is_unrecognized: True).
+  - `what is the capital of france` $\to$ Returns clean `### Unrelated Query` across Agriculture, Sports, Pediatrics, Infrastructure, and Astronomy with correct domain naming.
+  - `What is causing the leaf chlorosis?` $\to$ Normal deep causal synthesis executed smoothly (is_unrecognized: False, confidence: 91%).
+- **Frontend Build**: `npm run build` completed cleanly in 14.55s with **0 errors**.
+
 

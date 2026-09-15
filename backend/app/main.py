@@ -303,7 +303,7 @@ async def saar_ask(investigation_id: str, payload: Dict[str, str]):
     domain = getattr(state, "dataset_id", "agriculture") or "agriculture"
 
     # Parallel dispatch: Deep causal reasoning + Grounded lexical extraction
-    reasoning_task = asyncio.to_thread(saar_engine.answer_question, investigation_id, question)
+    reasoning_task = asyncio.to_thread(saar_engine.answer_question, investigation_id, question, domain)
     terminology_task = terminology_service.extract_grounded_terms_async(question, domain)
 
     res, terms = await asyncio.gather(reasoning_task, terminology_task)
@@ -323,7 +323,7 @@ async def saar_general_ask(payload: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="Question is required.")
 
     # Parallel dispatch: Deep causal reasoning + Grounded lexical extraction
-    reasoning_task = asyncio.to_thread(saar_engine.answer_question, investigation_id, question)
+    reasoning_task = asyncio.to_thread(saar_engine.answer_question, investigation_id, question, domain)
     terminology_task = terminology_service.extract_grounded_terms_async(question, domain)
 
     res, terms = await asyncio.gather(reasoning_task, terminology_task)

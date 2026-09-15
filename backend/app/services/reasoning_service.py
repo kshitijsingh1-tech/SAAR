@@ -761,20 +761,190 @@ RESPONSE STYLE RULES:
             "iteration": state.iteration,
         }
 
-    def answer_question(self, investigation_id: str, question: str) -> Dict[str, Any]:
+    @staticmethod
+    def _is_gibberish_or_noise(text: str) -> bool:
+        """Detect random keyboard mashing, vowel-less strings, or unparseable noise."""
+        if not text:
+            return True
+        clean = text.strip()
+        clean_lower = clean.lower()
+
+        # Whitelist of valid domain abbreviations and very short common words
+        valid_short = {
+            'ph', 'fe', 'ec', 'gpr', 'cad', 'rom', 'cov', 'fps', 'why', 'how', 'who',
+            'what', 'when', 'help', 'hi', 'hey', 'yes', 'no', 'ok', 'okay', 'n', 'p', 'k',
+            'ca', 'mg', 'na', 'cl', 'so4', 'hco3', 'fe2', 'fe3', 'co2', 'o2', 'h2o'
+        }
+        if clean_lower in valid_short:
+            return False
+
+        # Single characters that aren't scientific symbols
+        if len(clean) == 1 and clean_lower not in {'n', 'p', 'k'}:
+            return True
+
+        # Non-alphanumeric only (e.g. '???', '!@#$', '......')
+        alpha_chars = [c for c in clean_lower if c.isalpha()]
+        if not alpha_chars:
+            return True
+
+        # Check classic keyboard home-row / top-row mashes
+        mashes = {
+            'asdf', 'asdfg', 'asdfgh', 'asdfghjkl', 'qwerty', 'qwert', 'zxcv', 'zxcvb',
+            'hjkl', 'ghjk', 'jkl;', 'lkjh', 'fdsa', 'rewq', 'bvcxz', 'kghg', 'ghgh', 'ffff',
+            'asdfgh', 'qwertz', 'poiuy', 'mnbvc', 'jhgf', 'poiuyt', 'lkjhg'
+        }
+        if clean_lower in mashes:
+            return True
+
+        # Short tokens (2-6 chars) with zero vowels (e.g. 'kghg', 'bcdf', 'ghjk', 'zzzz')
+        vowels = set('aeiouy')
+        has_vowel = any(c in vowels for c in alpha_chars)
+        if len(clean) <= 6 and not has_vowel and clean_lower not in valid_short:
+            return True
+
+        # Repetition of a single character or two characters (e.g. 'aaaaa', 'ababab', 'zzzzz')
+        if len(clean) >= 4 and len(set(alpha_chars)) <= 2:
+            return True
+
+        # If all space-separated tokens in input are vowelless non-acronyms, it's gibberish
+        words = re.findall(r'[a-z]+', clean_lower)
+        if words:
+            if all(len(w) >= 3 and not any(c in vowels for c in w) and w not in valid_short for w in words):
+                return True
+
+        return False
+
+    @staticmethod
+    def _is_domain_relevant_query(question: str, state: InvestigationState) -> bool:
+        """Dynamically evaluate whether the query is relevant to the active investigation domain, its variables, concepts, or analytical objectives."""
+        if not question:
+            return False
+        q_clean = question.lower().strip()
+        words = set(re.findall(r'[a-z0-9]+', q_clean))
+
+        # Check domain-specific keywords
+        domain_keywords = {
+            'agriculture': {
+                'plant', 'plants', 'crop', 'crops', 'leaf', 'leaves', 'foliage', 'chlorosis', 'chlorotic',
+                'soil', 'root', 'roots', 'moisture', 'water', 'watering', 'waterlogging', 'vwc', 'ph',
+                'nutrient', 'nutrients', 'iron', 'fe', 'fe2', 'fe3', 'nitrogen', 'phosphorus', 'potassium',
+                'fertilizer', 'growth', 'necrosis', 'stem', 'drip', 'irrigation', 'rhizosphere', 'bicarbonate',
+                'deficit', 'hypoxia', 'anoxia', 'tomato', 'tomatoes', 'yellow', 'yellowing', 'interveinal',
+                'spad', 'ndre', 'canopy', 'vegetative', 'botanical', 'agronomic', 'absorption', 'lockout',
+                'die', 'dying', 'wilt', 'wilting', 'rot', 'disease', 'pathology'
+            },
+            'sports': {
+                'sport', 'sports', 'badminton', 'smash', 'racket', 'racquet', 'shuttle', 'shuttlecock',
+                'court', 'swing', 'stroke', 'strokes', 'velocity', 'speed', 'movement', 'coverage', 'jump',
+                'wrist', 'player', 'rally', 'backhand', 'forehand', 'angle', 'footwork', 'fatigue', 'coach',
+                'coaching', 'technique', 'overhead', 'clear', 'drop', 'net', 'acceleration',
+                'shot', 'shots', 'contact', 'trajectory', 'kinematic', 'biomechanics', 'calories', 'energy'
+            },
+            'pediatrics': {
+                'pediatric', 'pediatrics', 'gait', 'walk', 'walking', 'step', 'steps', 'cadence', 'asymmetry',
+                'limp', 'limping', 'toddler', 'child', 'children', 'infant', 'balance', 'stance', 'swing',
+                'foot', 'feet', 'leg', 'legs', 'hip', 'hips', 'knee', 'knees', 'ankle', 'ankles', 'variability',
+                'cov', 'milestone', 'milestones', 'developmental', 'sutherland', 'barefoot', 'orthotic',
+                'excursion', 'symmetry', 'bilateral', 'stride', 'velocity', 'rom', 'perry', 'burnfield'
+            },
+            'infrastructure': {
+                'infra', 'infrastructure', 'pavement', 'road', 'roads', 'asphalt', 'crack', 'cracks', 'cracking',
+                'subsurface', 'gpr', 'radar', 'void', 'voids', 'cavity', 'cavities', 'erosion', 'concrete',
+                'highway', 'sinkhole', 'drain', 'drainage', 'ponding', 'reflection', 'sub-base', 'aggregate',
+                'piping', 'structural', 'collapse', 'shear', 'dielectric', 'alligator'
+            },
+            'astronomy': {
+                'astro', 'astronomy', 'transit', 'planet', 'planets', 'star', 'stars', 'exoplanet', 'exoplanets',
+                'light curve', 'flux', 'period', 'orbit', 'orbital', 'occultation', 'dip', 'kepler', 'tess',
+                'depth', 'spectroscopy', 'spectroscopic', 'magnitude', 'photometry', 'radius', 'stellar'
+            }
+        }
+
+        domain_str = (getattr(state, "dataset_id", "") or "agriculture").lower()
+        matched_dom_key = "agriculture"
+        for k in domain_keywords:
+            if k in domain_str:
+                matched_dom_key = k
+                break
+
+        # Check direct domain keyword match
+        if words & domain_keywords.get(matched_dom_key, set()):
+            return True
+
+        # Check dynamically loaded concepts from state
+        if state.concepts and any(any(w in c.name.lower() for w in words if len(w) >= 3) for c in state.concepts):
+            return True
+
+        # Check features/columns
+        if state.features and any(f.name.lower() in q_clean for f in state.features):
+            return True
+        if state.dataset_profile and state.dataset_profile.columns:
+            if any(col.name.lower() in q_clean for col in state.dataset_profile.columns):
+                return True
+
+        # Check observations
+        if state.observations and any(o.feature_name.lower() in q_clean for o in state.observations):
+            return True
+
+        # General analytical or diagnostic inquiry without off-topic terms
+        analytical_intents = ['root cause', 'findings', 'summary', 'what is happening', 'what happened', 'what should i do', 'next steps', 'diagnos', 'remediation', 'recommendation']
+        if any(pat in q_clean for pat in analytical_intents):
+            off_topic_indicators = ['capital of', 'tell me a joke', 'how to bake', 'how to cook', 'recipe', 'president of', 'weather today', 'who won', 'input preparation', 'absurd text', 'unrelated ques']
+            if not any(oti in q_clean for oti in off_topic_indicators):
+                return True
+
+        return False
+
+    def answer_question(self, investigation_id: str, question: str, domain: Optional[str] = None) -> Dict[str, Any]:
         """Answer a natural-language question about the current investigation state."""
-        state = self._investigations.get(investigation_id)
-        if not state or investigation_id == "latest":
-            if self._investigations:
+        state = self._investigations.get(investigation_id) if investigation_id and investigation_id != "latest" else None
+        
+        # If no exact state by ID, match state by requested domain or fallback to latest matching domain
+        if not state:
+            target_domain = (domain or "agriculture").lower()
+            matching_states = [s for s in self._investigations.values() if getattr(s, "dataset_id", "") == target_domain]
+            if matching_states:
+                state = matching_states[-1]
+            elif self._investigations and not domain:
                 state = list(self._investigations.values())[-1]
             else:
                 state = InvestigationState(
-                    investigation_id=investigation_id,
-                    dataset_id="infrastructure",
-                    overall_confidence=0.88,
+                    investigation_id=investigation_id or "latest",
+                    dataset_id=target_domain,
+                    overall_confidence=0.91,
                     iteration=1,
                     status="active"
                 )
+
+        domain_name = (state.dataset_id or "scientific").replace("_", " ").title()
+
+        # Early Guard 1: Unparseable gibberish, keyboard mashes, or noise (e.g. "kghg", "asdf")
+        if self._is_gibberish_or_noise(question):
+            return {
+                "answer_summary": (
+                    f"### Unrecognized Input\n\n"
+                    f"Your input **`\"{question}\"`** is unrelated to the active **{domain_name}** investigation.\n\n"
+                    f"Please ask a question related to this investigation, or upload an image, video, or dataset to explore a different topic."
+                ),
+                "terminology": [],
+                "overall_confidence": None,
+                "evidence_count": 0,
+                "is_unrecognized": True
+            }
+
+        # Early Guard 2: Off-topic or unrelated questions (e.g. "what is the capital of france", "random inputs?")
+        if not self._is_domain_relevant_query(question, state):
+            return {
+                "answer_summary": (
+                    f"### Unrelated Query\n\n"
+                    f"Your question is unrelated to the active **{domain_name}** investigation.\n\n"
+                    f"Please ask a question related to this investigation, or upload an image, video, or dataset to explore a different topic."
+                ),
+                "terminology": [],
+                "overall_confidence": None,
+                "evidence_count": 0,
+                "is_unrecognized": True
+            }
 
         if state.dataset_id == "badminton":
             return self._answer_badminton_question(state, investigation_id, question)
@@ -1007,6 +1177,9 @@ RESPONSE STYLE RULES:
 User Question:
 "{question}"
 
+Active Investigation Domain:
+{domain_label}
+
 Available Data from Investigation:
 {dataset_context_text}
 
@@ -1017,12 +1190,23 @@ Reference Knowledge:
 {chr(10).join([f"- [{r.domain}] {r.content[:180]}..." for r in rag_results[:2]])}
 
 RESPONSE STYLE RULES:
-1. Explain scientific concepts plainly and connect them directly to empirical investigation data.
-2. Provide direct answers for specific metrics or thresholds within narrative sentences, avoiding raw data tables.
-3. Maintain a formal, academic, yet accessible tone appropriate for the domain.
-4. Do NOT use emojis or emoticons.
-5. Conclude with a practical takeaway in a single sentence.
-6. Keep it concise — 150-250 words max.
+1. CRITICAL RELEVANCE RULE:
+   If the user's question is unrelated, off-topic, absurd, random, or not about the active {domain_label} investigation (e.g. general chit-chat, unrelated general knowledge, trivia, coding puzzles, or questions about the AI itself):
+   DO NOT force a connection to the investigation data.
+   DO NOT invent sample questions containing internal node labels.
+   You MUST respond ONLY with:
+   ### Unrelated Query
+
+   Your question is unrelated to the active **{domain_label}** investigation.
+
+   Please ask a question related to this investigation, or upload an image, video, or dataset to explore a different topic.
+
+2. Explain scientific concepts plainly and connect them directly to empirical investigation data.
+3. Provide direct answers for specific metrics or thresholds within narrative sentences, avoiding raw data tables.
+4. Maintain a formal, academic, yet accessible tone appropriate for the domain.
+5. Do NOT use emojis or emoticons.
+6. Conclude with a practical takeaway in a single sentence.
+7. Keep it concise — 150-250 words max.
 """
         answer_text = None
         try:
@@ -1132,16 +1316,21 @@ RESPONSE STYLE RULES:
                 summary_parts.append("\n💡 **Suggestion**: Ask about specific parameters, relationships, or scientific principles!")
                 answer_text = "\n".join(summary_parts)
 
+        is_unrecognized = False
+        if answer_text and any(k in answer_text.lower() for k in ["unrelated query", "unrecognized input", "unrelated to the active"]):
+            is_unrecognized = True
+
         return {
             "question": question,
             "answer_summary": answer_text,
-            "relevant_relationships": [r.model_dump() for r in relevant_rels],
-            "relevant_trends": [t.model_dump() for t in relevant_trends],
-            "relevant_concepts": [c.model_dump() for c in relevant_concepts],
-            "domain_knowledge": [r.to_dict() for r in rag_results],
-            "evidence_count": len(state.evidence),
-            "overall_confidence": state.overall_confidence,
+            "relevant_relationships": [] if is_unrecognized else [r.model_dump() for r in relevant_rels],
+            "relevant_trends": [] if is_unrecognized else [t.model_dump() for t in relevant_trends],
+            "relevant_concepts": [] if is_unrecognized else [c.model_dump() for c in relevant_concepts],
+            "domain_knowledge": [] if is_unrecognized else [r.to_dict() for r in rag_results],
+            "evidence_count": 0 if is_unrecognized else len(state.evidence),
+            "overall_confidence": None if is_unrecognized else state.overall_confidence,
             "iteration": state.iteration,
+            "is_unrecognized": is_unrecognized,
         }
 
     # ------------------------------------------------------------------
