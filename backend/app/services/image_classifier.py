@@ -130,7 +130,7 @@ class ImageClassifierService:
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1}
         }
 
-        for model_name in ["gemini-3.1-flash-lite", "gemini-3.7-flash"]:
+        for model_name in ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest"]:
             for key in keys:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
                 try:
@@ -144,7 +144,14 @@ class ImageClassifierService:
                         text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
                         parsed = json.loads(text)
                         parsed["method"] = f"gemini_{model_name}"
+                        key_pool.record_success("gemini", key)
                         return parsed
+                except urllib.error.HTTPError as e:
+                    err_body = e.read().decode("utf-8", errors="ignore")
+                    if e.code == 429 or "RESOURCE_EXHAUSTED" in err_body or "rate limit" in err_body.lower() or "quota" in err_body.lower():
+                        key_pool.record_quota_exhausted("gemini", key, cooldown_sec=180.0)
+                        break
+                    continue
                 except Exception:
                     continue
         return None

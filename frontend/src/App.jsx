@@ -641,8 +641,12 @@ export default function App() {
       sessions.find((s) => s.id === id) ||
       DEFAULT_SESSIONS.find((s) => s.id === id);
 
-    if (targetSession?.domain) {
-      setSelectedDomain(targetSession.domain);
+    const sessionDomain = targetSession?.domain ||
+      (targetSession?.saarData?.metrics?.cadence || targetSession?.investigationData?.metrics?.cadence ? 'pediatrics' : null) ||
+      (targetSession?.saarData?.video_analytics || targetSession?.investigationData?.video_analytics ? 'sports' : null);
+
+    if (sessionDomain) {
+      setSelectedDomain(sessionDomain);
     }
 
     if (targetSession?.imageData) {
@@ -662,6 +666,10 @@ export default function App() {
       targetSession?.saarData;
 
     if (existingReport) {
+      const repDomain = existingReport.domain || (existingReport.metrics?.cadence ? 'pediatrics' : (existingReport.video_analytics ? 'sports' : null));
+      if (repDomain) {
+        setSelectedDomain(repDomain);
+      }
       if (existingReport.assessment_id || existingReport.analysis_id || existingReport.metrics) {
         setSaarData(existingReport);
         setInvestigationData(null);
@@ -1672,7 +1680,8 @@ export default function App() {
       // 2. Active or General Investigation Inquiry (Dynamic AI synthesis + RAG retrieval)
       const active = saarData || investigationData;
       const targetInvId = active?.investigation_id || active?.assessment_id || active?.analysis_id || 'latest';
-      const askRes = await askSaarQuestion(targetInvId, msgText, { signal: abortController.signal, domain: selectedDomain });
+      const effectiveDomain = active?.domain || (active?.metrics?.cadence ? 'pediatrics' : (active?.video_analytics ? 'sports' : selectedDomain));
+      const askRes = await askSaarQuestion(targetInvId, msgText, { signal: abortController.signal, domain: effectiveDomain });
       if (checkIsAborted()) return;
       let reply = askRes.answer_summary || `Evaluated causal evidence graph against inquiry: "${msgText}".`;
 

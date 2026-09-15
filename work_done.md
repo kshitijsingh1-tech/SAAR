@@ -3371,5 +3371,57 @@ Previously, when a user uploaded a toddler gait screening video:
    - Live HTTP verification against Google AI Studio endpoint (`https://generativelanguage.googleapis.com/v1beta/models`): Status **200 OK**.
    - Verified active pool in `KeyPoolManager`: 5 available Gemini keys successfully loaded and prioritized.
 
+---
+
+### Section 54: Safe Mathematical Typography, API Quota 429 Resolution, and Biomechanics Panel Stability (2026-09-15)
+
+#### 1. Problem Description & Symptoms
+1. **Mathematical LaTeX Notation Formatting**:
+   - Raw LaTeX notation such as `$Asymmetry\% = \frac{100 \cdot |StepTime_{Left} - StepTime_{Right}|}{0.5 \cdot (StepTime_{Left} + StepTime_{Right}) + \varepsilon}$` was rendered in plain unparsed text within citation blockquotes and chat responses.
+   - Citation previews duplicated markdown section headers (e.g., `### Pediatric Gait Telemetry...`) at the start of quotes, and multi-line blockquotes squished text into a single line.
+2. **Infinite Loading Loop on Reasoning Synthesis**:
+   - When users asked questions in chat, the UI occasionally remained stuck on *"Evaluating causal graph & formulating hypotheses..."* for several minutes.
+   - Users reported *"too many request solve"* due to HTTP 429 (`RESOURCE_EXHAUSTED`) on Google AI Studio keys.
+3. **Session Domain Desynchronization**:
+   - Switching to a pediatric gait session or chatting about toddler kinematics occasionally routed inquiries as *"Unrelated Query (Agriculture)"* because `selectedDomain` remained stuck on the default `'agriculture'`.
+4. **React ErrorBoundary in Badminton Metrics Panel**:
+   - Opening the scientific tool canvas in sports mode threw a React runtime `ReferenceError: energyKcal is not defined`, collapsing the view into an ErrorBoundary fallback.
+
+#### 2. Root Cause Analysis
+1. **Markdown Formatting**:
+   - `MarkdownResponse.jsx` lacked a dedicated mathematical notation tokenizer and formula parser for inline `$...$` and standalone block `$$...$$` expressions.
+   - `rag_service.py` retained leading `# Markdown Header` lines inside chunk snippets, duplicating titles into quote previews.
+2. **429 Rate Limiting & Hanging Loop**:
+   - In Google AI Studio free tier, preview models (`gemini-3.6-flash`, `gemini-3.7-flash`, `gemini-flash-latest`) share a strict 20 RPD (requests per day) limit per Google Cloud project. Once hit, attempting 5 models across 6 keys caused 30 sequential failed API requests with 16s timeouts (up to 8 minutes of hangs).
+   - In `vlm_service.py`, Groq requests used a spoofed Chrome browser User-Agent which was blocked with HTTP 403 (Error 1010) by Cloudflare WAF.
+3. **Domain Propagation**:
+   - `handleSelectSession` and `handleSendMessage` in `App.jsx` did not reliably synchronize `selectedDomain` from `targetSession.domain` or report metrics.
+4. **BadmintonMetricsPanel Undeclared Variables**:
+   - In commit `a7d7e97c95`, variable definitions for `energyKcal`, `energyType`, `energyMethod`, and `hasSpatialMovement` were omitted when hardcoding calibrated stroke velocities, causing an immediate runtime `ReferenceError`.
+
+#### 3. Implemented Solution & Non-Regression Invariants
+1. **Zero-Dependency LaTeX Typography Engine (`frontend/src/components/MarkdownResponse.jsx`, `frontend/src/index.css`)**:
+   - Implemented `formatLatexMath(str)`:
+     - Converts `\frac{num}{den}` into legible bracket fractions `[ num ] / [ den ]`.
+     - Translates math symbols: `\cdot`, `\times` $\to$ `×`, `\varepsilon` $\to$ `ε`, `\Delta` $\to$ `Δ`, `\rho` $\to$ `ρ`, `\approx` $\to$ `≈`, `\pm` $\to$ `±`, `\%` $\to$ `%`.
+     - Rewrites subscript notation (`_{Left}` $\to$ `(Left)`) and superscripts (`^2` $\to$ `²`).
+   - Tokenizes inline math `$...$` into styled `<span className="md-math-inline">` tags and standalone `$$...$$` into high-contrast math blocks (`<div className="md-math-block">`).
+   - Cleaned `rag_service.py` to strip leading section headers from chunk snippets and updated `backend/app/knowledge/gait_kb.md` with clean line spacing around formulas.
+2. **Resilient AI Studio Quota Failover & Groq WAF Fix (`backend/app/vlm_service.py`, `key_pool_manager.py`)**:
+   - Prioritized high-quota, sub-second models: `["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest", "gemini-3.7-flash"]`.
+   - On HTTP 429 / `RESOURCE_EXHAUSTED`: Immediately calls `key_pool.record_quota_exhausted("gemini", g_key, cooldown_sec=180.0)` and breaks the model loop for that key rather than burning requests against the same exhausted project quota.
+   - Replaced fake browser User-Agent with `"User-Agent": "Saar-Scientific-Engine/1.0"` for Groq endpoints, bypassing Cloudflare Error 1010.
+   - Reduced per-request timeouts to 5–8s for immediate graceful fallback to dynamic RAG synthesis.
+   - Propagated model priorities to `image_classifier.py`, `video_classifier.py`, and `sports/badminton/gemini_service.py`.
+3. **Session Domain Synchronization (`frontend/src/App.jsx`)**:
+   - `handleSelectSession` and `handleSendMessage` dynamically resolve domain from `targetSession.domain` or report metrics (`domain || targetSession?.report?.domain || (metrics?.stance_phase_pct ? 'pediatrics' : 'agriculture')`).
+4. **Badminton Metrics Panel Restoration (`frontend/src/components/BadmintonMetricsPanel.jsx`)**:
+   - Reinstated missing `energyKcal`, `energyType`, `energyMethod`, and `hasSpatialMovement` definitions with robust fallback logic.
+5. **Empirical Verification**:
+   - Frontend production build (`npm run build`) succeeded in 19.08s with **0 errors**.
+   - Browser automation confirmed `http://localhost:3000` loads cleanly, Studio Console launches, and the scientific tool drawer opens without ErrorBoundary or console errors.
+   - Live backend testing confirmed `vlm.synthesize_reasoning_explanation` returns responses in under 3 seconds using `gemini-flash-lite-latest`.
+
+
 
 

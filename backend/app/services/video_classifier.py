@@ -285,7 +285,7 @@ class VideoClassifierService:
             gemini_keys = [os.getenv("GEMINI_API_KEY")]
 
         for g_key in gemini_keys:
-            for model_name in ["gemini-flash-lite-latest", "gemini-flash-latest"]:
+            for model_name in ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-flash-latest"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={g_key}"
                 parts = [{"text": prompt}]
                 for b64_img in b64_images:
@@ -305,12 +305,19 @@ class VideoClassifierService:
                         data=json.dumps(payload).encode("utf-8"),
                         headers={"Content-Type": "application/json"}
                     )
-                    with urllib.request.urlopen(req, timeout=8) as response:
+                    with urllib.request.urlopen(req, timeout=6) as response:
                         raw = json.loads(response.read().decode("utf-8"))
                         text_part = raw["candidates"][0]["content"]["parts"][0]["text"]
                         parsed = json.loads(text_part)
                         if isinstance(parsed, dict) and "classification" in parsed:
+                            key_pool.record_success("gemini", g_key)
                             return parsed
+                except urllib.error.HTTPError as e:
+                    err_body = e.read().decode("utf-8", errors="ignore")
+                    if e.code == 429 or "RESOURCE_EXHAUSTED" in err_body or "rate limit" in err_body.lower() or "quota" in err_body.lower():
+                        key_pool.record_quota_exhausted("gemini", g_key, cooldown_sec=180.0)
+                        break
+                    continue
                 except Exception:
                     continue
 

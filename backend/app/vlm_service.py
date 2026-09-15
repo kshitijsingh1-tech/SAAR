@@ -2,6 +2,7 @@ import json
 import base64
 import urllib.request
 import urllib.parse
+import urllib.error
 import re
 import os
 import time
@@ -385,7 +386,7 @@ Structure:
             gemini_keys = [os.getenv("GEMINI_API_KEY")]
 
         for g_key in gemini_keys:
-            for model_name in ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]:
+            for model_name in ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest", "gemini-3.7-flash"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={g_key}"
                 payload = {
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -397,7 +398,7 @@ Structure:
                         data=json.dumps(payload).encode("utf-8"),
                         headers={"Content-Type": "application/json"}
                     )
-                    with urllib.request.urlopen(req, timeout=4) as response:
+                    with urllib.request.urlopen(req, timeout=5) as response:
                         raw = json.loads(response.read().decode("utf-8"))
                         res_text = raw["candidates"][0]["content"]["parts"][0]["text"]
                         parsed = json.loads(res_text)
@@ -406,8 +407,18 @@ Structure:
                                 parsed["milestone"] = {"day": fallback_day, "stage": f"Day {fallback_day}", "milestone_label": f"Day {fallback_day} Milestone"}
                             elif parsed["milestone"].get("day") is None:
                                 parsed["milestone"]["day"] = fallback_day
+                            key_pool.record_success("gemini", g_key)
                             return parsed
-                except Exception as e:
+                except urllib.error.HTTPError as e:
+                    err_body = e.read().decode("utf-8", errors="ignore")
+                    if e.code == 429 or "RESOURCE_EXHAUSTED" in err_body or "quota" in err_body.lower() or "rate limit" in err_body.lower():
+                        key_pool.record_quota_exhausted("gemini", g_key, cooldown_sec=180.0)
+                        break
+                    if "API_KEY_INVALID" in err_body:
+                        key_pool.record_key_invalid("gemini", g_key)
+                        break
+                    continue
+                except Exception:
                     continue
 
         # 2. Try Groq
@@ -417,7 +428,7 @@ Structure:
 
         for gr_key in groq_keys:
             url = "https://api.groq.com/openai/v1/chat/completions"
-            for model_name in ["qwen/qwen3.6-27b", "openai/gpt-oss-120b", "llama-3.3-70b-versatile"]:
+            for model_name in ["groq/compound", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
                 payload = {
                     "model": model_name,
                     "messages": [
@@ -434,7 +445,7 @@ Structure:
                         headers={
                             "Content-Type": "application/json",
                             "Authorization": f"Bearer {gr_key}",
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            "User-Agent": "Saar-Scientific-Engine/1.0"
                         }
                     )
                     with urllib.request.urlopen(req, timeout=5) as response:
@@ -446,8 +457,15 @@ Structure:
                                 parsed["milestone"] = {"day": fallback_day, "stage": f"Day {fallback_day}", "milestone_label": f"Day {fallback_day} Milestone"}
                             elif parsed["milestone"].get("day") is None:
                                 parsed["milestone"]["day"] = fallback_day
+                            key_pool.record_success("groq", gr_key)
                             return parsed
-                except Exception as e:
+                except urllib.error.HTTPError as e:
+                    err_body = e.read().decode("utf-8", errors="ignore")
+                    if e.code == 429 or "rate limit" in err_body.lower() or "quota" in err_body.lower():
+                        key_pool.record_quota_exhausted("groq", gr_key, cooldown_sec=60.0)
+                        break
+                    continue
+                except Exception:
                     continue
 
         return None
@@ -647,11 +665,11 @@ Structure:
 
         # Try active generation models with vision capabilities
         candidate_models = [
-            "gemini-3.7-flash",
-            "gemini-3.1-flash-lite",
-            "gemini-3.5-flash",
+            "gemini-flash-lite-latest",
+            "gemini-3.5-flash-lite",
             "gemini-3.6-flash",
-            "gemini-flash-latest"
+            "gemini-flash-latest",
+            "gemini-3.7-flash"
         ]
         for model in candidate_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -661,17 +679,21 @@ Structure:
                     data=json.dumps(payload).encode("utf-8"),
                     headers={"Content-Type": "application/json"}
                 )
-                with urllib.request.urlopen(req, timeout=18) as response:
+                with urllib.request.urlopen(req, timeout=12) as response:
                     result = json.loads(response.read().decode("utf-8"))
                     text = result["candidates"][0]["content"]["parts"][0]["text"]
                     parsed = self._parse_vlm_json_response(text)
                     if parsed and len(parsed[0]) > 0:
+                        key_pool.record_success("gemini", api_key)
                         return parsed
             except urllib.error.HTTPError as e:
                 err_body = e.read().decode("utf-8", errors="ignore")
                 print(f"[VLMService] Gemini ({model}) failed (HTTP {e.code}): {err_body[:200]}")
                 if "API_KEY_INVALID" in err_body:
                     key_pool.record_key_invalid("gemini", api_key, reason="API_KEY_INVALID")
+                    break
+                if e.code == 429 or "RESOURCE_EXHAUSTED" in err_body or "rate limit" in err_body.lower() or "quota" in err_body.lower():
+                    key_pool.record_quota_exhausted("gemini", api_key, cooldown_sec=180.0)
                     break
                 continue
             except Exception as e:
@@ -766,7 +788,7 @@ Structure:
                 req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {api_key}",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    "User-Agent": "Saar-Scientific-Engine/1.0"
                 })
                 with urllib.request.urlopen(req, timeout=25) as response:
                     result = json.loads(response.read().decode("utf-8"))
@@ -1465,7 +1487,7 @@ Structure:
             gemini_candidates = [os.getenv("GEMINI_API_KEY")]
 
         for g_key in gemini_candidates:
-            for gemini_model in ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]:
+            for gemini_model in ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-flash-latest", "gemini-3.7-flash"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={g_key}"
                 payload = {
                     "systemInstruction": {
@@ -1479,7 +1501,7 @@ Structure:
                 }
                 try:
                     req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
-                    with urllib.request.urlopen(req, timeout=16) as resp:
+                    with urllib.request.urlopen(req, timeout=8) as resp:
                         res = json.loads(resp.read().decode("utf-8"))
                         candidate_parts = res["candidates"][0]["content"]["parts"]
                         text = ""
@@ -1492,12 +1514,18 @@ Structure:
                             key_pool.record_success("gemini", g_key)
                             print(f"[VLMService] Successfully synthesized scientific explanation using Gemini '{gemini_model}' on key {g_key[:6]}...")
                             return text
-                except Exception as e:
-                    err_msg = str(e)
-                    print(f"[VLMService] Gemini ({gemini_model}) synthesis failed on key {g_key[:6]}...: {e}")
-                    if "API_KEY_INVALID" in err_msg:
+                except urllib.error.HTTPError as e:
+                    err_body = e.read().decode("utf-8", errors="ignore")
+                    print(f"[VLMService] Gemini ({gemini_model}) synthesis failed (HTTP {e.code}) on key {g_key[:6]}...: {err_body[:160]}")
+                    if e.code == 429 or "RESOURCE_EXHAUSTED" in err_body or "rate limit" in err_body.lower() or "quota" in err_body.lower():
+                        key_pool.record_quota_exhausted("gemini", g_key, cooldown_sec=180.0)
+                        break
+                    if "API_KEY_INVALID" in err_body:
                         key_pool.record_key_invalid("gemini", g_key)
                         break
+                    continue
+                except Exception as e:
+                    print(f"[VLMService] Gemini ({gemini_model}) synthesis failed on key {g_key[:6]}...: {e}")
                     continue
 
         # 2. Alternative: Groq API Pool
@@ -1507,8 +1535,8 @@ Structure:
 
         groq_url = "https://api.groq.com/openai/v1/chat/completions"
         for gr_key in groq_candidates:
-            # Prioritize models with high rate limit capacity on Groq
-            groq_models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b", "groq/compound"]
+            # Prioritize models with high rate limit capacity and active status on Groq
+            groq_models = ["groq/compound", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "groq/compound-mini"]
             for model in groq_models:
                 payload = {
                     "model": model,
@@ -1523,9 +1551,9 @@ Structure:
                     req = urllib.request.Request(groq_url, data=json.dumps(payload).encode("utf-8"), headers={
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {gr_key}",
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                        "User-Agent": "Saar-Scientific-Engine/1.0"
                     })
-                    with urllib.request.urlopen(req, timeout=12) as resp:
+                    with urllib.request.urlopen(req, timeout=8) as resp:
                         res = json.loads(resp.read().decode("utf-8"))
                         text = res["choices"][0]["message"]["content"]
                         text = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE).strip()
@@ -1534,10 +1562,15 @@ Structure:
                             key_pool.record_success("groq", gr_key)
                             print(f"[VLMService] Successfully synthesized scientific explanation using Groq '{model}' on key {gr_key[:6]}...")
                             return text
+                except urllib.error.HTTPError as e:
+                    err_body = e.read().decode("utf-8", errors="ignore")
+                    print(f"[VLMService] Groq synthesis failed for model {model} (HTTP {e.code}): {err_body[:160]}")
+                    if e.code == 429 or "rate limit" in err_body.lower() or "quota" in err_body.lower():
+                        key_pool.record_quota_exhausted("groq", gr_key, cooldown_sec=60.0)
+                        break
+                    continue
                 except Exception as e:
-                    err_msg = str(e)
                     print(f"[VLMService] Groq synthesis failed for model {model}: {e}")
-                    # Continue trying next models on the same key rather than instantly breaking
                     continue
 
         # 3. Alternative: OpenRouter Fallback

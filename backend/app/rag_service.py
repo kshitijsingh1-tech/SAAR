@@ -236,6 +236,12 @@ class RAGKnowledgeService:
                 if len(section_text) < 20:
                     continue
                 heading = headings[idx].strip().lstrip("#").strip() if idx < len(headings) else f"Section {idx}"
+                # If first line of section_text matches heading, strip it so the title isn't duplicated into citations
+                sec_lines = section_text.splitlines()
+                if sec_lines and sec_lines[0].strip().lstrip("#").strip().lower() == heading.lower():
+                    section_text = "\n".join(sec_lines[1:]).strip()
+                if len(section_text) < 15:
+                    continue
                 sub_chunks = _chunk_text(section_text, max_tokens=200, overlap=40)
                 for ci, content in enumerate(sub_chunks):
                     cid = hashlib.md5(f"{domain}:{md_file.name}:{idx}:{ci}".encode()).hexdigest()[:12]

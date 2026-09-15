@@ -65,11 +65,11 @@ class GeminiBadmintonSupervisor:
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2, "maxOutputTokens": 600}
             }
-            for model_name in ["gemini-3.7-flash", "gemini-3.1-flash-lite"]:
+            for model_name in ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.6-flash"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
                 try:
                     req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
-                    with urllib.request.urlopen(req, timeout=8) as resp:
+                    with urllib.request.urlopen(req, timeout=6) as resp:
                         data = json.loads(resp.read().decode("utf-8"))
                         text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
                         parsed = json.loads(text)
@@ -78,6 +78,10 @@ class GeminiBadmintonSupervisor:
                         parsed["status"] = "verified"
                         parsed["insights_summary"] = f"{parsed.get('supervision_verdict', 'Kinematic Motion Supervised')}: {parsed.get('coaching_takeaway', '')}"
                         return parsed
+                except urllib.error.HTTPError as e:
+                    logger.warning(f"[GeminiBadmintonSupervisor] {model_name} call failed: {e}")
+                    if e.code == 429:
+                        break
                 except Exception as e:
                     logger.warning(f"[GeminiBadmintonSupervisor] {model_name} call failed: {e}")
 
@@ -96,7 +100,15 @@ class GeminiBadmintonSupervisor:
                     "temperature": 0.2,
                     "max_tokens": 500
                 }
-                req = urllib.request.Request(groq_url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json", "Authorization": f"Bearer {groq_key}"})
+                req = urllib.request.Request(
+                    groq_url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {groq_key}",
+                        "User-Agent": "Saar-Scientific-Engine/1.0"
+                    }
+                )
                 with urllib.request.urlopen(req, timeout=6) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     text = data["choices"][0]["message"]["content"].strip()

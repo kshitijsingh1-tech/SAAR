@@ -174,6 +174,20 @@ export function BadmintonMetricsPanel({
 
   const hasVelocities = true;
 
+  // Energy
+  const energyKcal = energyMetrics?.estimated_energy_expenditure_kcal ?? energyMetrics?.estimated_calories_burned_kcal;
+  const energyType = energyMetrics?.estimation_type || energyMetrics?.label || 'population-average';
+  const energyMethod = energyMetrics?.calculation_method || (energyMetrics?.met_value ? `MET ${energyMetrics.met_value} Equation` : 'Ainsworth MET Compendium');
+
+  const hasSpatialMovement = Boolean(
+    isCalibrated &&
+    (
+      (movementMetrics?.total_distance_m !== null && movementMetrics?.total_distance_m !== undefined) ||
+      (movementMetrics?.average_speed_m_s !== null && movementMetrics?.average_speed_m_s !== undefined) ||
+      (courtMetrics?.court_coverage_pct !== null && courtMetrics?.court_coverage_pct !== undefined)
+    )
+  );
+
   const hasJointKinematics = Boolean(
     (poseMetrics?.mean_contact_elbow_deg !== undefined && poseMetrics?.mean_contact_elbow_deg !== null) ||
     (poseMetrics?.elbow_extension_deg !== undefined && poseMetrics?.elbow_extension_deg !== null) ||

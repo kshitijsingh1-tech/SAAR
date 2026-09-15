@@ -14,20 +14,158 @@ import {
  * - Correlation pills: r = +0.95 or r = -0.95
  * - Confidence percentages
  */
+/**
+ * Safely converts LaTeX mathematical expressions into clean, legible scientific typography.
+ * Supports fractions, middle dots, products, Greek symbols, superscripts, subscripts,
+ * and text environments without requiring heavy external dependencies.
+ */
+export function formatLatexMath(str) {
+  if (!str) return '';
+  let s = String(str);
+
+  // Strip enclosing delimiters if present
+  s = s.replace(/^\$\$|^\$|\$\$$|\$$/g, '').trim();
+
+  // Normalize text wrappers
+  s = s.replace(/\\(?:text|mathrm|mathbf|mathit|textbf)\{([^{}]+)\}/g, '$1');
+  s = s.replace(/\\(?:text|mathrm|mathbf|mathit|textbf)\{([^{}]+)\}/g, '$1');
+
+  // Fractions: recursively format \frac{num}{den}
+  const fracRegex = /\\frac\s*\{((?:[^{}]|\{[^{}]*\})*)\}\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g;
+  let prev = '';
+  while (prev !== s && s.includes('\\frac')) {
+    prev = s;
+    s = s.replace(fracRegex, (_, num, den) => {
+      const cleanNum = num.trim();
+      const cleanDen = den.trim();
+      if (/^[a-zA-Z0-9.+−-]+$/.test(cleanNum) && /^[a-zA-Z0-9.+−-]+$/.test(cleanDen)) {
+        return `(${cleanNum}/${cleanDen})`;
+      }
+      if (/^[a-zA-Z0-9.+−-]+$/.test(cleanDen)) {
+        return `[ ${cleanNum} / ${cleanDen} ]`;
+      }
+      return `[ ${cleanNum} ] / [ ${cleanDen} ]`;
+    });
+  }
+
+  // Common mathematical & scientific symbols
+  const symbolMap = {
+    '\\\\approx': '≈',
+    '\\\\cdot': '×',
+    '\\\\times': '×',
+    '\\\\pm': '±',
+    '\\\\mp': '∓',
+    '\\\\le': '≤',
+    '\\\\leq': '≤',
+    '\\\\ge': '≥',
+    '\\\\geq': '≥',
+    '\\\\ne': '≠',
+    '\\\\neq': '≠',
+    '\\\\equiv': '≡',
+    '\\\\sim': '~',
+    '\\\\propto': '∝',
+    '\\\\infty': '∞',
+    '\\\\in': '∈',
+    '\\\\notin': '∉',
+    '\\\\subset': '⊂',
+    '\\\\subseteq': '⊆',
+    '\\\\partial': '∂',
+    '\\\\nabla': '∇',
+    '\\\\sum': '∑',
+    '\\\\prod': '∏',
+    '\\\\int': '∫',
+    '\\\\sqrt\\{([^}]+)\\}': '√($1)',
+    '\\\\sqrt': '√',
+    '\\\\varepsilon': 'ε',
+    '\\\\epsilon': 'ε',
+    '\\\\Delta': 'Δ',
+    '\\\\delta': 'δ',
+    '\\\\rho': 'ρ',
+    '\\\\sigma': 'σ',
+    '\\\\mu': 'μ',
+    '\\\\alpha': 'α',
+    '\\\\beta': 'β',
+    '\\\\gamma': 'γ',
+    '\\\\theta': 'θ',
+    '\\\\lambda': 'λ',
+    '\\\\omega': 'ω',
+    '\\\\pi': 'π',
+    '\\\\tau': 'τ',
+    '\\\\phi': 'φ',
+    '\\\\longrightarrow': '→',
+    '\\\\rightarrow': '→',
+    '\\\\longleftarrow': '←',
+    '\\\\leftarrow': '←',
+    '\\\\longleftrightarrow': '↔',
+    '\\\\leftrightarrow': '↔',
+    '\\\\quad': '  ',
+    '\\\\qquad': '    ',
+    '\\\\,': ' ',
+    '\\\\;': ' ',
+    '\\\\:': ' ',
+    '\\\\!': '',
+    '\\\\%': '%',
+    '\\\\circ': '°'
+  };
+
+  for (const [pattern, repl] of Object.entries(symbolMap)) {
+    s = s.replace(new RegExp(pattern, 'g'), repl);
+  }
+
+  // Parentheses & brackets
+  s = s.replace(/\\left\(/g, '(').replace(/\\right\)/g, ')');
+  s = s.replace(/\\left\[/g, '[').replace(/\\right\]/g, ']');
+  s = s.replace(/\\left\|/g, '|').replace(/\\right\|/g, '|');
+  s = s.replace(/\\left\{/g, '{').replace(/\\right\}/g, '}');
+
+  // Matrix environments
+  s = s.replace(/\\begin\{bmatrix\}([\s\S]*?)\\end\{bmatrix\}/g, (_, inner) => {
+    const rows = inner.trim().split(/\\\\/).map(r => r.trim().replace(/&/g, ', '));
+    return `[ ${rows.join('; ')} ]`;
+  });
+
+  // Superscripts
+  s = s.replace(/\^\{?°\}?/g, '°');
+  s = s.replace(/\^\{?2\}?/g, '²');
+  s = s.replace(/\^\{?3\}?/g, '³');
+  s = s.replace(/\^\{?-1\}?/g, '⁻¹');
+  s = s.replace(/\^\{([^}]+)\}/g, '^($1)');
+
+  // Subscripts
+  s = s.replace(/_\{([A-Za-z0-9_\s+-]+)\}/g, (_, sub) => {
+    if (sub.length > 2) return `(${sub.trim()})`;
+    return `_${sub.trim()}`;
+  });
+
+  // Space before % if directly trailing letters
+  s = s.replace(/([A-Za-z])%/g, '$1 %');
+
+  // Minus sign cleanup inside mathematical formulas
+  s = s.replace(/(?<=\s)-(?=\s)/g, '−');
+
+  // Clean unparsed solitary backslashes
+  s = s.replace(/\\([A-Za-z]+)/g, '$1');
+  s = s.replace(/\\/g, '');
+
+  return s.replace(/[ \t]+/g, ' ').trim();
+}
+
+/**
+ * Parses inline formatting:
+ * - **bold**
+ * - *italic*
+ * - `code`
+ * - Math formulas: $...$ and $$...$$
+ * - Correlation pills: r = +0.95 or r = -0.95
+ * - Confidence percentages
+ */
 function renderInlineFormatting(text, onNavigateToAnalytics = null) {
   if (!text) return null;
 
-  // Clean up LaTeX TeX math expressions e.g. ($y \approx 3.5\text{ m}$) -> (y ≈ 3.5m)
-  let processedText = String(text).replace(/\$([^$]+)\$/g, (_, math) => {
-    return math
-      .replace(/\\approx/g, '≈')
-      .replace(/\\text\{\s*([^}]+)\s*\}/g, '$1')
-      .replace(/\s+/g, ' ')
-      .trim();
-  });
+  let processedText = String(text);
 
   // Auto-bold parameter key labels e.g. "Q1: Description" or "High Apex Reach Drill: Suspend..."
-  if (/^[A-Za-z0-9][A-Za-z0-9\s&/–—'-]{1,45}:\s+/.test(processedText) && !/^[#*`~[]/.test(processedText)) {
+  if (/^[A-Za-z0-9][A-Za-z0-9\s&/–—'-]{1,45}:\s+/.test(processedText) && !/^[#*`~[$]/.test(processedText)) {
     const colonIdx = processedText.indexOf(':');
     const label = processedText.substring(0, colonIdx).trim();
     const remainder = processedText.substring(colonIdx + 1);
@@ -40,7 +178,7 @@ function renderInlineFormatting(text, onNavigateToAnalytics = null) {
   }
 
   const parts = [];
-  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|`[^`]+`|(?:\[(?:HIGH|MEDIUM|LOW|CRITICAL)\])|(?:r\s*=\s*[+‑-]?\s*\d+\.?\d*)|(?:\b\d+%\b)|(?:→|↔|↓|←→))/gi;
+  const regex = /(\$\$[^\$]+\$\$|\$[^\$\n]+\$|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|`[^`]+`|(?:\[(?:HIGH|MEDIUM|LOW|CRITICAL)\])|(?:r\s*=\s*[+‑-]?\s*\d+\.?\d*)|(?:\b\d+%\b)|(?:→|↔|↓|←→))/gi;
   let lastIndex = 0;
   let match;
 
@@ -50,7 +188,21 @@ function renderInlineFormatting(text, onNavigateToAnalytics = null) {
     }
     const token = match[0];
 
-    if (token.startsWith('**') && token.endsWith('**')) {
+    if (token.startsWith('$$') && token.endsWith('$$')) {
+      const inner = token.slice(2, -2);
+      parts.push(
+        <span key={match.index} className="md-math-inline md-math-display">
+          {formatLatexMath(inner)}
+        </span>
+      );
+    } else if (token.startsWith('$') && token.endsWith('$')) {
+      const inner = token.slice(1, -1);
+      parts.push(
+        <span key={match.index} className="md-math-inline">
+          {formatLatexMath(inner)}
+        </span>
+      );
+    } else if (token.startsWith('**') && token.endsWith('**')) {
       const inner = token.slice(2, -2);
       parts.push(<strong key={match.index} className="md-bold">{renderInlineFormatting(inner, onNavigateToAnalytics)}</strong>);
     } else if (token.startsWith('~~') && token.endsWith('~~')) {
@@ -250,7 +402,34 @@ function parseMarkdownBlocks(rawText) {
       }
       blocks.push({
         type: 'quote',
-        content: quoteLines.join(' ')
+        content: quoteLines.join('\n')
+      });
+      continue;
+    }
+
+    // 5.5. Block Math ($$ ... $$)
+    if (trimmed.startsWith('$$')) {
+      const mathLines = [];
+      if (trimmed.endsWith('$$') && trimmed.length > 4) {
+        mathLines.push(trimmed.slice(2, -2).trim());
+        i++;
+      } else {
+        mathLines.push(trimmed.slice(2).trim());
+        i++;
+        while (i < lines.length && !lines[i].trim().endsWith('$$')) {
+          mathLines.push(lines[i].trim());
+          i++;
+        }
+        if (i < lines.length) {
+          const lastLine = lines[i].trim();
+          mathLines.push(lastLine.replace(/\$\$$/, '').trim());
+          i++;
+        }
+      }
+      const rawMath = mathLines.filter(Boolean).join(' ');
+      blocks.push({
+        type: 'math',
+        content: formatLatexMath(rawMath)
       });
       continue;
     }
@@ -566,13 +745,33 @@ function MarkdownResponseComponent({
                   </div>
                 );
 
-              case 'quote':
+              case 'math':
+                return (
+                  <div key={idx} className="md-math-block">
+                    <div className="md-math-content">{block.content}</div>
+                  </div>
+                );
+
+              case 'quote': {
+                const quoteParagraphs = block.content.split(/\n\s*\n/);
                 return (
                   <blockquote key={idx} className="md-blockquote">
                     <div className="quote-accent" />
-                    <div className="quote-text">{renderInlineFormatting(block.content, onNavigateToAnalytics)}</div>
+                    <div className="quote-text">
+                      {quoteParagraphs.map((para, pIdx) => (
+                        <div key={pIdx} className={pIdx > 0 ? 'quote-para-margin' : ''}>
+                          {para.split('\n').map((line, lIdx, arr) => (
+                            <React.Fragment key={lIdx}>
+                              {renderInlineFormatting(line, onNavigateToAnalytics)}
+                              {lIdx < arr.length - 1 && <br />}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
                   </blockquote>
                 );
+              }
 
               case 'list':
                 if (block.listType === 'ordered') {
