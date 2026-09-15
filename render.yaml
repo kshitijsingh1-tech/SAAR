@@ -1,0 +1,27 @@
+# ==============================================================================
+# SAAR - Render Blueprint (render.yaml)
+# Deploy in 1-click on Render: https://dashboard.render.com/blueprints
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # SAAR Unified Full-Stack Service (Docker-based: React Frontend + FastAPI Backend)
+  # Serves both the interactive UI and reasoning API on a single port.
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: saar-engine
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

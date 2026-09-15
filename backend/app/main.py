@@ -35,8 +35,27 @@ orchestrator = DynamicWorkflowOrchestrator()
 from .plugins.sports.badminton.router import router as badminton_v1_router
 app.include_router(badminton_v1_router)
 
+# ------------------------------------------------------------------
+# Optional Static SPA Detection (For unified Docker / cloud deployment)
+# ------------------------------------------------------------------
+_possible_dist_paths = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../frontend/dist")),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend/dist")),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/dist")),
+    os.path.abspath("frontend/dist"),
+    os.path.abspath("../frontend/dist"),
+]
+
+_dist_dir = None
+for _p in _possible_dist_paths:
+    if os.path.exists(_p) and os.path.isfile(os.path.join(_p, "index.html")):
+        _dist_dir = _p
+        break
+
 @app.get("/")
 def root_index():
+    if _dist_dir and os.path.isfile(os.path.join(_dist_dir, "index.html")):
+        return FileResponse(os.path.join(_dist_dir, "index.html"))
     return {
         "status": "ok",
         "service": "Saar API - Visual Scientific Reasoning Engine",
@@ -1208,6 +1227,33 @@ def lookup_word_get(word: str = Query(..., description="Scientific term or word 
     if not word or not word.strip():
         raise HTTPException(status_code=400, detail="Word parameter is required.")
     return terminology_service.lookup_word(word.strip())
+
+
+# ------------------------------------------------------------------
+# Static Assets & SPA Routing (Mounted only when dist/ is present)
+# ------------------------------------------------------------------
+if _dist_dir:
+    from fastapi.staticfiles import StaticFiles
+    _assets_dir = os.path.join(_dist_dir, "assets")
+    if os.path.exists(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Exclude API endpoints, Swagger, and OpenAPI specs
+        if (
+            full_path.startswith("api/") or 
+            full_path.startswith("domains") or 
+            full_path.startswith("investigate") or 
+            full_path.startswith("baseline") or 
+            full_path in ("docs", "redoc", "openapi.json", "health", "favicon.ico")
+        ):
+            raise HTTPException(status_code=404, detail="Resource not found")
+        target = os.path.join(_dist_dir, full_path)
+        if os.path.isfile(target):
+            return FileResponse(target)
+        return FileResponse(os.path.join(_dist_dir, "index.html"))
+
 
 
 
