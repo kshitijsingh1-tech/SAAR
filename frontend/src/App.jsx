@@ -1527,11 +1527,15 @@ export default function App() {
             if (checkIsAborted(vErr)) {
               return;
             }
+            const isNetworkError = vErr.message === 'Network Error' || !vErr.response;
+            const errorMsg = isNetworkError
+              ? `Backend connection error (${vErr.message}). The FastAPI backend at \`http://127.0.0.1:8002\` was unreachable or still initializing. Please wait a moment and resend your video.`
+              : (vErr.response?.data?.detail || vErr.message || 'Failed to process video.');
             setMessages((prev) => [
               ...prev,
               {
                 role: 'assistant',
-                text: `**Video Analysis Notice**: ${vErr.response?.data?.detail || vErr.message || 'Failed to process video.'}`,
+                text: `**Video Analysis Notice**: ${errorMsg}`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
             ]);

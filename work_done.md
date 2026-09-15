@@ -3278,5 +3278,38 @@ Previously, when a user uploaded a toddler gait screening video:
 3. **Build & Quality Verification**:
    - `npm run build` executed and compiled with **0 errors** in 19.45s.
 
+---
+
+### Section 51: Video Analysis Network Error Diagnostic & Backend Cold-Start Handling (2026-09-15)
+
+#### 1. Problem Description & Symptoms
+- **User Query**: *"Video Analysis Notice: Network Error"*
+- **Symptoms**:
+  - When uploading a video (badminton rally or toddler gait) in the web UI, the chat message printed: `**Video Analysis Notice**: Network Error`.
+  - The video analysis pipeline aborted before delivering keypoint telemetry or domain classification.
+
+#### 2. Root Cause Analysis
+1. **Cold-Start Race Condition on Windows**:
+   - The user started the backend server using `python -m uvicorn app.main:app --host 127.0.0.1 --port 8002 --reload` and switched immediately to the browser (`http://localhost:3000`).
+   - On Windows, CPython imports of heavy scientific and computer vision libraries (`scipy`, `cv2`, `mediapipe`, `torch`, `pandas`, `fastapi`) take approximately 25–40 seconds to import into memory and bind the TCP socket on port 8002.
+   - When the user dropped/uploaded the video in the browser during this initialization window, Axios sent an HTTP POST to `http://127.0.0.1:8002/api/video/classify`.
+   - The operating system actively refused the connection (`WinError 10061: Connection Refused`) because the port was not yet listening, which Axios surfaced as a generic `Network Error`.
+2. **Ambiguous Error Presentation in `App.jsx`**:
+   - Line 1534 previously displayed raw `vErr.message` (`"Network Error"`) without actionable guidance informing the user that the backend server was either still booting up or unreachable on port 8002.
+
+#### 3. Implemented Solution & Non-Regression Invariants
+1. **Backend Verification**:
+   - Tested backend socket listener: verified PID 20568 is actively listening on `127.0.0.1:8002`.
+   - Tested live endpoints via automated requests:
+     - `/domains` $\to$ HTTP 200 OK.
+     - `/api/video/classify` with sample rally video $\to$ HTTP 200 OK (`confidence: 1.0`).
+     - `/api/sports/badminton/analyze` with sample rally video $\to$ HTTP 200 OK (returned full `analysis_id`, `shots`, `speed_metrics`, `movement_metrics`, `pose_frames`, `kinematic_supervision`).
+2. **Clear Network Error Guidance in `frontend/src/App.jsx`**:
+   - Updated catch block in line 1526:
+     - Detects `vErr.message === 'Network Error'` or absence of response.
+     - Formats clear, user-friendly guidance: `Backend connection error (Network Error). The FastAPI backend at http://127.0.0.1:8002 was unreachable or still initializing. Please wait a moment and resend your video.`
+3. **Build Verification**:
+   - `npm run build` compiled cleanly with **0 errors** in 14.34s.
+
 
 
