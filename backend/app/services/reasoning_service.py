@@ -397,7 +397,7 @@ class ReasoningService:
     # ------------------------------------------------------------------
 
     def start_adaptive_session(
-        self, investigation_id: str, user_concern: str, subject_id: str = "child_leo_24m"
+        self, investigation_id: str, user_concern: str, subject_id: str = "child_toddler"
     ) -> AdaptiveSession:
         """Start an adaptive diagnostic questioning session for an investigation."""
         concern_lower = (user_concern or "").lower()

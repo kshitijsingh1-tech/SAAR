@@ -741,7 +741,7 @@ class AdaptiveInquiryEngine:
         user_concern: str,
         domain: str = "gait",
         measured_context: Dict[str, Any] = None,
-        subject_id: str = "child_leo_24m"
+        subject_id: str = "child_toddler"
     ) -> AdaptiveSession:
         """
         Initialize an adaptive diagnostic session:
@@ -768,10 +768,15 @@ class AdaptiveInquiryEngine:
             measured_context.get("temporal", {}).get("step_time_asymmetry_pct")
         )
 
+        asym_val = _safe_float(asym)
+        if asym_val is not None:
+            observations["step_asymmetry_pct"] = round(asym_val, 1)
+            observations["step_asymmetry"] = asym_val > 8.0
+
         has_deviation = False
         baseline_summary = None
 
-        if baseline_comp and baseline_comp.has_baseline:
+        if baseline_comp and baseline_comp.has_baseline and baseline_comp.baseline_session_count > 1:
             if baseline_comp.has_meaningful_deviation:
                 has_deviation = True
                 baseline_summary = baseline_comp.clinical_summary
@@ -783,11 +788,12 @@ class AdaptiveInquiryEngine:
             else:
                 baseline_summary = f"Movement metrics align with {baseline_comp.child_name}'s typical baseline ({baseline_comp.baseline_session_count} prior sessions)."
                 observations["baseline_deviation_detected"] = False
-
-        asym_val = _safe_float(asym)
-        if asym_val is not None:
-            observations["step_asymmetry_pct"] = round(asym_val, 1)
-            observations["step_asymmetry"] = asym_val > 8.0
+        else:
+            # Single video in chat or first recording for this child
+            asym_num = observations.get('step_asymmetry_pct', 0.0)
+            has_deviation = asym_num > 5.0
+            baseline_summary = "Initial video recording evaluated against pediatric normative reference standards."
+            observations["baseline_deviation_detected"] = has_deviation
 
         if any(k in domain_clean for k in ["badminton", "sport", "racket", "smash", "shuttle"]):
             uncertainties = [
@@ -847,20 +853,32 @@ class AdaptiveInquiryEngine:
                 f"To isolate whether power loss and shot inconsistency stem from **kinetic chain sequencing**, "
                 f"**grip bevel misalignment**, or **footwork deceleration fatigue**, please answer a few quick questions."
             )
-        elif has_deviation and baseline_comp:
+        elif has_deviation:
             norm_mean = 3.4
-            if baseline_comp.comparison_items and len(baseline_comp.comparison_items) > 0:
+            if baseline_comp and baseline_comp.comparison_items and len(baseline_comp.comparison_items) > 0:
                 norm_mean = baseline_comp.comparison_items[0].baseline_mean
-            session.preamble = (
-                f"We compared today's video with **{baseline_comp.child_name}'s personalized baseline** "
-                f"({baseline_comp.baseline_session_count} previous recordings). "
-                f"Today shows an elevated asymmetry of **{observations.get('step_asymmetry_pct', 15.2)}%** "
-                f"(normally {norm_mean:.1f}%). "
-                f"To understand the context of this change, please answer a few quick questions."
-            )
+            asym_pct = observations.get('step_asymmetry_pct', 7.7)
+
+            # If user explicitly registered multi-session child profile in studio with authentic prior sessions:
+            if baseline_comp and baseline_comp.has_baseline and baseline_comp.baseline_session_count > 1 and subject_id != "child_toddler":
+                session.preamble = (
+                    f"We compared today's video with **{baseline_comp.child_name}'s personalized baseline** "
+                    f"({baseline_comp.baseline_session_count} previous recordings). "
+                    f"Today shows an elevated asymmetry of **{asym_pct}%** "
+                    f"(normally {norm_mean:.1f}%). "
+                    f"To understand the context of this change, please answer a few quick questions."
+                )
+            else:
+                # Single recording in chat (accurate: no fabricated prior recordings)
+                session.preamble = (
+                    f"Based on today's video observation, an elevated step time asymmetry of **{asym_pct}%** was detected "
+                    f"(pediatric reference baseline: {norm_mean:.1f}%). "
+                    f"To understand the clinical context and isolate whether this is an acute change or an established pattern, please answer a few quick questions."
+                )
         else:
+            asym_pct = observations.get('step_asymmetry_pct', 5.0)
             session.preamble = (
-                f"Based on video analysis, we observed an uneven stepping pattern ({observations.get('step_asymmetry_pct', 15.0)}% asymmetry). "
+                f"Based on video analysis, an uneven stepping pattern ({asym_pct}% asymmetry) was observed. "
                 f"To evaluate whether this is a temporary adjustment or an established pattern, let's explore the context."
             )
 

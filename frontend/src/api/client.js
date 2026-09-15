@@ -407,7 +407,7 @@ export const classifyImage = async (imageData, userText = '') => {
 // Adaptive Diagnostic Questioning API
 // ------------------------------------------------------------------
 
-export const startAdaptiveSession = async (investigationId, userConcern, subjectId = 'child_leo_24m') => {
+export const startAdaptiveSession = async (investigationId, userConcern, subjectId = 'child_toddler') => {
   const res = await axios.post(`${API_BASE_URL}/api/adaptive/start`, {
     investigation_id: investigationId || 'latest',
     user_concern: userConcern,

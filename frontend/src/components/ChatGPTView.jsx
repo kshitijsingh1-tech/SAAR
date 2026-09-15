@@ -872,7 +872,7 @@ export function ChatGPTView({
 
       // 3. File path / filename detection (e.g. copied file path from VS Code or typed path)
       const cleanPath = trimmed.replace(/^["']|["']$/g, '').trim();
-      const isFilePathCandidate = /\.(csv|xlsx?|tsv|json|txt|png|jpe?g|webp|pdf)$/i.test(cleanPath) &&
+      const isFilePathCandidate = /\.(csv|xlsx?|tsv|json|txt|png|jpe?g|webp|pdf|mp4|mov|webm|avi|mkv)$/i.test(cleanPath) &&
         (cleanPath.includes('/') || cleanPath.includes('\\') || !cleanPath.includes('\n'));
 
       if (isFilePathCandidate) {
@@ -1305,7 +1305,7 @@ export function ChatGPTView({
                                   <AdaptiveInquiryCard
                                     investigationId={msg.investigationId || "latest"}
                                     userConcern={msg.adaptiveConcern}
-                                    subjectId={msg.subjectId || 'child_leo_24m'}
+                                    subjectId={msg.subjectId || 'child_toddler'}
                                     onOpenTool={onOpenTool}
                                     onSessionReset={() => {
                                       setConcludedSessions((prev) => ({ ...prev, [index]: false }));
@@ -1337,13 +1337,18 @@ export function ChatGPTView({
                     )}
 
                     {/* Sleek, subtle exploration shortcuts */}
-                    {msg.role === 'assistant' && (msg.report || (concludedSessions[index] && msg.subjectId?.includes('badminton'))) && (() => {
+                    {msg.role === 'assistant' && (msg.report || (concludedSessions[index] && (msg.subjectId?.includes('badminton') || msg.subjectId?.includes('child') || msg.subjectId?.includes('toddler') || msg.subjectId?.includes('gait')))) && (() => {
                       const rep = msg.report;
                       // Determine modality strictly by active report data structure
                       const isImageInvestigation = Boolean(rep?.final_graph || rep?.vlm_raw_analysis || rep?.image_metadata || rep?.preset_metadata || rep?.nodes?.length > 0);
-                      const isPedGait = !isImageInvestigation && Boolean(rep?.assessment_id || rep?.cadence_range || (rep?.metrics && rep?.metrics.usable_step_count !== undefined));
                       const hasActiveInquiry = Boolean(msg.adaptiveConcern && !concludedSessions[index]);
-                      const isBadmintonSports = !hasActiveInquiry && !isImageInvestigation && (
+                      if (hasActiveInquiry) return null;
+
+                      const isPedGait = !isImageInvestigation && (
+                        Boolean(rep?.assessment_id || rep?.cadence_range || (rep?.metrics && rep?.metrics.usable_step_count !== undefined)) ||
+                        ((msg.subjectId?.includes('child') || msg.subjectId?.includes('toddler') || msg.subjectId?.includes('gait')) && Boolean(concludedSessions[index]))
+                      );
+                      const isBadmintonSports = !isImageInvestigation && (
                         Boolean(rep?.court_calibration || rep?.speed_metrics || rep?.shots || (rep?.analysis_id && rep?.domain === 'sports')) ||
                         (msg.subjectId?.includes('badminton') && Boolean(concludedSessions[index]))
                       );

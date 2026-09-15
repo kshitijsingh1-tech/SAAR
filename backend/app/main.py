@@ -417,7 +417,7 @@ from .gait.baseline_service import personalized_baseline_service
 class AdaptiveStartRequest(BaseModel):
     investigation_id: Optional[str] = "latest"
     user_concern: str
-    subject_id: Optional[str] = "child_leo_24m"
+    subject_id: Optional[str] = "child_toddler"
 
 
 class AdaptiveAnswerRequest(BaseModel):
@@ -431,7 +431,7 @@ async def adaptive_start(req: AdaptiveStartRequest):
         session = saar_engine.start_adaptive_session(
             investigation_id=req.investigation_id or "latest",
             user_concern=req.user_concern,
-            subject_id=req.subject_id or "child_leo_24m"
+            subject_id=req.subject_id or "child_toddler"
         )
         return session.model_dump()
     except ValueError as e:
@@ -548,7 +548,7 @@ async def gait_analyze_video(
         
         output = result.model_dump()
         try:
-            active_subject = subject_id or "child_leo_24m"
+            active_subject = subject_id or "child_toddler"
             comp = personalized_baseline_service.compare_assessment(active_subject, output)
             output["baseline_comparison"] = comp.model_dump()
         except Exception as comp_err:

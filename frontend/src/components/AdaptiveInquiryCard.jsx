@@ -19,7 +19,7 @@ import { MarkdownResponse } from './MarkdownResponse';
 const AdaptiveInquiryCard = ({
   investigationId,
   userConcern,
-  subjectId = 'child_leo_24m',
+  subjectId = 'child_toddler',
   baselineComparison,
   onSessionComplete,
   onSessionReset,
@@ -38,6 +38,18 @@ const AdaptiveInquiryCard = ({
     subjectId?.includes('badminton') ||
     subjectId?.includes('player') ||
     (userConcern && (userConcern.toLowerCase().includes('badminton') || userConcern.toLowerCase().includes('smash') || userConcern.toLowerCase().includes('racket')))
+  );
+
+  const isGait = Boolean(
+    !isBadminton && (
+      session?.domain === 'gait' ||
+      session?.domain === 'pediatrics' ||
+      session?.domain === 'clinical' ||
+      subjectId?.includes('child') ||
+      subjectId?.includes('toddler') ||
+      subjectId?.includes('gait') ||
+      (userConcern && (userConcern.toLowerCase().includes('walk') || userConcern.toLowerCase().includes('gait') || userConcern.toLowerCase().includes('limp') || userConcern.toLowerCase().includes('step') || userConcern.toLowerCase().includes('asymmetry')))
+    )
   );
 
   const initSession = useCallback(async () => {
@@ -194,30 +206,34 @@ const AdaptiveInquiryCard = ({
           onRestartTriage={initSession}
           onClose={onClose}
         />
-        {onOpenTool && isBadminton && (
+        {onOpenTool && (isBadminton || isGait) && (
           <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="button"
-              onClick={() => onOpenTool('badminton')}
+              onClick={() => onOpenTool(isBadminton ? 'badminton' : 'gait')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '9px 18px',
                 borderRadius: '10px',
-                background: 'linear-gradient(135deg, #4338ca, #6366f1)',
+                background: isBadminton
+                  ? 'linear-gradient(135deg, #4338ca, #6366f1)'
+                  : 'linear-gradient(135deg, #0284c7, #0ea5e9)',
                 color: '#ffffff',
                 fontSize: '0.85rem',
                 fontWeight: '700',
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
+                boxShadow: isBadminton
+                  ? '0 4px 14px rgba(99, 102, 241, 0.3)'
+                  : '0 4px 14px rgba(14, 165, 233, 0.3)',
                 transition: 'all 0.2s ease'
               }}
-              title="Open Badminton Athletic Biomechanics & Kinematics Studio"
+              title={isBadminton ? "Open Badminton Athletic Biomechanics & Kinematics Studio" : "Open Pediatric Gait Biomechanics Studio"}
             >
               <Film size={15} />
-              <span>Launch Badminton Biomechanics Studio</span>
+              <span>Launch {isBadminton ? 'Badminton' : 'Pediatric Gait'} Biomechanics Studio</span>
               <ArrowRight size={13} />
             </button>
           </div>

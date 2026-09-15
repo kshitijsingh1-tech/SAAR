@@ -591,17 +591,20 @@ export default function App() {
       unlockTools(['badminton', 'verdict', 'rag', 'analytics']);
     } else {
       const isGait = domain === 'clinical' ||
+        domain === 'pediatrics' ||
+        domain === 'gait' ||
         completedSession.subjectId?.includes('child') ||
-        /gait|walk|step/.test(completedSession.conclusion || '');
+        completedSession.subjectId?.includes('toddler') ||
+        /gait|walk|step|limp|asymmetry/.test(completedSession.conclusion || '');
       if (isGait) {
-        unlockTools(['gait', 'verdict', 'rag']);
+        unlockTools(['gait', 'verdict', 'rag', 'analytics']);
       }
     }
 
     if (completedSession.conclusion) {
       setMessages((prev) =>
         prev.map((m) => {
-          if (m === sourceMsg || (m.role === 'assistant' && /Badminton Rally Kinematic Ingestion & Perception/i.test(m.text || ''))) {
+          if (m === sourceMsg || (m.role === 'assistant' && (/Badminton Rally Kinematic Ingestion & Perception/i.test(m.text || '') || /Calibrated.*Pediatric Gait/i.test(m.text || '')))) {
             return {
               ...m,
               text: completedSession.conclusion
@@ -1171,8 +1174,6 @@ export default function App() {
       setCustomImageUrl(null);
       setInvestigationData(null);
       setSelectedDomain('pediatrics');
-      setActiveTool('gait');
-      setIsToolDrawerOpen(true);
       const confPct = Math.round((gaitResult.quality?.confidence_score || 0.95) * 100);
       const cadence = gaitResult.metrics?.cadence || 142;
       const asym = gaitResult.metrics?.step_time_asymmetry_pct || 4.2;
@@ -1180,22 +1181,30 @@ export default function App() {
       const usableSteps = gaitResult.metrics?.usable_step_count || 12;
       const milestoneRec = gaitResult.milestone_context || 'Encourage active variable-surface walking play to stimulate bilateral balance consolidation.';
 
-      let responseText = `### Calibrated Pediatric Gait Diagnostic Report (${confPct}% Confidence)\n\n`;
-      responseText += `Subject biomechanical model successfully calibrated with contextual prior: **"Bilateral ambulation symmetry and sagittal balance consolidation"**.\n\n`;
-
-      responseText += `1. Locomotion Kinematics & Symmetry\n\n`;
-      responseText += `• **Bilateral Step Symmetry**: **${asym}% asymmetry** evaluated across consecutive foot-strike transitions.\n`;
-      responseText += `• **Stepping Cadence**: **${cadence} steps/min** aligned with normative pediatric developmental reference.\n\n`;
-
-      responseText += `2. Stride Dynamics & Postural Stability\n\n`;
-      responseText += `• **Rhythm Variability**: **${cov}% CoV** measured over **${usableSteps} valid stride cycles**.\n`;
-      responseText += `• **Postural Stability**: Dynamic coronal balance maintained within normative developmental envelope.\n\n`;
-
-      responseText += `3. AI Pediatric Supervision & Clinical Action\n\n`;
-      responseText += `• **Clinical Recommendation**: ${milestoneRec}\n`;
-      responseText += `• **Adaptive Baseline**: Stored to developmental milestone profile memory to track longitudinal ambulation progress.`;
+      const concernText = gaitResult.baseline_comparison?.primary_alert || `Child walking evaluation: cadence ${cadence} steps/min, asymmetry ${asym}%`;
+      const responseText = concernText ? '' : (
+        `### Calibrated Pediatric Gait Diagnostic Report (${confPct}% Confidence)\n\n` +
+        `Subject biomechanical model successfully calibrated with contextual prior: **"Bilateral ambulation symmetry and sagittal balance consolidation"**.\n\n` +
+        `1. Locomotion Kinematics & Symmetry\n\n` +
+        `• **Bilateral Step Symmetry**: **${asym}% asymmetry** evaluated across consecutive foot-strike transitions.\n` +
+        `• **Stepping Cadence**: **${cadence} steps/min** aligned with normative pediatric developmental reference.\n\n` +
+        `2. Stride Dynamics & Postural Stability\n\n` +
+        `• **Rhythm Variability**: **${cov}% CoV** measured over **${usableSteps} valid stride cycles**.\n` +
+        `• **Postural Stability**: Dynamic coronal balance maintained within normative developmental envelope.\n\n` +
+        `3. AI Pediatric Supervision & Clinical Action\n\n` +
+        `• **Clinical Recommendation**: ${milestoneRec}\n` +
+        `• **Adaptive Baseline**: Stored to developmental milestone profile memory to track longitudinal ambulation progress.`
+      );
 
       const thoughtProcess = buildVideoThoughtProcess(gaitResult);
+
+      if (concernText) {
+        setSessionTools(['dictionary', 'rag'], activeSessionId);
+      } else {
+        detectAndUnlockTools('', [], gaitResult, 'pediatrics', true);
+        setActiveTool('gait');
+        setIsToolDrawerOpen(true);
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -1204,9 +1213,9 @@ export default function App() {
           text: responseText,
           thoughtProcess,
           report: gaitResult,
-          adaptiveConcern: gaitResult.baseline_comparison?.primary_alert || `Child walking evaluation: cadence ${gaitResult.metrics?.cadence} steps/min, asymmetry ${gaitResult.metrics?.step_time_asymmetry_pct}%`,
+          adaptiveConcern: concernText,
           investigationId: gaitResult.assessment_id,
-          subjectId: 'child_leo_24m',
+          subjectId: 'child_toddler',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -1219,6 +1228,10 @@ export default function App() {
             : s
         )
       );
+      if (!concernText) {
+        setActiveTool('gait');
+        setIsToolDrawerOpen(true);
+      }
       return;
     }
 
@@ -1420,7 +1433,6 @@ export default function App() {
                     : s
                 )
               );
-              detectAndUnlockTools(userText, currentFiles, gaitResult, 'pediatrics', true);
               const userConcernText = userText && userText.trim() ? userText.trim() : (
                 gaitResult.baseline_comparison?.primary_alert ||
                 `Child walking evaluation: cadence ${gaitResult.metrics?.cadence || 0} steps/min, asymmetry ${gaitResult.metrics?.step_time_asymmetry_pct || 0}%`
@@ -1437,20 +1449,19 @@ export default function App() {
                 ? userText.trim()
                 : 'Bilateral ambulation symmetry and sagittal balance consolidation';
 
-              let responseText = `### Calibrated Pediatric Gait Diagnostic Report (${confPct}% Confidence)\n\n`;
-              responseText += `Subject biomechanical model successfully calibrated with contextual prior: **"${contextPrior}"**.\n\n`;
-
-              responseText += `1. Locomotion Kinematics & Symmetry\n\n`;
-              responseText += `• **Bilateral Step Symmetry**: **${asym}% asymmetry** evaluated across consecutive foot-strike transitions.\n`;
-              responseText += `• **Stepping Cadence**: **${cadence} steps/min** aligned with normative pediatric developmental reference.\n\n`;
-
-              responseText += `2. Stride Dynamics & Postural Stability\n\n`;
-              responseText += `• **Rhythm Variability**: **${cov}% CoV** measured over **${usableSteps} valid stride cycles**.\n`;
-              responseText += `• **Postural Stability**: Dynamic coronal balance maintained within normative developmental envelope.\n\n`;
-
-              responseText += `3. AI Pediatric Supervision & Clinical Action\n\n`;
-              responseText += `• **Clinical Recommendation**: ${milestoneRec}\n`;
-              responseText += `• **Adaptive Baseline**: Stored to developmental milestone profile memory to track longitudinal ambulation progress.`;
+              const responseText = userConcernText ? '' : (
+                `### Calibrated Pediatric Gait Diagnostic Report (${confPct}% Confidence)\n\n` +
+                `Subject biomechanical model successfully calibrated with contextual prior: **"${contextPrior}"**.\n\n` +
+                `1. Locomotion Kinematics & Symmetry\n\n` +
+                `• **Bilateral Step Symmetry**: **${asym}% asymmetry** evaluated across consecutive foot-strike transitions.\n` +
+                `• **Stepping Cadence**: **${cadence} steps/min** aligned with normative pediatric developmental reference.\n\n` +
+                `2. Stride Dynamics & Postural Stability\n\n` +
+                `• **Rhythm Variability**: **${cov}% CoV** measured over **${usableSteps} valid stride cycles**.\n` +
+                `• **Postural Stability**: Dynamic coronal balance maintained within normative developmental envelope.\n\n` +
+                `3. AI Pediatric Supervision & Clinical Action\n\n` +
+                `• **Clinical Recommendation**: ${milestoneRec}\n` +
+                `• **Adaptive Baseline**: Stored to developmental milestone profile memory to track longitudinal ambulation progress.`
+              );
 
               if (checkIsAborted()) return;
 
@@ -1462,9 +1473,19 @@ export default function App() {
                   `Temporal Video Ingestion: Decoded ${gaitResult.video?.fps || 24} FPS stream (${gaitResult.video?.duration_seconds || 0}s duration)`,
                   `Pediatric Pose Estimation: Grounded 33 skeletal landmarks with ${gaitResult.quality?.confidence || 'High'} confidence`,
                   `Kinematic Analysis: Calculated bilateral cadence (${gaitResult.metrics?.cadence || 0} steps/min) and asymmetry (${gaitResult.metrics?.step_time_asymmetry_pct || 0}%)`,
-                  `Adaptive Diagnostic Loop: Initiated Information-Gain Inquiry in Chat`
+                  `Adaptive Diagnostic Loop: Initiated Information-Gain Inquiry in Chat`,
+                  `Tool Synchronization: Mounted Pediatric Gait Biomechanics Studio`
                 ]
               };
+
+              if (userConcernText) {
+                // When diagnostic questions are initiated, keep studio locked until questions are answered!
+                setSessionTools(['dictionary', 'rag'], activeSessionId);
+              } else {
+                detectAndUnlockTools(userText, currentFiles, gaitResult, 'pediatrics', true);
+                setActiveTool('gait');
+                setIsToolDrawerOpen(true);
+              }
 
               setMessages((prev) => [
                 ...prev,
@@ -1475,12 +1496,14 @@ export default function App() {
                   report: gaitResult,
                   adaptiveConcern: userConcernText,
                   investigationId: gaitResult.assessment_id,
-                  subjectId: 'child_leo_24m',
+                  subjectId: 'child_toddler',
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
               ]);
-              setActiveTool('gait');
-              setIsToolDrawerOpen(true);
+              if (!userConcernText) {
+                setActiveTool('gait');
+                setIsToolDrawerOpen(true);
+              }
               setIsProcessing(false);
               return;
             }
@@ -1660,7 +1683,7 @@ export default function App() {
       const isBadmintonQuery = ['badminton', 'smash', 'racket', 'shuttle', 'court', 'stroke', 'rally'].some(k => msgLower.includes(k));
       const isPedGaitQuery = !isBadmintonQuery && ['walk', 'limp', 'gait', 'toddler', 'asymmetry', 'optimal', 'step'].some(k => msgLower.includes(k));
       const adaptiveConcern = (isPedGaitQuery || isBadmintonQuery) ? msgText.trim() : null;
-      const targetSubjectId = isBadmintonQuery ? 'player_badminton' : 'child_leo_24m';
+      const targetSubjectId = isBadmintonQuery ? 'player_badminton' : 'child_toddler';
 
       if (!adaptiveConcern) {
         detectAndUnlockTools(msgText, currentFiles, askRes);
@@ -2337,7 +2360,7 @@ export default function App() {
                   report: dataOrText,
                   adaptiveConcern: dataOrText.baseline_comparison?.primary_alert || `Child walking evaluation: cadence ${cadence} steps/min, asymmetry ${asym}%`,
                   investigationId: dataOrText.assessment_id,
-                  subjectId: 'child_leo_24m',
+                  subjectId: 'child_toddler',
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
               ]);
