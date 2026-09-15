@@ -3348,5 +3348,28 @@ Previously, when a user uploaded a toddler gait screening video:
    - Automated pytest suite: **87 passed, 0 failed** in 32.83s.
    - Frontend build: `npm run build` compiled with **0 errors** in 14.77s.
 
+---
+
+### Section 53: Multi-Key Gemini API Pool Expansion & Deduplication (2026-09-15)
+
+#### 1. Problem Description & Symptoms
+- **User Requests**:
+  1. Add primary Gemini API key (`AQ.Ab8...ALPQ`)
+  2. Add secondary Gemini API key (`AQ.Ab8...8C_w`) for multi-key pool failover
+- **Symptoms**:
+  - The single active key setup previously carried the risk of 429 quota exhaustion during intensive multi-frame vision inspections or iterative ReAct agent traversals.
+  - Furthermore, `key_pool_manager.py` previously evaluated `os.getenv("GEMINI_API_KEYS") or os.getenv("GEMINI_API_KEY")`, which caused keys defined in `GEMINI_API_KEY` to be excluded from the round-robin pool whenever `GEMINI_API_KEYS` was also populated.
+
+#### 2. Implemented Solution & Non-Regression Invariants
+1. **Multi-Key Merging & Deduplication in `key_pool_manager.py`**:
+   - Updated `reload_keys_from_env()` to combine all keys defined in both `GEMINI_API_KEY` and `GEMINI_API_KEYS`.
+   - Added automatic key deduplication in `_load_provider_keys()`, maintaining an ordered, healthy load-balancing pool.
+2. **Environment Configuration in `backend/.env`**:
+   - Configured `GEMINI_API_KEY` with the newest active key (`AQ.Ab8...8C_w`).
+   - Populated `GEMINI_API_KEYS` with all 5 verified keys for continuous failover and 1,000+ free-tier requests/day capacity.
+3. **Verification**:
+   - Live HTTP verification against Google AI Studio endpoint (`https://generativelanguage.googleapis.com/v1beta/models`): Status **200 OK**.
+   - Verified active pool in `KeyPoolManager`: 5 available Gemini keys successfully loaded and prioritized.
+
 
 

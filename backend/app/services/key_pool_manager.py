@@ -79,27 +79,38 @@ class KeyPoolManager:
 
     def reload_keys_from_env(self) -> None:
         """Parse comma-separated or single keys from environment variables."""
-        # 1. Gemini Keys (GEMINI_API_KEYS or GEMINI_API_KEY)
-        gemini_raw = os.getenv("GEMINI_API_KEYS") or os.getenv("GEMINI_API_KEY") or ""
+        # 1. Gemini Keys (GEMINI_API_KEYS and GEMINI_API_KEY)
+        gemini_parts = [os.getenv("GEMINI_API_KEY", ""), os.getenv("GEMINI_API_KEYS", "")]
+        gemini_raw = ",".join([p for p in gemini_parts if p.strip()])
         self._load_provider_keys("gemini", gemini_raw)
 
-        # 2. Groq Keys (GROQ_API_KEYS or GROQ_API_KEY)
-        groq_raw = os.getenv("GROQ_API_KEYS") or os.getenv("GROQ_API_KEY") or ""
+        # 2. Groq Keys (GROQ_API_KEYS and GROQ_API_KEY)
+        groq_parts = [os.getenv("GROQ_API_KEY", ""), os.getenv("GROQ_API_KEYS", "")]
+        groq_raw = ",".join([p for p in groq_parts if p.strip()])
         self._load_provider_keys("groq", groq_raw)
 
-        # 3. OpenRouter Keys (OPENROUTER_API_KEYS or OPENROUTER_API_KEY)
-        openrouter_raw = os.getenv("OPENROUTER_API_KEYS") or os.getenv("OPENROUTER_API_KEY") or ""
+        # 3. OpenRouter Keys (OPENROUTER_API_KEYS and OPENROUTER_API_KEY)
+        openrouter_parts = [os.getenv("OPENROUTER_API_KEY", ""), os.getenv("OPENROUTER_API_KEYS", "")]
+        openrouter_raw = ",".join([p for p in openrouter_parts if p.strip()])
         self._load_provider_keys("openrouter", openrouter_raw)
 
-        # 4. OpenAI Keys (OPENAI_API_KEYS or OPENAI_API_KEY)
-        openai_raw = os.getenv("OPENAI_API_KEYS") or os.getenv("OPENAI_API_KEY") or ""
+        # 4. OpenAI Keys (OPENAI_API_KEYS and OPENAI_API_KEY)
+        openai_parts = [os.getenv("OPENAI_API_KEY", ""), os.getenv("OPENAI_API_KEYS", "")]
+        openai_raw = ",".join([p for p in openai_parts if p.strip()])
         self._load_provider_keys("openai", openai_raw)
 
     def _load_provider_keys(self, provider: str, raw_val: str) -> None:
         if not raw_val:
             return
-        # Split by comma or semicolon or newline
-        keys = [k.strip() for k in raw_val.replace(";", ",").replace("\n", ",").split(",") if k.strip()]
+        # Split by comma or semicolon or newline and deduplicate
+        keys: List[str] = []
+        seen = set()
+        for k in raw_val.replace(";", ",").replace("\n", ",").split(","):
+            k = k.strip()
+            if k and k not in seen:
+                seen.add(k)
+                keys.append(k)
+
         existing_keys = {ks.key: ks for ks in self.pools[provider]}
 
         new_pool: List[KeyState] = []
