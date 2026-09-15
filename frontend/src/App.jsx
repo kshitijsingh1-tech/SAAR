@@ -2366,7 +2366,9 @@ export default function App() {
               const steps = dataOrText.metrics?.usable_step_count || 12;
               const rec = dataOrText.milestone_context || dataOrText.developmental_summary?.headline || 'Encourage active variable-surface walking play to stimulate bilateral balance consolidation.';
 
-              const reportText = `### Calibrated Pediatric Gait Diagnostic Report (${confPct}% Confidence)\n\n` +
+              const hasInquiry = Boolean(dataOrText.baseline_comparison?.primary_alert || `Child walking evaluation: cadence ${cadence} steps/min, asymmetry ${asym}%`);
+              const reportText = hasInquiry ? '' : (
+                `### Calibrated Pediatric Gait Diagnostic Report (${confPct}% Confidence)\n\n` +
                 `Subject biomechanical model successfully calibrated with contextual prior: **"Bilateral ambulation symmetry and sagittal balance consolidation"**.\n\n` +
                 `1. Locomotion Kinematics & Symmetry\n\n` +
                 `• **Bilateral Step Symmetry**: **${asym}% asymmetry** evaluated across consecutive foot-strike transitions.\n` +
@@ -2376,7 +2378,8 @@ export default function App() {
                 `• **Postural Stability**: Dynamic coronal balance maintained within normative developmental envelope.\n\n` +
                 `3. AI Pediatric Supervision & Clinical Action\n\n` +
                 `• **Clinical Recommendation**: ${rec}\n` +
-                `• **Adaptive Baseline**: Stored to developmental milestone profile memory to track longitudinal ambulation progress.`;
+                `• **Adaptive Baseline**: Stored to developmental milestone profile memory to track longitudinal ambulation progress.`
+              );
 
               setMessages((prev) => [
                 ...prev,
@@ -2402,7 +2405,9 @@ export default function App() {
               const covPct = dataOrText.movement_metrics?.coverage_percentage != null ? dataOrText.movement_metrics.coverage_percentage.toFixed(1) : '78.0';
               const coachingRec = dataOrText.kinematic_supervision?.coaching_takeaway || 'Maintain active elbow extension at contact point and initiate split-step base recovery within 280ms of stroke completion.';
 
-              const reportText = `### Calibrated Kinematic Diagnostic Report (${calibConf}% Confidence)\n\n` +
+              const hasInquiry = true;
+              const reportText = hasInquiry ? '' : (
+                `### Calibrated Kinematic Diagnostic Report (${calibConf}% Confidence)\n\n` +
                 `Subject biomechanical model successfully calibrated with contextual prior: **"Focus on overhead smash velocity and contact reach"**.\n\n` +
                 `1. Kinematic Stroke Execution\n\n` +
                 `• **Stroke Isolation**: Detected **${strokeCount} contact phases** with 33-point BlazePose 3D joint tracking.\n` +
@@ -2412,7 +2417,8 @@ export default function App() {
                 `• **Court Displacement**: **${distanceM}m** traversed across **${covPct}%** court area.\n\n` +
                 `3. AI Kinematic Supervision & Coaching Action\n\n` +
                 `• **Kinematic Recommendation**: ${coachingRec}\n` +
-                `• **Adaptive Baseline**: Stored to athlete profile memory to track longitudinal improvement over future sessions.`;
+                `• **Adaptive Baseline**: Stored to athlete profile memory to track longitudinal improvement over future sessions.`
+              );
 
               setMessages((prev) => [
                 ...prev,

@@ -3243,4 +3243,40 @@ Previously, when a user uploaded a toddler gait screening video:
   - `What is causing the leaf chlorosis?` $\to$ Normal deep causal synthesis executed smoothly (is_unrecognized: False, confidence: 91%).
 - **Frontend Build**: `npm run build` completed cleanly in 14.55s with **0 errors**.
 
+---
+
+### Section 50: Emoticon Removal in Documentation & Deferred Kinematic Diagnostic Report Sequencing (2026-09-15)
+
+#### 1. Problem Description & Symptoms
+- **User Requests**:
+  1. *"remove emoticons from readme .md"*
+  2. *"Calibrated Kinematic Diagnostic Report (100% Confidence) donot give this, only give after questions are asked"*
+- **Symptoms**:
+  - In `README.md`, section headers and lists contained emoji icons (e.g., badminton rackets, toddlers, plants, roads, rockets) and unicode arrows/triangles in ASCII diagrams, which violated the requested clean, academic documentation style.
+  - In the chat interface, when a badminton rally video was dispatched or uploaded, the assistant message immediately printed `### Calibrated Kinematic Diagnostic Report (100% Confidence)` *above* the interactive Bayesian triage inquiry card before the user had an opportunity to answer any of the diagnostic questions.
+
+#### 2. Root Cause Analysis
+1. **Upfront Report Generation in `App.jsx`**:
+   - Both `handleSendMessage` (line 1382) and `onSendToChat` (line 2405) unconditionally constructed the full `Calibrated Kinematic Diagnostic Report` string and attached it to `responseText`/`reportText` simultaneously with `adaptiveConcern`.
+   - As a result, the completed diagnostic report was rendered upfront, even though the user was supposed to answer diagnostic questions to narrow down the root cause.
+2. **Icon & Emoji Usage in `README.md`**:
+   - Markdown headers used emoji prefixes (`## 📖 Key Architectural Specifications`, `### 1. 🏸 Badminton Biomechanics`, `### 3. 👶 Pediatric Toddler AI`, etc.) and unicode diagram characters (`───▶`, `↳`, `▼`).
+
+#### 3. Implemented Solution & Non-Regression Invariants
+1. **Strictly Deferred Diagnostic Report Delivery**:
+   - In [`frontend/src/App.jsx`](file:///d:/bytebuild/frontend/src/App.jsx):
+     - Line 1382: Set `responseText = userConcernText ? '' : ...` so that while diagnostic questions are pending, no premature diagnostic report is rendered in the chat bubble.
+     - Line 2405: Set `reportText = hasInquiry ? '' : ...` in `onSendToChat` to prevent upfront report generation when inquiry questions exist.
+   - In [`backend/app/services/adaptive_inquiry.py`](file:///d:/bytebuild/backend/app/services/adaptive_inquiry.py):
+     - Line 1285: Titled the final concluded diagnostic report `## Calibrated Kinematic Diagnostic Report: {top_name} ({top_prob}% Confidence)`.
+     - Ensures the Calibrated Kinematic Diagnostic Report is delivered strictly upon inquiry conclusion after all questions are answered by the user.
+2. **Complete Emoticon & Emoji Removal from `README.md`**:
+   - In [`README.md`](file:///d:/bytebuild/README.md):
+     - Removed all unicode emojis from all headings, lists, badges, and body text.
+     - Converted unicode arrows and triangle glyphs in system architecture diagrams into clean, standardized ASCII (`--->`, `->`, `v`).
+     - Verified programmatically via Python character and regex scanners that 0 emojis or emoticons remain in `README.md`.
+3. **Build & Quality Verification**:
+   - `npm run build` executed and compiled with **0 errors** in 19.45s.
+
+
 

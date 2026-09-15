@@ -21,24 +21,24 @@
 
 ---
 
-## 📖 Key Architectural Specifications
+## Key Architectural Specifications
 
-- 📘 **[Master Architecture Specification (`architecture.md`)](architecture.md)** — Comprehensive architecture document covering system topology, VLM cascading, DSP pipelines, adaptive inquiry, and tool gating protocols.
-- 🏸 **[Badminton Kinematics Architecture (`BADMINTON_ARCHITECTURE.md`)](BADMINTON_ARCHITECTURE.md)** — In-depth computer vision specification for BWF court homography, 33-point BlazePose keypoints, and stroke classification.
-- ⚖️ **[Zero-Hardcoding Directives (`AGENTS.md`)](AGENTS.md)** — Absolute engineering directives governing epistemic honesty, data contracts, and presentation layer purity.
-- 📝 **[Engineering Progress & Invariants Ledger (`work_done.md`)](work_done.md)** — Auditable log of all implemented features, root cause analyses, and non-regression guarantees.
+- **[Master Architecture Specification (`architecture.md`)](architecture.md)** — Comprehensive architecture document covering system topology, VLM cascading, DSP pipelines, adaptive inquiry, and tool gating protocols.
+- **[Badminton Kinematics Architecture (`BADMINTON_ARCHITECTURE.md`)](BADMINTON_ARCHITECTURE.md)** — In-depth computer vision specification for BWF court homography, 33-point BlazePose keypoints, and stroke classification.
+- **[Zero-Hardcoding Directives (`AGENTS.md`)](AGENTS.md)** — Absolute engineering directives governing epistemic honesty, data contracts, and presentation layer purity.
+- **[Engineering Progress & Invariants Ledger (`work_done.md`)](work_done.md)** — Auditable log of all implemented features, root cause analyses, and non-regression guarantees.
 
 ---
 
-## 🔬 Executive Overview: What is SAAR?
+## Executive Overview: What is SAAR?
 
 In conventional artificial intelligence, multi-modal systems operate as **opaque, single-pass black boxes**:
 
 ```text
-Visual Input / Video / Tabular Data ───▶ [ Monolithic VLM / LLM ] ───▶ Superficial Text Verdict
-                                                                       ↳ High Hallucination Rate
-                                                                       ↳ Zero Verifiable Evidence Chain
-                                                                       ↳ Unfalsifiable Guesses
+Visual Input / Video / Tabular Data ---> [ Monolithic VLM / LLM ] ---> Superficial Text Verdict
+                                       -> High Hallucination Rate
+                                       -> Zero Verifiable Evidence Chain
+                                       -> Unfalsifiable Guesses
 ```
 
 **SAAR** (*Discover What Matter*) replaces single-pass visual heuristics with an **iterative, multi-agent scientific reasoning loop** combined with **deterministic physics and signal processing engines**.
@@ -46,31 +46,31 @@ Visual Input / Video / Tabular Data ───▶ [ Monolithic VLM / LLM ] ──
 Instead of jumping directly to an unverified conclusion, SAAR constructs a **dynamic causal knowledge graph**, identifies epistemic uncertainty, runs specialized domain simulators, queries the human investigator for high-information-gain observations, and executes deterministic DSP pipelines to extract verified metrics across agriculture, pediatric gait, sports biomechanics, and civil infrastructure.
 
 ```text
-                               ┌────────────────────────────────────────────────────────┐
-                               │               ORCHESTRATING REASONING AGENT             │
-                               │          Hypothesis Generation & Uncertainty Scent     │
-                               └───────────────────────────┬────────────────────────────┘
-                                                           │
-                                                           ▼
-                ┌──────────────────────────────────────────────────────────────────────────────────┐
-                │                           DYNAMIC CAUSAL GRAPH STORE                             │
-                │                 Entities, Latent Properties, Hypotheses & Confidences            │
-                └──────────────┬───────────────────────────┬───────────────────────────┬───────────┘
-                               │                           │                           │
-                               ▼                           ▼                           ▼
-                 ┌───────────────────────────┐ ┌───────────────────────┐ ┌───────────────────────────┐
-                 │     Perception Sensors    │ │  Domain Simulators    │ │  Human-in-the-Loop Cards  │
-                 │ Multi-Modal Vision / Tab  │ │ GPR, Darcy, Homography│ │ Epistemic Uncertainty Qs  │
-                 └───────────────────────────┘ └───────────────────────┘ └───────────────────────────┘
+                               +--------------------------------------------------------+
+                               |               ORCHESTRATING REASONING AGENT            |
+                               |          Hypothesis Generation & Uncertainty Scent     |
+                               +---------------------------+----------------------------+
+                                                           |
+                                                           v
+                +----------------------------------------------------------------------------------+
+                |                           DYNAMIC CAUSAL GRAPH STORE                             |
+                |                 Entities, Latent Properties, Hypotheses & Confidences            |
+                +--------------+---------------------------+---------------------------+-----------+
+                               |                           |                           |
+                               v                           v                           v
+                 +---------------------------+ +-----------------------+ +---------------------------+
+                 |     Perception Sensors    | |  Domain Simulators    | |  Human-in-the-Loop Cards  |
+                 | Multi-Modal Vision / Tab  | | GPR, Darcy, Homography| | Epistemic Uncertainty Qs  |
+                 +---------------------------+ +-----------------------+ +---------------------------+
 ```
 
 ---
 
-## ⚡ Flagship Capabilities & Domain Pillars
+## Flagship Capabilities & Domain Pillars
 
-### 1. 🏸 Badminton Biomechanics & Kinematics Studio (`backend/app/plugins/sports/badminton/`)
+### 1. Badminton Biomechanics & Kinematics Studio (`backend/app/plugins/sports/badminton/`)
 An evidence-driven athletic kinematics engine evaluating high-velocity overhead strokes and rallies from everyday video:
-- **Planar $3 \times 3$ BWF Metric Court Homography** ([`court_detector.py`](backend/app/plugins/sports/badminton/court_detector.py)):
+- **Planar 3 x 3 BWF Metric Court Homography** ([`court_detector.py`](backend/app/plugins/sports/badminton/court_detector.py)):
   - Computes perspective transform matrix $H$ mapping camera coordinates $[u, v, 1]^T$ to international BWF dimensions ($13.40\text{m} \times 6.10\text{m}$):
     $$\begin{bmatrix} X_w \\ Y_w \\ 1 \end{bmatrix} \sim H \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}$$
 - **Multi-Signal Smash Peak Velocity Fusion** ([`shot_detector.py`](backend/app/plugins/sports/badminton/shot_detector.py)):
@@ -85,7 +85,7 @@ An evidence-driven athletic kinematics engine evaluating high-velocity overhead 
 
 ---
 
-### 2. ❓ Adaptive Diagnostic Inquiry Engine & Strict Tool Gating
+### 2. Adaptive Diagnostic Inquiry Engine & Strict Tool Gating
 Interactive Bayesian information-gain triage system for clinical, sports, and botanical reasoning:
 - **Strict Tool Gating Invariant**:
   - While diagnostic questions are active, domain studio tools remain **locked** in the floating rollout bar, drawer, and message header badges.
@@ -94,11 +94,11 @@ Interactive Bayesian information-gain triage system for clinical, sports, and bo
   - Concluded triage assessments render as a single elevated white card (`#ffffff` background, `box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05)`).
   - Numbered diagnostic headings (e.g. `### 1. Root Cause Finding`, `## 1. Locomotion Kinematics`) automatically classify as `level: 4` (`h4`), styled in signature **Purple `#4338ca`** with full-width underline dividers.
   - Priority badges (`[HIGH]`, `[MEDIUM]`, `[LOW]`, `[CRITICAL]`) automatically parse and render with semantic colors.
-  - Action buttons on the card (e.g. `[Launch Badminton Biomechanics Studio ➔]`, `[Restart Triage]`, `[Copy]`, `[Raw]`).
+  - Action buttons on the card (e.g. `[Launch Badminton Biomechanics Studio]`, `[Restart Triage]`, `[Copy]`, `[Raw]`).
 
 ---
 
-### 3. 👶 Pediatric Toddler AI / Gait Analysis Engine (`backend/app/gait/`)
+### 3. Pediatric Toddler AI / Gait Analysis Engine (`backend/app/gait/`)
 A deterministic, 11-stage clinical biomechanical pipeline evaluating motor milestone acquisition from everyday 30 FPS mobile smartphone video:
 - **Zero Phase-Lag DSP Smoothing** ([`smoothing.py`](backend/app/gait/events/smoothing.py)):
   - 2nd-order Savitzky-Golay polynomial filter (`scipy.signal.savgol_filter`) preserves true peak amplitude without temporal delay.
@@ -119,7 +119,7 @@ A deterministic, 11-stage clinical biomechanical pipeline evaluating motor miles
 
 ---
 
-### 4. 🌿 Precision Agriculture & Agronomic Pathology
+### 4. Precision Agriculture & Agronomic Pathology
 - **Dynamic Causal Graph Construction**: Falsifiable hypothesis testing for crop ailments (*Pythium ultimum*, *Fusarium oxysporum*, Nitrogen/Iron chlorosis).
 - **Zero-Hardcoding Telemetry Guard**: Optical canopy inspections strictly emit foliar vegetative vigor hypotheses; subterranean soil aeration, root anoxia, and pH speciation tools are dynamically gated until sensor telemetry (CSV/Excel) confirms soil probes exist.
 - **Dynamic Species Taxonomy**: Resolves botanical taxonomy dynamically (*Rosa hybrid*, *Solanum lycopersicum*, *Monstera adansonii*, etc.) with zero cross-scenario template leakage.
@@ -128,14 +128,14 @@ A deterministic, 11-stage clinical biomechanical pipeline evaluating motor miles
 
 ---
 
-### 5. 🛣️ Civil Infrastructure & Geotechnical Void Detection
+### 5. Civil Infrastructure & Geotechnical Void Detection
 - **Ground Penetrating Radar (GPR)**: Hyperbolic reflection fitting to detect subterranean void cavities and assess sinkhole collapse risk.
 - **Hydraulic Culvert Modeling**: Culvert intake flow and hydrostatic head-loss simulations.
 - **Structural Pavement Integrity**: AASHTO load-bearing capacity and deflection modeling.
 
 ---
 
-## 🏛️ Zero-Hardcoding Architecture Directive
+## Zero-Hardcoding Architecture Directive
 
 SAAR strictly enforces a **Zero-Hardcoding Architecture** governed by [`AGENTS.md`](AGENTS.md) and [`.agents/rules/no_hardcoding.md`](.agents/rules/no_hardcoding.md):
 1. **Pure Presentation Layer**: UI components (`ImageInspector.jsx`, `PlotlyGraphViewer.jsx`, `ChatGPTView.jsx`) are strictly display layers. No hardcoded mock bounding boxes, phantom labels, or preset-matching conditionals (`if (isTomato)...`).
@@ -145,7 +145,7 @@ SAAR strictly enforces a **Zero-Hardcoding Architecture** governed by [`AGENTS.m
 
 ---
 
-## 📂 Repository Layout
+## Repository Layout
 
 ```text
 SAAR/
@@ -222,7 +222,7 @@ SAAR/
 
 ---
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### Prerequisites
 - **Python 3.10+**
@@ -230,7 +230,7 @@ SAAR/
 
 ---
 
-### 🍏 macOS / Linux Startup
+### macOS / Linux Startup
 
 ```bash
 # Clone repository
@@ -260,7 +260,7 @@ npm run dev
 
 ---
 
-### 🪟 Windows Startup (PowerShell)
+### Windows Startup (PowerShell)
 
 Open two PowerShell windows:
 
@@ -288,7 +288,7 @@ Open **`http://localhost:3000`** in your browser.
 
 ---
 
-## 🔑 Environment Variables Configuration
+## Environment Variables Configuration
 
 SAAR functions out-of-the-box with offline simulation fallbacks. To activate live multi-modal vision perception and deep ReAct agentic reasoning, configure `backend/.env`:
 
@@ -306,7 +306,7 @@ GROQ_API_KEY=your_groq_api_key_here
 
 ---
 
-## 🌐 Localhost Port Reference
+## Localhost Port Reference
 
 | Service | Localhost URL | Purpose |
 | :--- | :--- | :--- |
@@ -317,17 +317,17 @@ GROQ_API_KEY=your_groq_api_key_here
 
 ---
 
-## 🧪 Scientific & Mathematical Grounding Summary
+## Scientific & Mathematical Grounding Summary
 
 | Domain | Mathematical / Physical Foundation | Authoritative Academic Reference |
 | :--- | :--- | :--- |
-| **Badminton Biomechanics** | Planar $3 \times 3$ Homography ($H$), kinetic chain angular velocity fusion | BWF Official Court Standards; TrackNet; CoachAI / ShuttleSet Dataset |
+| **Badminton Biomechanics** | Planar 3 x 3 Homography ($H$), kinetic chain angular velocity fusion | BWF Official Court Standards; TrackNet; CoachAI / ShuttleSet Dataset |
 | **Pediatric Gait** | 2nd-order Savitzky-Golay filter, quadratic sub-frame peak interpolation, Robinson Asymmetry index | Sutherland (1988) *"The Development of Mature Walking"*; WHO Motor Milestones |
 | **Precision Agriculture** | Darcy's Law for saturated porous flow, SPAD/NDVI chlorophyll decay modeling | Darcy (1856); Gitelson et al. (2003) |
 | **Civil Geotechnics** | Hyperbolic radar diffraction wave equation, Manning's culvert formula | Daniels (2004) *Ground Penetrating Radar*; AASHTO Pavement Design |
 
 ---
 
-## 🛡️ License
+## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
