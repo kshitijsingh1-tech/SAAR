@@ -5630,12 +5630,15 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  scroll-behavior: smooth;
   display: flex;
   justify-content: center;
   padding: 1.5rem 1rem 3.5rem;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+  transform: translateZ(0);
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .chatgpt-body::-webkit-scrollbar {
@@ -5651,7 +5654,6 @@ body {
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
-  transition: background 0.2s ease;
 }
 
 .chatgpt-body::-webkit-scrollbar-thumb:hover {
@@ -5696,7 +5698,8 @@ body {
   position: absolute;
   bottom: 84px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateZ(0) translateX(-50%);
+  will-change: transform, opacity;
   z-index: 92;
   display: inline-flex;
   align-items: center;
@@ -5710,7 +5713,7 @@ body {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   animation: fadeInScale 0.2s ease-out;
@@ -5720,7 +5723,7 @@ body {
   background: var(--primary-bg, #f0f9ff);
   border-color: var(--primary, #0284c7);
   color: var(--primary, #0284c7);
-  transform: translateX(-50%) translateY(-2px);
+  transform: translateZ(0) translateX(-50%) translateY(-2px);
   box-shadow: 0 6px 22px rgba(2, 132, 199, 0.25);
 }
 
@@ -5757,6 +5760,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  contain: layout style;
 }
 
 /* Welcome Screen */
@@ -7961,7 +7965,6 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
   position: relative;
-  scroll-behavior: smooth;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 

@@ -499,6 +499,8 @@ export function ChatGPTView({
 
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
   const isUserScrolledUpRef = useRef(false);
+  const showScrollBottomBtnRef = useRef(false);
+  const scrollRafRef = useRef(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -519,16 +521,33 @@ export function ChatGPTView({
   const saarLogoSrc = isLightMode ? '/saar-logo-dark.png' : '/saar-logo-white.png';
   const saarWordmarkSrc = isLightMode ? '/saar-wordmark-dark.png' : '/saar-wordmark-white.png';
 
+  // Ultra-smooth RAF-throttled scroll handler with state transition deduplication
   const handleScroll = useCallback(() => {
-    const container = chatgptBodyRef.current;
-    if (!container) return;
-    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    const isUp = distanceFromBottom > 160;
-    isUserScrolledUpRef.current = isUp;
-    setShowScrollBottomBtn(isUp);
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const container = chatgptBodyRef.current;
+      if (!container) return;
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      const isUp = distanceFromBottom > 60;
+      isUserScrolledUpRef.current = isUp;
+      if (showScrollBottomBtnRef.current !== isUp) {
+        showScrollBottomBtnRef.current = isUp;
+        setShowScrollBottomBtn(isUp);
+      }
+    });
   }, []);
 
-  const scrollToBottom = useCallback((force = false, behavior = 'smooth') => {
+  // Cancel any pending RAF on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current) {
+        cancelAnimationFrame(scrollRafRef.current);
+      }
+    };
+  }, []);
+
+  const scrollToBottom = useCallback((force = false, behavior = 'auto') => {
     const container = chatgptBodyRef.current;
     if (!container) return;
     if (!force && isUserScrolledUpRef.current) return;
@@ -539,26 +558,35 @@ export function ChatGPTView({
   }, []);
 
   useEffect(() => {
-    scrollToBottom(false, 'smooth');
+    scrollToBottom(false, 'auto');
   }, [messages, isProcessing, scrollToBottom]);
 
   // Keep view anchored when dynamic child elements resize (e.g. adaptive questions expanding or concluding)
+  // Guarded so it never fights the user if they scrolled up, and debounced
   useEffect(() => {
     const thread = messagesThreadRef.current;
     if (!thread) return;
+    let resizeTimer = null;
     const observer = new ResizeObserver(() => {
-      const container = chatgptBodyRef.current;
-      if (!container) return;
-      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-      if (distanceFromBottom < 240) {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: 'smooth'
-        });
-      }
+      if (isUserScrolledUpRef.current) return;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const container = chatgptBodyRef.current;
+        if (!container || isUserScrolledUpRef.current) return;
+        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        if (distanceFromBottom < 40) {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'auto'
+          });
+        }
+      }, 50);
     });
     observer.observe(thread);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
   }, []);
 
   // Global mouseup listener to display floating "Ask Saar" over highlighted text
@@ -1587,7 +1615,12 @@ export function ChatGPTView({
         <button
           type="button"
           className="chat-scroll-bottom-btn"
-          onClick={() => scrollToBottom(true, 'smooth')}
+          onClick={() => {
+            isUserScrolledUpRef.current = false;
+            showScrollBottomBtnRef.current = false;
+            setShowScrollBottomBtn(false);
+            scrollToBottom(true, 'smooth');
+          }}
           title="Scroll to latest messages"
           aria-label="Scroll to bottom"
         >
